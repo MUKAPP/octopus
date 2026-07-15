@@ -515,6 +515,8 @@
             "channelProxyPlaceholder": "可選：僅對該供應源生效（覆蓋全域代理）",
             "paramOverride": "參數覆蓋",
             "paramOverridePlaceholder": "可選：JSON 字串，用於覆蓋請求參數",
+            "paramAppend": "參數追加",
+            "paramAppendPlaceholder": "可選：JSON 字串，用於追加請求參數（陣列會拼接，例如 tools）",
             "model": "模型",
             "enabled": "啟用",
             "proxy": "使用代理",

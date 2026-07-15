@@ -515,6 +515,8 @@
             "channelProxyPlaceholder": "Optional: proxy for this channel (overrides global proxy)",
             "paramOverride": "Param Override",
             "paramOverridePlaceholder": "Optional: JSON string to override request params",
+            "paramAppend": "Param Append",
+            "paramAppendPlaceholder": "Optional: JSON string to append request params (arrays are concatenated, e.g. tools)",
             "model": "Model",
             "enabled": "Enabled",
             "proxy": "Use Proxy",

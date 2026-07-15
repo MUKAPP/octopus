@@ -30,8 +30,9 @@ type RelayMetrics struct {
 	ActualModel string
 	Stats       model.StatsMetrics
 
-	// 参数覆盖
+	// 参数覆盖 / 参数追加
 	ParamOverride string
+	ParamAppend   string
 }
 
 func (m *RelayMetrics) RecordUsage(usage *llm.Usage) {
@@ -169,7 +170,7 @@ func (m *RelayMetrics) requestContent() string {
 	if err != nil {
 		return ""
 	}
-	if m.ParamOverride == "" {
+	if m.ParamOverride == "" && m.ParamAppend == "" {
 		return string(reqJSON)
 	}
 
@@ -177,13 +178,23 @@ func (m *RelayMetrics) requestContent() string {
 	if err := json.Unmarshal(reqJSON, &reqMap); err != nil {
 		return string(reqJSON)
 	}
-	var override map[string]any
-	if err := json.Unmarshal([]byte(m.ParamOverride), &override); err != nil {
-		return string(reqJSON)
+
+	// 日志里的请求体要反映本次实际发给上游的参数覆盖与追加，但失败解析时保留原始可审计内容。
+	if m.ParamOverride != "" {
+		var override map[string]any
+		if err := json.Unmarshal([]byte(m.ParamOverride), &override); err != nil {
+			return string(reqJSON)
+		}
+		maps.Copy(reqMap, override)
+	}
+	if m.ParamAppend != "" {
+		var appendParams map[string]any
+		if err := json.Unmarshal([]byte(m.ParamAppend), &appendParams); err != nil {
+			return string(reqJSON)
+		}
+		mergeParamAppend(reqMap, appendParams)
 	}
 
-	// 日志里的请求体要反映本次实际发给上游的参数覆盖，但失败解析时保留原始可审计内容。
-	maps.Copy(reqMap, override)
 	finalJSON, err := json.Marshal(reqMap)
 	if err != nil {
 		return string(reqJSON)

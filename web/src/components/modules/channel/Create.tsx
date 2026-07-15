@@ -19,6 +19,7 @@ export function CreateDialogContent() {
         custom_header: [],
         channel_proxy: '',
         param_override: '',
+        param_append: '',
         keys: [{ enabled: true, channel_key: '', remark: '' }],
         model: '',
         custom_model: '',
@@ -45,6 +46,7 @@ export function CreateDialogContent() {
 
         const channelProxy = formData.channel_proxy.trim();
         const paramOverride = formData.param_override.trim();
+        const paramAppend = formData.param_append.trim();
         createChannel.mutate(
             {
                 name: formData.name,
@@ -60,6 +62,7 @@ export function CreateDialogContent() {
                 custom_header: normalizedHeaders,
                 channel_proxy: channelProxy,
                 param_override: paramOverride,
+                param_append: paramAppend,
                 match_regex: formData.match_regex.trim(),
             },
             {
@@ -71,6 +74,7 @@ export function CreateDialogContent() {
                         custom_header: [],
                         channel_proxy: '',
                         param_override: '',
+                        param_append: '',
                         keys: [{ enabled: true, channel_key: '', remark: '' }],
                         model: '',
                         custom_model: '',

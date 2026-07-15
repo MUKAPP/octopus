@@ -31,6 +31,7 @@ type Channel struct {
 	AutoGroup     AutoGroupType  `json:"auto_group" gorm:"default:0"`
 	CustomHeader  []CustomHeader `json:"custom_header" gorm:"serializer:json"`
 	ParamOverride *string        `json:"param_override"`
+	ParamAppend   *string        `json:"param_append"`
 	ChannelProxy  *string        `json:"channel_proxy"`
 	Stats         *StatsChannel  `json:"stats,omitempty" gorm:"foreignKey:ChannelID"`
 	MatchRegex    *string        `json:"match_regex"`
@@ -72,6 +73,7 @@ type ChannelUpdateRequest struct {
 	CustomHeader  *[]CustomHeader `json:"custom_header,omitempty"`
 	ChannelProxy  *string         `json:"channel_proxy,omitempty"`
 	ParamOverride *string         `json:"param_override,omitempty"`
+	ParamAppend   *string         `json:"param_append,omitempty"`
 	MatchRegex    *string         `json:"match_regex,omitempty"`
 
 	KeysToAdd    []ChannelKeyAddRequest    `json:"keys_to_add,omitempty"`

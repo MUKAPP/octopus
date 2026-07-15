@@ -41,6 +41,7 @@ export function CardContent({ channel, stats }: { channel: Channel; stats: Stats
         custom_header: channel.custom_header ?? [],
         channel_proxy: channel.channel_proxy ?? '',
         param_override: channel.param_override ?? '',
+        param_append: channel.param_append ?? '',
         keys: channel.keys.length > 0
             ? channel.keys.map((k) => ({
                 id: k.id,
@@ -106,6 +107,13 @@ export function CardContent({ channel, stats }: { channel: Channel; stats: Stats
         if (nextParamOverride !== curParamOverride) {
             // Empty string means "clear" for patch semantics; backend maps it to NULL.
             req.param_override = nextParamOverride;
+        }
+
+        const nextParamAppend = formData.param_append.trim();
+        const curParamAppend = channel.param_append ?? '';
+        if (nextParamAppend !== curParamAppend) {
+            // Empty string means "clear" for patch semantics; backend maps it to NULL.
+            req.param_append = nextParamAppend;
         }
 
         const nextMatchRegex = formData.match_regex.trim();

@@ -155,6 +155,7 @@ func (r *relayRun) prepareAttempt() (*relayAttempt, error) {
 	r.internalRequest.Model = item.ModelName
 	r.metrics.ActualModel = item.ModelName
 	r.metrics.ParamOverride = ""
+	r.metrics.ParamAppend = ""
 	log.Infof("request model %s, mode: %d, forwarding to channel: %s model: %s (attempt %d/%d, sticky=%t)",
 		r.metrics.RequestModel, r.group.Mode, channel.Name, item.ModelName,
 		r.iter.Index()+1, r.iter.Len(), r.iter.IsSticky())
@@ -291,23 +292,42 @@ func (ra *relayAttempt) forward() (int, error) {
 }
 
 func (ra *relayAttempt) applyChannelRequestOptions(outboundRequest *httpclient.Request) {
-	// ParamOverride 只覆盖 JSON 请求体；multipart 图片编辑等请求不能按 map 合并。
-	if ra.channel.ParamOverride != nil && *ra.channel.ParamOverride != "" && strings.Contains(strings.ToLower(outboundRequest.Headers.Get("Content-Type")+" "+outboundRequest.ContentType), "application/json") {
+	// ParamOverride / ParamAppend 只改 JSON 请求体；multipart 图片编辑等请求不能按 map 合并。
+	hasOverride := ra.channel.ParamOverride != nil && *ra.channel.ParamOverride != ""
+	hasAppend := ra.channel.ParamAppend != nil && *ra.channel.ParamAppend != ""
+	isJSON := strings.Contains(strings.ToLower(outboundRequest.Headers.Get("Content-Type")+" "+outboundRequest.ContentType), "application/json")
+	if (hasOverride || hasAppend) && isJSON {
 		var bodyMap map[string]any
 		if err := json.Unmarshal(outboundRequest.Body, &bodyMap); err != nil {
-			log.Warnf("failed to unmarshal request body: %v, skipping param_override", err)
+			log.Warnf("failed to unmarshal request body: %v, skipping param_override/param_append", err)
 		} else {
-			var override map[string]any
-			if err := json.Unmarshal([]byte(*ra.channel.ParamOverride), &override); err != nil {
-				log.Warnf("failed to unmarshal param_override: %v, skipping", err)
-			} else {
-				maps.Copy(bodyMap, override)
+			bodyModified := false
+			if hasOverride {
+				var override map[string]any
+				if err := json.Unmarshal([]byte(*ra.channel.ParamOverride), &override); err != nil {
+					log.Warnf("failed to unmarshal param_override: %v, skipping", err)
+				} else {
+					maps.Copy(bodyMap, override)
+					bodyModified = true
+					ra.metrics.ParamOverride = *ra.channel.ParamOverride
+				}
+			}
+			if hasAppend {
+				var appendParams map[string]any
+				if err := json.Unmarshal([]byte(*ra.channel.ParamAppend), &appendParams); err != nil {
+					log.Warnf("failed to unmarshal param_append: %v, skipping", err)
+				} else {
+					mergeParamAppend(bodyMap, appendParams)
+					bodyModified = true
+					ra.metrics.ParamAppend = *ra.channel.ParamAppend
+				}
+			}
+			if bodyModified {
 				modifiedBody, err := json.Marshal(bodyMap)
 				if err != nil {
-					log.Warnf("failed to marshal modified body: %v, skipping param_override", err)
+					log.Warnf("failed to marshal modified body: %v, skipping param_override/param_append", err)
 				} else {
 					outboundRequest.Body = modifiedBody
-					ra.metrics.ParamOverride = *ra.channel.ParamOverride
 				}
 			}
 		}
