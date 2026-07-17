@@ -26,6 +26,12 @@ func ChannelList(ctx context.Context) ([]model.Channel, error) {
 }
 
 func ChannelCreate(channel *model.Channel, ctx context.Context) error {
+	if channel.RateMultiplier < 0 {
+		return fmt.Errorf("倍率必须大于 0")
+	}
+	if channel.RateMultiplier == 0 {
+		channel.RateMultiplier = 1
+	}
 	if err := db.GetDB().WithContext(ctx).Create(channel).Error; err != nil {
 		return err
 	}
@@ -156,6 +162,14 @@ func ChannelUpdate(req *model.ChannelUpdateRequest, ctx context.Context) (*model
 	if req.AutoSync != nil {
 		selectFields = append(selectFields, "auto_sync")
 		updates.AutoSync = *req.AutoSync
+	}
+	if req.RateMultiplier != nil {
+		if *req.RateMultiplier <= 0 {
+			tx.Rollback()
+			return nil, fmt.Errorf("倍率必须大于 0")
+		}
+		selectFields = append(selectFields, "rate_multiplier")
+		updates.RateMultiplier = *req.RateMultiplier
 	}
 	if req.AutoGroup != nil {
 		selectFields = append(selectFields, "auto_group")
@@ -345,10 +359,11 @@ func ChannelLLMList(ctx context.Context) ([]model.LLMChannel, error) {
 				continue
 			}
 			models = append(models, model.LLMChannel{
-				Name:        modelName,
-				Enabled:     channel.Enabled,
-				ChannelID:   channel.ID,
-				ChannelName: channel.Name,
+				Name:           modelName,
+				Enabled:        channel.Enabled,
+				ChannelID:      channel.ID,
+				ChannelName:    channel.Name,
+				RateMultiplier: channel.RateMultiplier,
 			})
 		}
 	}

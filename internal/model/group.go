@@ -3,10 +3,11 @@ package model
 type GroupMode int
 
 const (
-	GroupModeRoundRobin GroupMode = 1 // 轮询：依次循环选择渠道
-	GroupModeRandom     GroupMode = 2 // 随机：每次随机选择一个渠道
-	GroupModeFailover   GroupMode = 3 // 故障转移：按优先级选择，失败时降级到下一个
-	GroupModeWeighted   GroupMode = 4 // 加权分配：按优权重分配流量
+	GroupModeRoundRobin   GroupMode = 1 // 轮询：依次循环选择渠道
+	GroupModeRandom       GroupMode = 2 // 随机：每次随机选择一个渠道
+	GroupModeFailover     GroupMode = 3 // 故障转移：按优先级选择，失败时降级到下一个
+	GroupModeWeighted     GroupMode = 4 // 加权分配：按优权重分配流量
+	GroupModeRatePriority GroupMode = 5 // 倍率优先：按渠道倍率从低到高选择，失败时降级到下一个
 )
 
 type Group struct {
@@ -20,12 +21,13 @@ type Group struct {
 }
 
 type GroupItem struct {
-	ID        int    `json:"id" gorm:"primaryKey"`
-	GroupID   int    `json:"group_id" gorm:"not null;index:idx_group_channel_model,unique"` // 创建时不携带此字段,更新时需要
-	ChannelID int    `json:"channel_id" gorm:"not null;index:idx_group_channel_model,unique"`
-	ModelName string `json:"model_name" gorm:"not null;index:idx_group_channel_model,unique"`
-	Priority  int    `json:"priority"`
-	Weight    int    `json:"weight"`
+	ID             int     `json:"id" gorm:"primaryKey"`
+	GroupID        int     `json:"group_id" gorm:"not null;index:idx_group_channel_model,unique"` // 创建时不携带此字段,更新时需要
+	ChannelID      int     `json:"channel_id" gorm:"not null;index:idx_group_channel_model,unique"`
+	ModelName      string  `json:"model_name" gorm:"not null;index:idx_group_channel_model,unique"`
+	Priority       int     `json:"priority"`
+	Weight         int     `json:"weight"`
+	RateMultiplier float64 `json:"rate_multiplier" gorm:"-"`
 }
 
 // GroupUpdateRequest 分组更新请求 - 仅包含变更的数据

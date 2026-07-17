@@ -11,7 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Accordion, AccordionContent, AccordionItem } from '@/components/ui/accordion';
 import { cn } from '@/lib/utils';
 import { getModelIcon } from '@/lib/model-icons';
-import type { GroupMode } from '@/api/endpoints/group';
+import { GroupMode } from '@/api/endpoints/group';
 import type { SelectedMember } from './ItemList';
 import { MemberList } from './ItemList';
 import { matchesGroupName, memberKey, normalizeKey, MODE_LABELS } from './utils';
@@ -179,6 +179,7 @@ function SortSection({
     onWeightChange,
     removingIds,
     showWeight,
+    showRate,
     onClear,
 }: {
     members: SelectedMember[];
@@ -187,6 +188,7 @@ function SortSection({
     onWeightChange: (id: string, weight: number) => void;
     removingIds: Set<string>;
     showWeight: boolean;
+    showRate: boolean;
     onClear: () => void;
 }) {
     const t = useTranslations('group');
@@ -227,6 +229,7 @@ function SortSection({
                     onWeightChange={onWeightChange}
                     removingIds={removingIds}
                     showWeight={showWeight}
+                    showRate={showRate}
                     showConfirmDelete={false}
                 />
             </div>
@@ -446,7 +449,7 @@ export function GroupEditor({
 
                     {/* Mode */}
                     <div className="flex gap-1">
-                        {([1, 2, 3, 4] as const).map((m) => (
+                        {([1, 2, 3, 4, 5] as const).map((m) => (
                             <button
                                 key={m}
                                 type="button"
@@ -476,7 +479,8 @@ export function GroupEditor({
                                 onRemove={handleRemoveMember}
                                 onWeightChange={handleWeightChange}
                                 removingIds={removingIds}
-                                showWeight={mode === 4}
+                                showWeight={mode === GroupMode.Weighted}
+                                showRate={mode === GroupMode.RatePriority}
                                 onClear={handleClearMembers}
                             />
                         </div>

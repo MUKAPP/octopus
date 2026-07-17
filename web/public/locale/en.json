@@ -386,7 +386,8 @@
             "roundRobin": "Round Robin",
             "random": "Random",
             "failover": "Failover",
-            "weighted": "Weighted"
+            "weighted": "Weighted",
+            "ratePriority": "Rate Priority"
         },
         "empty": "No groups yet, click the button above to create one"
     },
@@ -536,6 +537,7 @@
             "typeGemini": "Gemini",
             "typeVolcengine": "Volcengine",
             "autoSync": "Auto Sync",
+            "rateMultiplier": "Rate Multiplier",
             "autoGroup": "Auto Group",
             "autoGroupNone": "None",
             "autoGroupFuzzy": "Fuzzy",

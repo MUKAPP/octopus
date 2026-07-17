@@ -39,6 +39,7 @@ export interface ChannelFormData {
     enabled: boolean;
     proxy: boolean;
     auto_sync: boolean;
+    rate_multiplier: number;
     auto_group: AutoGroupType;
     match_regex: string;
 }
@@ -224,7 +225,7 @@ export function ChannelForm({
 
     return (
         <form onSubmit={onSubmit} className="space-y-4 px-1">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
                     <label htmlFor={`${idPrefix}-name`} className="text-sm font-medium text-card-foreground">
                         {t('name')}
@@ -259,6 +260,27 @@ export function ChannelForm({
                             <SelectItem className='rounded-xl' value={String(ChannelType.OpenAIEmbedding)}>{t('typeOpenAIEmbedding')}</SelectItem>
                         </SelectContent>
                     </Select>
+                </div>
+
+                <div className="space-y-2">
+                    <label htmlFor={`${idPrefix}-rate-multiplier`} className="text-sm font-medium text-card-foreground">
+                        {t('rateMultiplier')}
+                    </label>
+                    <Input
+                        id={`${idPrefix}-rate-multiplier`}
+                        type="number"
+                        min={0.0001}
+                        step="any"
+                        value={String(formData.rate_multiplier)}
+                        onChange={(event) => {
+                            const value = Number.parseFloat(event.target.value);
+                            onFormDataChange({
+                                ...formData,
+                                rate_multiplier: Number.isFinite(value) && value > 0 ? value : 1,
+                            });
+                        }}
+                        className="rounded-xl"
+                    />
                 </div>
             </div>
 

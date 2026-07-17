@@ -386,7 +386,8 @@
             "roundRobin": "轮询",
             "random": "随机",
             "failover": "故障转移",
-            "weighted": "加权分配"
+            "weighted": "加权分配",
+            "ratePriority": "倍率优先"
         },
         "empty": "暂无分组，点击左上角按钮创建"
     },
@@ -536,6 +537,7 @@
             "typeGemini": "Gemini",
             "typeVolcengine": "火山引擎",
             "autoSync": "自动同步",
+            "rateMultiplier": "倍率",
             "autoGroup": "自动分组",
             "autoGroupNone": "不自动分组",
             "autoGroupFuzzy": "模糊匹配",

@@ -3,7 +3,9 @@ package helper
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"math"
 	"net/http"
 	"strings"
 
@@ -12,6 +14,54 @@ import (
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/transformer"
 )
+
+var ErrRateMultiplierUnsupported = errors.New("上游不支持倍率查询")
+
+type rateMultiplierResponse struct {
+	Object                  string  `json:"object"`
+	SchemaVersion           int     `json:"schema_version"`
+	EffectiveRateMultiplier float64 `json:"effective_rate_multiplier"`
+}
+
+func FetchRateMultiplier(ctx context.Context, request model.Channel) (float64, error) {
+	client, err := ChannelHttpClient(&request)
+	if err != nil {
+		return 0, err
+	}
+	baseURL := transformer.NormalizeBaseURL(request.GetBaseUrl(), "v1")
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, baseURL+"/sub2api/billing", nil)
+	if err != nil {
+		return 0, err
+	}
+	key := request.GetChannelKey().ChannelKey
+	req.Header.Set("Authorization", "Bearer "+key)
+	req.Header.Set("X-Api-Key", key)
+	applyCustomHeaders(req, request)
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return 0, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode == http.StatusNotFound {
+		return 0, ErrRateMultiplierUnsupported
+	}
+	if err := validateModelResponse(resp); err != nil {
+		return 0, err
+	}
+
+	var result rateMultiplierResponse
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return 0, err
+	}
+	if result.Object != "sub2api.key_billing" || result.SchemaVersion != 1 {
+		return 0, ErrRateMultiplierUnsupported
+	}
+	if result.EffectiveRateMultiplier <= 0 || math.IsNaN(result.EffectiveRateMultiplier) || math.IsInf(result.EffectiveRateMultiplier, 0) {
+		return 0, fmt.Errorf("上游返回了无效倍率 %v", result.EffectiveRateMultiplier)
+	}
+	return result.EffectiveRateMultiplier, nil
+}
 
 func FetchModels(ctx context.Context, request model.Channel) ([]string, error) {
 	client, err := ChannelHttpClient(&request)

@@ -28,6 +28,8 @@ func GetBalancer(mode model.GroupMode) Balancer {
 		return &Failover{}
 	case model.GroupModeWeighted:
 		return &Weighted{}
+	case model.GroupModeRatePriority:
+		return &RatePriority{}
 	default:
 		return &RoundRobin{}
 	}
@@ -75,6 +77,30 @@ func (b *Failover) Candidates(items []model.GroupItem) []model.GroupItem {
 	return sortByPriority(items)
 }
 
+// RatePriority 倍率优先：按倍率从低到高排序，同倍率时沿用故障转移优先级。
+type RatePriority struct{}
+
+func (b *RatePriority) Candidates(items []model.GroupItem) []model.GroupItem {
+	sorted := make([]model.GroupItem, len(items))
+	copy(sorted, items)
+	sort.SliceStable(sorted, func(i, j int) bool {
+		leftRate := normalizedRateMultiplier(sorted[i].RateMultiplier)
+		rightRate := normalizedRateMultiplier(sorted[j].RateMultiplier)
+		if leftRate == rightRate {
+			return sorted[i].Priority < sorted[j].Priority
+		}
+		return leftRate < rightRate
+	})
+	return sorted
+}
+
+func normalizedRateMultiplier(rate float64) float64 {
+	if rate <= 0 {
+		return 1
+	}
+	return rate
+}
+
 // Weighted 加权分配：按权重概率排序
 type Weighted struct{}
 
@@ -86,8 +112,8 @@ func (b *Weighted) Candidates(items []model.GroupItem) []model.GroupItem {
 
 	// 构建加权随机排序
 	type weightedItem struct {
-		item   model.GroupItem
-		score  float64
+		item  model.GroupItem
+		score float64
 	}
 
 	totalWeight := 0

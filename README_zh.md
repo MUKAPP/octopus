@@ -10,7 +10,6 @@
 
 </div>
 
-
 ## ✨ 特性
 
 - 🔀 **多渠道聚合** - 支持接入多个 LLM 供应商渠道，统一管理
@@ -23,7 +22,6 @@
 - 📊 **数据统计** - 全面的请求统计、Token 消耗、费用追踪
 - 🎨 **优雅界面** - 简洁美观的 Web 管理面板
 - 🗄️ **多数据库支持** - 支持 SQLite、MySQL、PostgreSQL
-
 
 ## 🚀 快速开始
 
@@ -42,7 +40,6 @@ wget https://raw.githubusercontent.com/bestruirui/octopus/refs/heads/dev/docker-
 docker compose up -d
 ```
 
-
 ### 📦 从 Release 下载
 
 从 [Releases](https://github.com/bestruirui/octopus/releases) 下载对应平台的二进制文件，然后运行：
@@ -54,6 +51,7 @@ docker compose up -d
 ### 🛠️ 源码运行
 
 **环境要求：**
+
 - Go 1.24.4
 - Node.js 18+
 - pnpm
@@ -84,7 +82,7 @@ http://localhost:3000
 
 ### 🔐 默认账户
 
-首次启动后，访问 http://localhost:8080 使用以下默认账户登录管理面板：
+首次启动后，访问 <http://localhost:8080> 使用以下默认账户登录管理面板：
 
 - **用户名**：`admin`
 - **密码**：`admin`
@@ -116,7 +114,7 @@ http://localhost:3000
 **配置项说明：**
 
 | 配置项 | 说明 | 默认值 |
-|--------|------|--------|
+| -------- | ------ | -------- |
 | `server.host` | 监听地址 | `0.0.0.0` |
 | `server.port` | 服务端口 | `8080` |
 | `database.type` | 数据库类型 | `sqlite` |
@@ -128,7 +126,7 @@ http://localhost:3000
 支持三种数据库：
 
 | 类型 | `database.type` | `database.path` 格式 |
-|------|-----------------|---------------------|
+| ------ | ----------------- | --------------------- |
 | SQLite | `sqlite` | `data/data.db` |
 | MySQL | `mysql` | `user:password@tcp(host:port)/dbname` |
 | PostgreSQL | `postgres` | `postgresql://user:password@host:port/dbname?sslmode=disable` |
@@ -162,7 +160,7 @@ http://localhost:3000
 所有配置项均可通过环境变量覆盖，格式为 `OCTOPUS_` + 配置路径（用 `_` 连接）：
 
 | 环境变量 | 对应配置项 |
-|----------|-----------|
+| ---------- | ----------- |
 | `OCTOPUS_SERVER_PORT` | `server.port` |
 | `OCTOPUS_SERVER_HOST` | `server.host` |
 | `OCTOPUS_DATABASE_TYPE` | `database.type` |
@@ -174,7 +172,6 @@ http://localhost:3000
 | `OCTOPUS_IMAGES_BODY_MAX_MB` | Images 请求体最大大小限制，超过限制将拒绝请求(可选，默认 256) |
 | `OCTOPUS_IMAGES_BODY_TMP_DIR` | Images 请求体临时文件目录(可选，默认 `./cache`) |
 | `OCTOPUS_IMAGES_BODY_TMP_CLEANUP_HOURS` | 启动时清理临时文件的时间阈值(可选，默认 24) |
-
 
 ## 📸 界面预览
 
@@ -228,7 +225,6 @@ http://localhost:3000
 </table>
 </div>
 
-
 ## 📖 功能说明
 
 ### 📡 渠道管理
@@ -240,7 +236,7 @@ http://localhost:3000
 程序会根据渠道类型自动补全 API 路径，您只需填写基础 URL 即可：
 
 | 渠道类型 | 自动补全路径 | 填写 URL | 完整请求地址示例 |
-|----------|-------------|----------|-----------------|
+| ---------- | ------------- | ---------- | ----------------- |
 | OpenAI Chat | `/chat/completions` | `https://api.openai.com/v1` | `https://api.openai.com/v1/chat/completions` |
 | OpenAI Responses | `/responses` | `https://api.openai.com/v1` | `https://api.openai.com/v1/responses` |
 | OpenAI Images | `/images/generations`、`/images/edits`、`/images/variations` | `https://api.openai.com/v1` | `https://api.openai.com/v1/images/generations` |
@@ -263,11 +259,14 @@ http://localhost:3000
 **负载均衡模式：**
 
 | 模式 | 说明 |
-|------|------|
+| ------ | ------ |
 | 🔄 **轮询** | 每次请求依次切换到下一个渠道 |
 | 🎲 **随机** | 每次请求随机选择一个可用渠道 |
 | 🛡️ **故障转移** | 优先使用高优先级渠道，仅当其故障时才切换到低优先级渠道 |
 | ⚖️ **加权分配** | 根据渠道设置的权重比例分配请求 |
+| 💸 **倍率优先** | 按渠道倍率从低到高选择，当前渠道故障时切换到下一个渠道 |
+
+渠道倍率可在渠道设置中手动配置。渠道开启自动同步后，如果上游是 Sub2API，程序会同时获取该 API Key 当前生效的倍率；获取失败时保留原倍率。
 
 > 💡 **示例**：创建分组名称为 `gpt-4o`，将多个供应商的 GPT-4o 渠道加入该分组，即可通过统一的 `model: gpt-4o` 访问所有渠道。
 
@@ -306,9 +305,6 @@ http://localhost:3000
 - 按设定的周期 **定期批量写入** 数据库
 
 > ⚠️ **重要提示**：退出程序时，请使用正常的关闭方式（如 `Ctrl+C` 或发送 `SIGTERM` 信号），以确保内存中的统计数据能正确写入数据库。**请勿使用 `kill -9` 等强制终止方式**，否则可能导致统计数据丢失。
-
-
-
 
 ## 🔌 客户端接入
 
@@ -364,6 +360,7 @@ model_provider = "octopus"
 name = "octopus"
 base_url = "http://127.0.0.1:8080/v1"
 ```
+
 编辑 `~/.codex/auth.json`
 
 ```json
@@ -371,7 +368,6 @@ base_url = "http://127.0.0.1:8080/v1"
   "OPENAI_API_KEY": "sk-octopus-P48ROljwJmWBYVARjwQM8Nkiezlg7WOrXXOWDYY8TI5p9Mzg"
 }
 ```
-
 
 ---
 

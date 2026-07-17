@@ -2,6 +2,7 @@ package task
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"time"
 
@@ -35,6 +36,7 @@ func SyncModelsTask() {
 		if !channel.AutoSync {
 			continue
 		}
+		syncChannelRateMultiplier(ctx, &channel)
 		oldModels := xstrings.SplitTrimCompact(",", channel.Model)
 		fetchModels, err := helper.FetchModels(ctx, channel)
 		if err != nil {
@@ -99,6 +101,30 @@ func SyncModelsTask() {
 		}
 	}
 	lastSyncModelsTime = time.Now()
+}
+
+func syncChannelRateMultiplier(ctx context.Context, channel *model.Channel) {
+	rateMultiplier, err := helper.FetchRateMultiplier(ctx, *channel)
+	if errors.Is(err, helper.ErrRateMultiplierUnsupported) {
+		return
+	}
+	if err != nil {
+		log.Warnf("渠道 %s 获取倍率失败，保留原倍率：%v", channel.Name, err)
+		return
+	}
+	if rateMultiplier == channel.RateMultiplier {
+		return
+	}
+	updated, err := op.ChannelUpdate(&model.ChannelUpdateRequest{
+		ID:             channel.ID,
+		RateMultiplier: &rateMultiplier,
+	}, ctx)
+	if err != nil {
+		log.Errorf("渠道 %s 更新倍率失败：%v", channel.Name, err)
+		return
+	}
+	channel.RateMultiplier = updated.RateMultiplier
+	log.Infof("渠道 %s 倍率已自动更新为 %g", channel.Name, rateMultiplier)
 }
 
 func selectModelsForSync(oldModels, fetchedModels []string) ([]string, bool) {

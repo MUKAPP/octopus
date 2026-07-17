@@ -10,7 +10,6 @@
 
 </div>
 
-
 ## ✨ Features
 
 - 🔀 **Multi-Channel Aggregation** - Connect multiple LLM provider channels with unified management
@@ -23,7 +22,6 @@
 - 📊 **Analytics** - Comprehensive request statistics, token consumption, and cost tracking
 - 🎨 **Elegant UI** - Clean and beautiful web management panel
 - 🗄️ **Multi-Database Support** - Support for SQLite, MySQL, PostgreSQL
-
 
 ## 🚀 Quick Start
 
@@ -42,7 +40,6 @@ wget https://raw.githubusercontent.com/bestruirui/octopus/refs/heads/dev/docker-
 docker compose up -d
 ```
 
-
 ### 📦 Download from Release
 
 Download the binary for your platform from [Releases](https://github.com/bestruirui/octopus/releases), then run:
@@ -54,6 +51,7 @@ Download the binary for your platform from [Releases](https://github.com/bestrui
 ### 🛠️ Build from Source
 
 **Requirements:**
+
 - Go 1.24.4
 - Node.js 18+
 - pnpm
@@ -84,7 +82,7 @@ http://localhost:3000
 
 ### 🔐 Default Credentials
 
-After first launch, visit http://localhost:8080 and log in to the management panel with:
+After first launch, visit <http://localhost:8080> and log in to the management panel with:
 
 - **Username**: `admin`
 - **Password**: `admin`
@@ -116,7 +114,7 @@ The configuration file is located at `data/config.json` by default and is automa
 **Configuration Options:**
 
 | Option | Description | Default |
-|--------|-------------|---------|
+| -------- | ------------- | --------- |
 | `server.host` | Listen address | `0.0.0.0` |
 | `server.port` | Server port | `8080` |
 | `database.type` | Database type | `sqlite` |
@@ -128,7 +126,7 @@ The configuration file is located at `data/config.json` by default and is automa
 Three database types are supported:
 
 | Type | `database.type` | `database.path` Format |
-|------|-----------------|-----------------------|
+| ------ | ----------------- | ----------------------- |
 | SQLite | `sqlite` | `data/data.db` |
 | MySQL | `mysql` | `user:password@tcp(host:port)/dbname` |
 | PostgreSQL | `postgres` | `postgresql://user:password@host:port/dbname?sslmode=disable` |
@@ -162,7 +160,7 @@ Three database types are supported:
 All configuration options can be overridden via environment variables using the format `OCTOPUS_` + configuration path (joined with `_`):
 
 | Environment Variable | Configuration Option |
-|---------------------|---------------------|
+| --------------------- | --------------------- |
 | `OCTOPUS_SERVER_PORT` | `server.port` |
 | `OCTOPUS_SERVER_HOST` | `server.host` |
 | `OCTOPUS_DATABASE_TYPE` | `database.type` |
@@ -227,7 +225,6 @@ All configuration options can be overridden via environment variables using the 
 </table>
 </div>
 
-
 ## 📖 Documentation
 
 ### 📡 Channel Management
@@ -239,7 +236,7 @@ Channels are the basic configuration units for connecting to LLM providers.
 The program automatically appends API paths based on channel type. You only need to provide the base URL:
 
 | Channel Type | Auto-appended Path | Base URL | Full Request URL Example |
-|--------------|-------------------|----------|--------------------------|
+| -------------- | ------------------- | ---------- | -------------------------- |
 | OpenAI Chat | `/chat/completions` | `https://api.openai.com/v1` | `https://api.openai.com/v1/chat/completions` |
 | OpenAI Responses | `/responses` | `https://api.openai.com/v1` | `https://api.openai.com/v1/responses` |
 | OpenAI Images | `/images/generations`, `/images/edits`, `/images/variations` | `https://api.openai.com/v1` | `https://api.openai.com/v1/images/generations` |
@@ -262,11 +259,14 @@ Groups aggregate multiple channels into a unified external model name.
 **Load Balancing Modes:**
 
 | Mode | Description |
-|------|-------------|
+| ------ | ------------- |
 | 🔄 **Round Robin** | Cycles through channels sequentially for each request |
 | 🎲 **Random** | Randomly selects an available channel for each request |
 | 🛡️ **Failover** | Prioritizes high-priority channels, switches to lower priority only on failure |
 | ⚖️ **Weighted** | Distributes requests based on configured channel weights |
+| 💸 **Rate Priority** | Selects channels from the lowest multiplier to the highest and falls back on failure |
+
+Channel multipliers can be configured manually. When automatic synchronization is enabled, Sub2API channels also fetch the effective multiplier for the selected API key; failures preserve the existing value.
 
 > 💡 **Example**: Create a group named `gpt-4o`, add multiple providers' GPT-4o channels to it, then access all channels via a unified `model: gpt-4o`.
 

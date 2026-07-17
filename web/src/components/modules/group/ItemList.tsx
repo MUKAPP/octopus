@@ -20,6 +20,7 @@ export interface SelectedMember extends LLMChannel {
     id: string;
     item_id?: number;
     weight?: number;
+    rate_multiplier: number;
 }
 
 function reorderList<T>(list: T[], startIndex: number, endIndex: number): T[] {
@@ -43,6 +44,7 @@ function MemberItem({
     isRemoving,
     index,
     showWeight = false,
+    showRate = false,
     showConfirmDelete = true,
     layoutScope,
     dnd,
@@ -53,6 +55,7 @@ function MemberItem({
     isRemoving?: boolean;
     index: number;
     showWeight?: boolean;
+    showRate?: boolean;
     showConfirmDelete?: boolean;
     layoutScope?: string;
     dnd: MemberItemDnd;
@@ -119,6 +122,12 @@ function MemberItem({
                     </Tooltip>
                     <span className="text-[10px] text-muted-foreground truncate leading-tight">{member.channel_name}</span>
                 </div>
+
+                {showRate && (
+                    <span className="shrink-0 text-xs font-medium tabular-nums text-foreground">
+                        ×{member.rate_multiplier || 1}
+                    </span>
+                )}
 
                 {showWeight && (
                     <input
@@ -200,6 +209,7 @@ export interface MemberListProps {
     onDragFinish?: () => void;
     removingIds?: Set<string>;
     showWeight?: boolean;
+    showRate?: boolean;
     /**
      * When true, show a confirmation overlay before removing an item.
      * When false, clicking the delete button removes the item immediately.
@@ -220,6 +230,7 @@ export function MemberList({
     onDragFinish,
     removingIds = new Set(),
     showWeight = false,
+    showRate = false,
     showConfirmDelete = true,
     layoutScope: externalLayoutScope,
 }: MemberListProps) {
@@ -323,6 +334,7 @@ export function MemberList({
                                                 isRemoving={removingIds.has(member.id)}
                                                 index={index}
                                                 showWeight={showWeight}
+                                                showRate={showRate}
                                                 showConfirmDelete={showConfirmDelete}
                                                 layoutScope={layoutScope}
                                                 dnd={{

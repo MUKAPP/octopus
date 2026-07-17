@@ -27,6 +27,7 @@ export interface LLMChannel {
     enabled: boolean;
     channel_id: number;
     channel_name: string;
+    rate_multiplier: number;
 }
 
 /**

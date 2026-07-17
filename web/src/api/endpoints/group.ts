@@ -12,6 +12,7 @@ export interface GroupItem {
     model_name: string;
     priority: number;
     weight: number;
+    rate_multiplier?: number;
 }
 
 /**
@@ -22,6 +23,7 @@ export enum GroupMode {
     Random = 2,
     Failover = 3,
     Weighted = 4,
+    RatePriority = 5,
 }
 
 /**

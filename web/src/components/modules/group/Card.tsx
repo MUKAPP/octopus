@@ -88,6 +88,13 @@ export function GroupCard({ group }: { group: Group }) {
         });
         return map;
     }, [modelChannels]);
+    const rateByKey = useMemo(() => {
+        const map = new Map<string, number>();
+        modelChannels.forEach((mc) => {
+            map.set(modelChannelKey(mc.channel_id, mc.name), mc.rate_multiplier || 1);
+        });
+        return map;
+    }, [modelChannels]);
 
     const displayMembers = useMemo((): SelectedMember[] =>
         [...(group.items || [])]
@@ -98,13 +105,15 @@ export function GroupCard({ group }: { group: Group }) {
                 enabled: enabledByKey.get(modelChannelKey(item.channel_id, item.model_name)) ?? true,
                 channel_id: item.channel_id,
                 channel_name: channelNameByKey.get(modelChannelKey(item.channel_id, item.model_name)) ?? `Channel ${item.channel_id}`,
+                rate_multiplier: rateByKey.get(modelChannelKey(item.channel_id, item.model_name)) ?? 1,
                 item_id: item.id,
                 weight: item.weight,
             })),
-        [group.items, channelNameByKey, enabledByKey]
+        [group.items, channelNameByKey, enabledByKey, rateByKey]
     );
 
     useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         if (!isDragging.current) setMembers([...displayMembers]);
     }, [displayMembers]);
 
@@ -315,7 +324,7 @@ export function GroupCard({ group }: { group: Group }) {
 
             {/* Mode: quick switch (no need to enter Edit) */}
             <div className="flex gap-1 mb-3">
-                {([GroupMode.RoundRobin, GroupMode.Random, GroupMode.Failover, GroupMode.Weighted] as const).map((m) => (
+                {([GroupMode.RoundRobin, GroupMode.Random, GroupMode.Failover, GroupMode.Weighted, GroupMode.RatePriority] as const).map((m) => (
                     <button
                         key={m}
                         type="button"
@@ -348,6 +357,7 @@ export function GroupCard({ group }: { group: Group }) {
                     onDragFinish={handleDragFinish}
                     autoScrollOnAdd={false}
                     showWeight={group.mode === GroupMode.Weighted}
+                    showRate={group.mode === GroupMode.RatePriority}
                     layoutScope={`card-${group.id ?? 'unknown'}`}
                 />
             </section>
