@@ -35,25 +35,20 @@ func SyncModelsTask() {
 		if !channel.AutoSync {
 			continue
 		}
+		oldModels := xstrings.SplitTrimCompact(",", channel.Model)
 		fetchModels, err := helper.FetchModels(ctx, channel)
 		if err != nil {
-			log.Warnf("failed to fetch models for channel %s: %v", channel.Name, err)
+			log.Warnf("渠道 %s 获取模型失败，跳过本次同步：%v", channel.Name, err)
+			totalNewModels = appendUniqueModelNames(totalNewModels, oldModels, seenTotalNewModels)
 			continue
 		}
-		oldModels := xstrings.SplitTrimCompact(",", channel.Model)
-		newModels := xstrings.TrimCompact(fetchModels)
-		for _, m := range newModels {
-			m = strings.TrimSpace(m)
-			if m == "" {
-				continue
-			}
-			m = strings.ToLower(m)
-			if _, ok := seenTotalNewModels[m]; ok {
-				continue
-			}
-			seenTotalNewModels[m] = struct{}{}
-			totalNewModels = append(totalNewModels, m)
+		newModels, shouldUpdate := selectModelsForSync(oldModels, fetchModels)
+		if !shouldUpdate {
+			log.Warnf("渠道 %s 未返回任何模型，跳过本次同步", channel.Name)
+			totalNewModels = appendUniqueModelNames(totalNewModels, oldModels, seenTotalNewModels)
+			continue
 		}
+		totalNewModels = appendUniqueModelNames(totalNewModels, newModels, seenTotalNewModels)
 		deletedModels, addedModels := diff.Diff(oldModels, newModels)
 		if len(deletedModels) > 0 || len(addedModels) > 0 {
 			fetchModelStr := strings.Join(newModels, ",")
@@ -104,6 +99,29 @@ func SyncModelsTask() {
 		}
 	}
 	lastSyncModelsTime = time.Now()
+}
+
+func selectModelsForSync(oldModels, fetchedModels []string) ([]string, bool) {
+	newModels := xstrings.TrimCompact(fetchedModels)
+	if len(newModels) == 0 {
+		return oldModels, false
+	}
+	return newModels, true
+}
+
+func appendUniqueModelNames(target, models []string, seen map[string]struct{}) []string {
+	for _, name := range models {
+		name = strings.ToLower(strings.TrimSpace(name))
+		if name == "" {
+			continue
+		}
+		if _, ok := seen[name]; ok {
+			continue
+		}
+		seen[name] = struct{}{}
+		target = append(target, name)
+	}
+	return target
 }
 
 func GetLastSyncModelsTime() time.Time {

@@ -3,6 +3,7 @@ package helper
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strings"
 
@@ -69,6 +70,9 @@ func fetchOpenAIModels(client *http.Client, ctx context.Context, request model.C
 		return nil, err
 	}
 	defer resp.Body.Close()
+	if err := validateModelResponse(resp); err != nil {
+		return nil, err
+	}
 
 	var result model.OpenAIModelList
 
@@ -113,6 +117,9 @@ func fetchGeminiModels(client *http.Client, ctx context.Context, request model.C
 			return nil, err
 		}
 		defer resp.Body.Close()
+		if err := validateModelResponse(resp); err != nil {
+			return nil, err
+		}
 
 		var result model.GeminiModelList
 
@@ -166,6 +173,9 @@ func fetchAnthropicModels(client *http.Client, ctx context.Context, request mode
 			return nil, err
 		}
 		defer resp.Body.Close()
+		if err := validateModelResponse(resp); err != nil {
+			return nil, err
+		}
 
 		var result model.AnthropicModelList
 
@@ -187,6 +197,13 @@ func fetchAnthropicModels(client *http.Client, ctx context.Context, request mode
 		return fetchOpenAIModels(client, ctx, request)
 	}
 	return allModels, nil
+}
+
+func validateModelResponse(resp *http.Response) error {
+	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
+		return fmt.Errorf("获取模型失败，上游返回状态码 %d", resp.StatusCode)
+	}
+	return nil
 }
 
 func applyCustomHeaders(req *http.Request, channel model.Channel) {
