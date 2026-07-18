@@ -1,21 +1,11 @@
-# 本地自建镜像：需 sibling axonhub（go.mod replace）
-# 目录布局：
-#   parent/
-#     src/          # 本仓库（含本文件与 Dockerfile）
-#     axonhub/      # sibling 依赖
-#     data/         # 数据卷
-# 在 parent 执行：
-#   docker compose -f src/docker-compose.yaml --project-directory . up -d --build
+# 使用 fork 发布到 Docker Hub 的镜像：docker compose up -d
 services:
   octopus:
-    build:
-      context: .
-      dockerfile: src/Dockerfile
-    image: mukapp/octopus:local
+    image: mukmiuikong/octopus:latest
     ports:
-      - '127.0.0.1:20001:8080'
+      - "127.0.0.1:20001:8080"
     volumes:
-      - './data:/app/data'
+      - "./data:/app/data"
     container_name: octopus
     restart: unless-stopped
     extra_hosts:
