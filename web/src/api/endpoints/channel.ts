@@ -62,6 +62,7 @@ export type Channel = {
 	auto_sync: boolean;
 	rate_multiplier: number;
 	rate_multiplier_auto_synced: boolean;
+	priority: number;
 	auto_group: AutoGroupType;
 	custom_header: CustomHeader[];
 	param_override?: string | null;
@@ -92,6 +93,7 @@ export type CreateChannelRequest = {
 	proxy?: boolean;
 	auto_sync?: boolean;
 	rate_multiplier?: number;
+	priority?: number;
 	auto_group?: AutoGroupType;
 	custom_header?: CustomHeader[];
 	channel_proxy?: string | null;
@@ -114,6 +116,7 @@ export type UpdateChannelRequest = {
 	proxy?: boolean;
 	auto_sync?: boolean;
 	rate_multiplier?: number;
+	priority?: number;
 	auto_group?: AutoGroupType;
 	custom_header?: CustomHeader[];
 	channel_proxy?: string | null;

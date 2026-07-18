@@ -539,6 +539,8 @@
             "autoSync": "Auto Sync",
             "rateMultiplier": "Rate Multiplier",
             "rateAutoSynced": "Rate automatically synced",
+            "priority": "Priority",
+            "priorityHint": "Lower values run first when multipliers are equal",
             "autoGroup": "Auto Group",
             "autoGroupNone": "None",
             "autoGroupFuzzy": "Fuzzy",

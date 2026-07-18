@@ -26,6 +26,9 @@ func ChannelList(ctx context.Context) ([]model.Channel, error) {
 }
 
 func ChannelCreate(channel *model.Channel, ctx context.Context) error {
+	if channel.Priority < 0 {
+		return fmt.Errorf("优先级不能小于 0")
+	}
 	if channel.RateMultiplier < 0 {
 		return fmt.Errorf("倍率必须大于 0")
 	}
@@ -177,6 +180,14 @@ func ChannelUpdate(req *model.ChannelUpdateRequest, ctx context.Context) (*model
 	} else if req.RateMultiplier != nil {
 		selectFields = append(selectFields, "rate_multiplier_auto_synced")
 		updates.RateMultiplierAutoSynced = false
+	}
+	if req.Priority != nil {
+		if *req.Priority < 0 {
+			tx.Rollback()
+			return nil, fmt.Errorf("优先级不能小于 0")
+		}
+		selectFields = append(selectFields, "priority")
+		updates.Priority = *req.Priority
 	}
 	if req.AutoGroup != nil {
 		selectFields = append(selectFields, "auto_group")

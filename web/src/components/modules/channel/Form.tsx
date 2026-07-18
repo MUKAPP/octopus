@@ -40,6 +40,7 @@ export interface ChannelFormData {
     proxy: boolean;
     auto_sync: boolean;
     rate_multiplier: number;
+    priority: number;
     auto_group: AutoGroupType;
     match_regex: string;
 }
@@ -277,6 +278,31 @@ export function ChannelForm({
                             onFormDataChange({
                                 ...formData,
                                 rate_multiplier: Number.isFinite(value) && value > 0 ? value : 1,
+                            });
+                        }}
+                        className="rounded-xl"
+                    />
+                </div>
+
+                <div className="space-y-2">
+                    <label
+                        htmlFor={`${idPrefix}-priority`}
+                        className="text-sm font-medium text-card-foreground"
+                        title={t('priorityHint')}
+                    >
+                        {t('priority')}
+                    </label>
+                    <Input
+                        id={`${idPrefix}-priority`}
+                        type="number"
+                        min={0}
+                        step={1}
+                        value={String(formData.priority)}
+                        onChange={(event) => {
+                            const value = Number.parseInt(event.target.value, 10);
+                            onFormDataChange({
+                                ...formData,
+                                priority: Number.isFinite(value) && value >= 0 ? value : 0,
                             });
                         }}
                         className="rounded-xl"

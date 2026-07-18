@@ -6,16 +6,17 @@ import (
 	"github.com/bestruirui/octopus/internal/model"
 )
 
-func TestRatePriorityCandidatesSortByRateThenPriority(t *testing.T) {
+func TestRatePriorityCandidatesSortByRateThenChannelAndGroupPriority(t *testing.T) {
 	items := []model.GroupItem{
-		{ID: 1, Priority: 1, RateMultiplier: 1},
-		{ID: 2, Priority: 2, RateMultiplier: 0.5},
-		{ID: 3, Priority: 1, RateMultiplier: 0.5},
-		{ID: 4, Priority: 0, RateMultiplier: 0},
+		{ID: 1, Priority: 1, ChannelPriority: 1, RateMultiplier: 1},
+		{ID: 2, Priority: 1, ChannelPriority: 2, RateMultiplier: 0.5},
+		{ID: 3, Priority: 2, ChannelPriority: 1, RateMultiplier: 0.5},
+		{ID: 4, Priority: 2, ChannelPriority: 0, RateMultiplier: 0},
+		{ID: 5, Priority: 1, ChannelPriority: 1, RateMultiplier: 0.5},
 	}
 
 	got := (&RatePriority{}).Candidates(items)
-	wantIDs := []int{3, 2, 4, 1}
+	wantIDs := []int{5, 3, 2, 4, 1}
 	for i, wantID := range wantIDs {
 		if got[i].ID != wantID {
 			t.Fatalf("第 %d 个候选渠道不符合预期：got %d, want %d", i, got[i].ID, wantID)

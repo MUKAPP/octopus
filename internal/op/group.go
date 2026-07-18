@@ -58,6 +58,7 @@ func GroupGetEnabledMap(name string, ctx context.Context) (model.Group, error) {
 		if item.RateMultiplier <= 0 {
 			item.RateMultiplier = 1
 		}
+		item.ChannelPriority = channel.Priority
 		enabledItems = append(enabledItems, item)
 	}
 	group.Items = enabledItems

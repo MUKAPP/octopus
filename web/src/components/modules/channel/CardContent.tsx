@@ -58,6 +58,7 @@ export function CardContent({ channel, stats }: { channel: Channel; stats: Stats
         proxy: channel.proxy,
         auto_sync: channel.auto_sync,
         rate_multiplier: channel.rate_multiplier || 1,
+        priority: channel.priority ?? 0,
         auto_group: channel.auto_group,
         match_regex: channel.match_regex ?? '',
     });
@@ -89,6 +90,7 @@ export function CardContent({ channel, stats }: { channel: Channel; stats: Stats
         if (formData.proxy !== channel.proxy) req.proxy = formData.proxy;
         if (formData.auto_sync !== channel.auto_sync) req.auto_sync = formData.auto_sync;
         if (formData.rate_multiplier !== channel.rate_multiplier) req.rate_multiplier = formData.rate_multiplier;
+        if (formData.priority !== channel.priority) req.priority = formData.priority;
         if (formData.auto_group !== channel.auto_group) req.auto_group = formData.auto_group;
 
         if (!headersEqual(formData.custom_header, channel.custom_header)) {

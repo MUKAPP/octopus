@@ -30,6 +30,7 @@ type Channel struct {
 	AutoSync                 bool           `json:"auto_sync" gorm:"default:false"`
 	RateMultiplier           float64        `json:"rate_multiplier" gorm:"default:1"`
 	RateMultiplierAutoSynced bool           `json:"rate_multiplier_auto_synced" gorm:"default:false"`
+	Priority                 int            `json:"priority" gorm:"default:0"`
 	AutoGroup                AutoGroupType  `json:"auto_group" gorm:"default:0"`
 	CustomHeader             []CustomHeader `json:"custom_header" gorm:"serializer:json"`
 	ParamOverride            *string        `json:"param_override"`
@@ -73,6 +74,7 @@ type ChannelUpdateRequest struct {
 	AutoSync                 *bool           `json:"auto_sync,omitempty"`
 	RateMultiplier           *float64        `json:"rate_multiplier,omitempty"`
 	RateMultiplierAutoSynced *bool           `json:"-"`
+	Priority                 *int            `json:"priority,omitempty"`
 	AutoGroup                *AutoGroupType  `json:"auto_group,omitempty"`
 	CustomHeader             *[]CustomHeader `json:"custom_header,omitempty"`
 	ChannelProxy             *string         `json:"channel_proxy,omitempty"`

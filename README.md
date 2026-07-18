@@ -264,9 +264,9 @@ Groups aggregate multiple channels into a unified external model name.
 | 🎲 **Random** | Randomly selects an available channel for each request |
 | 🛡️ **Failover** | Prioritizes high-priority channels, switches to lower priority only on failure |
 | ⚖️ **Weighted** | Distributes requests based on configured channel weights |
-| 💸 **Rate Priority** | Selects channels from the lowest multiplier to the highest and falls back on failure |
+| 💸 **Rate Priority** | Selects the lowest multiplier first; equal multipliers use the lowest channel priority value |
 
-Channel multipliers can be configured manually. When automatic synchronization is enabled, Sub2API channels also fetch the effective multiplier for the selected API key; failures preserve the existing value. The channel list marks successfully synchronized multipliers inside the rate capsule; manually changing the multiplier clears that marker.
+Channel multipliers and priorities can be configured in channel settings. Channel priority defaults to `0` and only breaks ties between equal multipliers in Rate Priority mode; lower values run first. When automatic synchronization is enabled, Sub2API channels also fetch the effective multiplier for the selected API key; failures preserve the existing value. The channel list marks successfully synchronized multipliers inside the rate capsule; manually changing the multiplier clears that marker.
 
 > 💡 **Example**: Create a group named `gpt-4o`, add multiple providers' GPT-4o channels to it, then access all channels via a unified `model: gpt-4o`.
 

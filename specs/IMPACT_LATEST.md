@@ -1,31 +1,33 @@
 ## Target
 
-为渠道倍率增加可信的自动同步来源状态，并在渠道卡片中区分渠道自动同步与倍率自动同步。
+为渠道增加全局优先级，并在倍率优先模式下将其作为同倍率候选的排序依据。
 
-## Dependents (6)
+## Dependents (8)
 
-- `internal/model/channel.go`: 渠道持久化模型和 API 响应。
-- `internal/op/channel.go`: 渠道手动更新与缓存刷新。
-- `internal/server/handlers/channel.go`: 渠道创建入口。
-- `internal/task/sync.go`: 从上游获取并保存倍率。
+- `internal/model/channel.go`: 渠道持久化模型和更新请求。
+- `internal/op/channel.go`: 渠道创建、校验、更新和缓存刷新。
+- `internal/model/group.go`: 运行时候选项承载渠道优先级。
+- `internal/op/group.go`: 从渠道缓存向分组候选映射倍率与渠道优先级。
+- `internal/relay/balancer/balancer.go`: 倍率优先排序规则。
 - `web/src/api/endpoints/channel.ts`: 前端渠道数据契约。
-- `web/src/components/modules/channel/Card.tsx`: 渠道名称、倍率和同步状态展示。
+- `web/src/components/modules/channel/Form.tsx`: 渠道优先级输入控件。
+- `web/src/components/modules/channel/Create.tsx` 与 `CardContent.tsx`: 创建和编辑数据流。
 
 ## Affected Stories
 
-- 当前仓库没有 `specs/release-plan.yaml` 或 epic capsule；本次属于渠道倍率展示行为修正。
+- 当前仓库没有 `specs/release-plan.yaml` 或 epic capsule；本次扩展渠道配置与倍率优先调度规则。
 
 ## Test Coverage
 
-- `internal/helper/fetch_test.go`: 已覆盖上游倍率获取成功及不支持查询。
-- `internal/task/sync_test.go`: 已覆盖模型同步的空结果保护，但未覆盖倍率来源状态。
-- 新增 `internal/op/channel_test.go`: 覆盖手动修改清除来源状态、内部同步设置来源状态。
-- 前端没有组件测试；通过 TypeScript、ESLint 和诊断检查验证数据契约与 JSX。
+- `internal/relay/balancer/balancer_test.go`: 覆盖倍率、渠道优先级和分组项优先级的排序顺序。
+- `internal/op/group_test.go`: 覆盖渠道优先级到运行时候选项的映射。
+- `internal/op/channel_test.go`: 覆盖渠道优先级更新与负值校验。
+- 前端没有组件测试；通过 TypeScript、ESLint 和诊断检查验证表单数据契约。
 
 ## Risk: Medium
 
-变更跨越数据库模型、更新语义和前端 API，但新增字段默认值兼容已有数据，且不影响倍率参与调度的数值逻辑。
+变更跨越数据库模型、渠道设置、分组候选映射和调度排序，但新增字段默认值为 0，倍率不同的排序以及故障转移模式均保持不变。
 
 ## Recommended action
 
-继续实施；成功获取倍率时设置来源状态，手动修改倍率时清除状态，同步失败时保留当前倍率及来源状态。
+继续实施；同倍率时先比较渠道优先级，渠道优先级相同时再沿用分组项优先级，确保兼容现有分组顺序。

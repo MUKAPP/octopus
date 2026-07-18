@@ -539,6 +539,8 @@
             "autoSync": "自动同步",
             "rateMultiplier": "倍率",
             "rateAutoSynced": "倍率已自动同步",
+            "priority": "优先级",
+            "priorityHint": "数值越小越优先，仅用于倍率相同时排序",
             "autoGroup": "自动分组",
             "autoGroupNone": "不自动分组",
             "autoGroupFuzzy": "模糊匹配",

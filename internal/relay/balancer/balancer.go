@@ -77,7 +77,7 @@ func (b *Failover) Candidates(items []model.GroupItem) []model.GroupItem {
 	return sortByPriority(items)
 }
 
-// RatePriority 倍率优先：按倍率从低到高排序，同倍率时沿用故障转移优先级。
+// RatePriority 倍率优先：按倍率从低到高排序，同倍率时按渠道优先级和分组项优先级排序。
 type RatePriority struct{}
 
 func (b *RatePriority) Candidates(items []model.GroupItem) []model.GroupItem {
@@ -86,10 +86,13 @@ func (b *RatePriority) Candidates(items []model.GroupItem) []model.GroupItem {
 	sort.SliceStable(sorted, func(i, j int) bool {
 		leftRate := normalizedRateMultiplier(sorted[i].RateMultiplier)
 		rightRate := normalizedRateMultiplier(sorted[j].RateMultiplier)
-		if leftRate == rightRate {
-			return sorted[i].Priority < sorted[j].Priority
+		if leftRate != rightRate {
+			return leftRate < rightRate
 		}
-		return leftRate < rightRate
+		if sorted[i].ChannelPriority != sorted[j].ChannelPriority {
+			return sorted[i].ChannelPriority < sorted[j].ChannelPriority
+		}
+		return sorted[i].Priority < sorted[j].Priority
 	})
 	return sorted
 }

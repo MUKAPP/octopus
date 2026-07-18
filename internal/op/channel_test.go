@@ -51,4 +51,25 @@ func TestChannelUpdateTracksRateMultiplierSource(t *testing.T) {
 	if !updated.RateMultiplierAutoSynced {
 		t.Fatal("自动同步成功后应设置倍率来源标志，即使倍率数值未变化")
 	}
+
+	priority := 3
+	updated, err = ChannelUpdate(&model.ChannelUpdateRequest{ID: channel.ID, Priority: &priority}, ctx)
+	if err != nil {
+		t.Fatalf("更新渠道优先级失败：%v", err)
+	}
+	if updated.Priority != priority {
+		t.Fatalf("渠道优先级未更新：got %d, want %d", updated.Priority, priority)
+	}
+
+	invalidPriority := -1
+	if _, err := ChannelUpdate(&model.ChannelUpdateRequest{ID: channel.ID, Priority: &invalidPriority}, ctx); err == nil {
+		t.Fatal("更新渠道时应拒绝负数优先级")
+	}
+}
+
+func TestChannelCreateRejectsNegativePriority(t *testing.T) {
+	channel := model.Channel{Name: "invalid-priority", Priority: -1}
+	if err := ChannelCreate(&channel, context.Background()); err == nil {
+		t.Fatal("创建渠道时应拒绝负数优先级")
+	}
 }
