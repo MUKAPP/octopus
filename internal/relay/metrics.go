@@ -79,7 +79,7 @@ func (m *RelayMetrics) Save(ctx context.Context, success bool, err error, attemp
 		globalStats.RequestFailed = 1
 	}
 
-	channelID, channelName := finalChannel(attempts)
+	channelID, channelName, rateMultiplier := finalChannel(attempts)
 	op.StatsTotalUpdate(globalStats)
 	op.StatsHourlyUpdate(globalStats)
 	op.StatsDailyUpdate(context.Background(), globalStats)
@@ -101,31 +101,34 @@ func (m *RelayMetrics) Save(ctx context.Context, success bool, err error, attemp
 		len(attempts))
 
 	// 客户端断开或请求上下文取消后仍要保存最终审计日志，因此持久化阶段主动脱离请求取消信号。
-	m.saveLog(context.WithoutCancel(ctx), err, duration, attempts, channelID, channelName)
+	m.saveLog(context.WithoutCancel(ctx), err, duration, attempts, channelID, channelName, rateMultiplier)
 }
 
-func finalChannel(attempts []model.ChannelAttempt) (int, string) {
+func finalChannel(attempts []model.ChannelAttempt) (int, string, float64) {
 	var lastID int
 	var lastName string
+	var lastRate float64
 	for i := len(attempts) - 1; i >= 0; i-- {
 		a := attempts[i]
 		if a.Status == model.AttemptSuccess {
-			return a.ChannelID, a.ChannelName
+			return a.ChannelID, a.ChannelName, a.RateMultiplier
 		}
 		if a.Status == model.AttemptFailed && lastID == 0 {
 			lastID = a.ChannelID
 			lastName = a.ChannelName
+			lastRate = a.RateMultiplier
 		}
 	}
-	return lastID, lastName
+	return lastID, lastName, lastRate
 }
 
-func (m *RelayMetrics) saveLog(ctx context.Context, err error, duration time.Duration, attempts []model.ChannelAttempt, channelID int, channelName string) {
+func (m *RelayMetrics) saveLog(ctx context.Context, err error, duration time.Duration, attempts []model.ChannelAttempt, channelID int, channelName string, rateMultiplier float64) {
 	relayLog := model.RelayLog{
 		Time:             m.StartTime.Unix(),
 		RequestModelName: m.RequestModel,
 		ChannelName:      channelName,
 		ChannelId:        channelID,
+		RateMultiplier:   rateMultiplier,
 		ActualModelName:  m.ActualModel,
 		UseTime:          int(duration.Milliseconds()),
 		Attempts:         attempts,

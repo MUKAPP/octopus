@@ -12,15 +12,16 @@ const (
 
 // ChannelAttempt 记录单次渠道尝试的决策和结果
 type ChannelAttempt struct {
-	ChannelID    int           `json:"channel_id"`
-	ChannelKeyID int           `json:"channel_key_id,omitempty"`
-	ChannelName  string        `json:"channel_name"`
-	ModelName    string        `json:"model_name"`
-	AttemptNum   int           `json:"attempt_num"`
-	Status       AttemptStatus `json:"status"`
-	Duration     int           `json:"duration"`
-	Sticky       bool          `json:"sticky,omitempty"`
-	Msg          string        `json:"msg,omitempty"`
+	ChannelID      int           `json:"channel_id"`
+	ChannelKeyID   int           `json:"channel_key_id,omitempty"`
+	ChannelName    string        `json:"channel_name"`
+	ModelName      string        `json:"model_name"`
+	RateMultiplier float64       `json:"rate_multiplier"`
+	AttemptNum     int           `json:"attempt_num"`
+	Status         AttemptStatus `json:"status"`
+	Duration       int           `json:"duration"`
+	Sticky         bool          `json:"sticky,omitempty"`
+	Msg            string        `json:"msg,omitempty"`
 }
 
 type RelayLog struct {
@@ -30,6 +31,7 @@ type RelayLog struct {
 	RequestAPIKeyName string           `json:"request_api_key_name"`                     // 请求使用的 API Key 名称
 	ChannelId         int              `json:"channel"`                                  // 实际使用的渠道ID
 	ChannelName       string           `json:"channel_name"`                             // 渠道名称
+	RateMultiplier    float64          `json:"rate_multiplier"`                          // 当时使用的渠道倍率
 	ActualModelName   string           `json:"actual_model_name"`                        // 实际使用模型名称
 	InputTokens       int              `json:"input_tokens"`                             // 输入Token
 	OutputTokens      int              `json:"output_tokens"`                            // 输出 Token

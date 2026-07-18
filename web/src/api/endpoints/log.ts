@@ -17,6 +17,7 @@ export interface ChannelAttempt {
     channel_key_id?: number;
     channel_name: string;
     model_name: string;
+    rate_multiplier: number; // 当时使用的渠道倍率
     attempt_num: number;    // 第几次尝试
     status: AttemptStatus;
     duration: number;       // 耗时(毫秒)
@@ -34,6 +35,7 @@ export interface RelayLog {
     request_api_key_name?: string; // 请求使用的 API Key 名称
     channel: number;             // 实际使用的渠道ID
     channel_name: string;        // 渠道名称
+    rate_multiplier: number;     // 当时使用的渠道倍率
     actual_model_name: string;   // 实际使用模型名称
     input_tokens: number;        // 输入Token
     output_tokens: number;       // 输出Token

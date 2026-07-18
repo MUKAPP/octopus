@@ -83,14 +83,15 @@ func (it *Iterator) Index() int {
 func (it *Iterator) Skip(channelID, channelKeyID int, channelName, msg string) {
 	it.count++
 	it.attempts = append(it.attempts, model.ChannelAttempt{
-		ChannelID:    channelID,
-		ChannelKeyID: channelKeyID,
-		ChannelName:  channelName,
-		ModelName:    it.candidates[it.index].ModelName,
-		AttemptNum:   it.count,
-		Status:       model.AttemptSkipped,
-		Sticky:       it.IsSticky(),
-		Msg:          msg,
+		ChannelID:      channelID,
+		ChannelKeyID:   channelKeyID,
+		ChannelName:    channelName,
+		ModelName:      it.candidates[it.index].ModelName,
+		RateMultiplier: it.candidates[it.index].RateMultiplier,
+		AttemptNum:     it.count,
+		Status:         model.AttemptSkipped,
+		Sticky:         it.IsSticky(),
+		Msg:            msg,
 	})
 }
 
@@ -107,14 +108,15 @@ func (it *Iterator) SkipCircuitBreak(channelID, channelKeyID int, channelName st
 	}
 	it.count++
 	it.attempts = append(it.attempts, model.ChannelAttempt{
-		ChannelID:    channelID,
-		ChannelKeyID: channelKeyID,
-		ChannelName:  channelName,
-		ModelName:    modelName,
-		AttemptNum:   it.count,
-		Status:       model.AttemptCircuitBreak,
-		Sticky:       it.IsSticky(),
-		Msg:          msg,
+		ChannelID:      channelID,
+		ChannelKeyID:   channelKeyID,
+		ChannelName:    channelName,
+		ModelName:      modelName,
+		RateMultiplier: it.candidates[it.index].RateMultiplier,
+		AttemptNum:     it.count,
+		Status:         model.AttemptCircuitBreak,
+		Sticky:         it.IsSticky(),
+		Msg:            msg,
 	})
 	return true
 }
@@ -124,12 +126,13 @@ func (it *Iterator) StartAttempt(channelID, channelKeyID int, channelName string
 	it.count++
 	return &AttemptSpan{
 		attempt: model.ChannelAttempt{
-			ChannelID:    channelID,
-			ChannelKeyID: channelKeyID,
-			ChannelName:  channelName,
-			ModelName:    it.candidates[it.index].ModelName,
-			AttemptNum:   it.count,
-			Sticky:       it.IsSticky(),
+			ChannelID:      channelID,
+			ChannelKeyID:   channelKeyID,
+			ChannelName:    channelName,
+			ModelName:      it.candidates[it.index].ModelName,
+			RateMultiplier: it.candidates[it.index].RateMultiplier,
+			AttemptNum:     it.count,
+			Sticky:         it.IsSticky(),
 		},
 		startTime: time.Now(),
 		iter:      it,

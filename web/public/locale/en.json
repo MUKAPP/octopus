@@ -446,7 +446,8 @@
             "retryDetails": "Retry Details",
             "attempts": "attempts",
             "success": "Success",
-            "failed": "Failed"
+            "failed": "Failed",
+            "rateMultiplier": "Rate"
         }
     },
     "channel": {

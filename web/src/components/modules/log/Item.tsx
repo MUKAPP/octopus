@@ -41,13 +41,18 @@ function formatDuration(ms: number): string {
     return `${(ms / 1000).toFixed(2)}s`;
 }
 
+function formatRateMultiplier(rate: number): string {
+    return rate > 0 ? rate.toLocaleString('zh-CN', { maximumFractionDigits: 4 }) : '';
+}
+
 interface RetryBadgeWithTooltipProps {
     channelName: string;
     brandColor: string;
+    rateMultiplier: number;
     attempts: ChannelAttempt[];
 }
 
-function RetryBadgeWithTooltip({ channelName, brandColor, attempts }: RetryBadgeWithTooltipProps) {
+function RetryBadgeWithTooltip({ channelName, brandColor, rateMultiplier, attempts }: RetryBadgeWithTooltipProps) {
     const t = useTranslations('log.card');
 
     return (
@@ -60,6 +65,9 @@ function RetryBadgeWithTooltip({ channelName, brandColor, attempts }: RetryBadge
                 >
                     <RotateCw className="size-3 mr-1 opacity-80" />
                     {channelName}
+                    {formatRateMultiplier(rateMultiplier) && (
+                        <span className="ml-1 opacity-80">({t('rateMultiplier')} {formatRateMultiplier(rateMultiplier)})</span>
+                    )}
                 </Badge>
             </TooltipTrigger>
             <TooltipContent className="border bg-card p-2 min-w-[280px] shadow-sm rounded-3xl flex flex-col gap-1">
@@ -79,6 +87,9 @@ function RetryBadgeWithTooltip({ channelName, brandColor, attempts }: RetryBadge
                             <div className="flex min-w-0 flex-col flex-1">
                                 <span className="truncate text-xs font-semibold text-foreground">
                                     {attempt.channel_name}
+                                    {formatRateMultiplier(attempt.rate_multiplier) && (
+                                        <span className="ml-1 font-normal opacity-80">({t('rateMultiplier')} {formatRateMultiplier(attempt.rate_multiplier)})</span>
+                                    )}
                                 </span>
                                 <span className="text-[10px] text-muted-foreground">
                                     {attempt.model_name} • {formatDuration(attempt.duration)}
@@ -217,6 +228,7 @@ export function LogCard({ log }: { log: RelayLog }) {
                                     <RetryBadgeWithTooltip
                                         channelName={log.channel_name}
                                         brandColor={brandColor}
+                                        rateMultiplier={log.rate_multiplier}
                                         attempts={log.attempts!}
                                     />
                                 ) : (
@@ -291,6 +303,7 @@ export function LogCard({ log }: { log: RelayLog }) {
                                 <RetryBadgeWithTooltip
                                     channelName={log.channel_name}
                                     brandColor={brandColor}
+                                    rateMultiplier={log.rate_multiplier}
                                     attempts={log.attempts!}
                                 />
                             ) : (
@@ -300,6 +313,9 @@ export function LogCard({ log }: { log: RelayLog }) {
                                     style={{ backgroundColor: `${brandColor}15`, color: brandColor }}
                                 >
                                     {log.channel_name}
+                                    {formatRateMultiplier(log.rate_multiplier) && (
+                                        <span className="ml-1 opacity-80">({t('rateMultiplier')} {formatRateMultiplier(log.rate_multiplier)})</span>
+                                    )}
                                 </Badge>
                             )}
                             <span className="text-muted-foreground">{log.actual_model_name}</span>
@@ -398,6 +414,9 @@ export function LogCard({ log }: { log: RelayLog }) {
                                                                         <div className="flex items-center gap-2">
                                                                             <span className="font-semibold text-foreground">
                                                                                 {attempt.channel_name}
+                                                                                {formatRateMultiplier(attempt.rate_multiplier) && (
+                                                                                    <span className="ml-1 font-normal opacity-80">({t('rateMultiplier')} {formatRateMultiplier(attempt.rate_multiplier)})</span>
+                                                                                )}
                                                                             </span>
                                                                             <span className="text-muted-foreground">
                                                                                 ({attempt.model_name})

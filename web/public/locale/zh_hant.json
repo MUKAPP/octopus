@@ -446,7 +446,8 @@
             "retryDetails": "重試詳情",
             "attempts": "次嘗試",
             "success": "成功",
-            "failed": "失敗"
+            "failed": "失敗",
+            "rateMultiplier": "倍率"
         }
     },
     "channel": {
