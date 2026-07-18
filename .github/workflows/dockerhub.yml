@@ -5,7 +5,17 @@ on:
     branches:
       - dev
     tags:
-      - 'v*'
+      - "v*"
+    paths:
+      - "**/*.go"
+      - "go.mod"
+      - "go.sum"
+      - "web/**"
+      - "static/**"
+      - "Dockerfile"
+      - "Dockerfile.dockerignore"
+      - "scripts/dockerfiles/entrypoint.sh"
+      - ".github/workflows/dockerhub.yml"
   workflow_dispatch:
 
 permissions:
