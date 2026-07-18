@@ -66,7 +66,7 @@ function RetryBadgeWithTooltip({ channelName, brandColor, rateMultiplier, attemp
                     <RotateCw className="size-3 mr-1 opacity-80" />
                     {channelName}
                     {formatRateMultiplier(rateMultiplier) && (
-                        <span className="ml-1 opacity-80">({t('rateMultiplier')} {formatRateMultiplier(rateMultiplier)})</span>
+                        <span className="ml-1 opacity-80">x{formatRateMultiplier(rateMultiplier)}</span>
                     )}
                 </Badge>
             </TooltipTrigger>
@@ -238,6 +238,9 @@ export function LogCard({ log }: { log: RelayLog }) {
                                         style={{ backgroundColor: `${brandColor}15`, color: brandColor }}
                                     >
                                         {log.channel_name}
+                                        {formatRateMultiplier(log.rate_multiplier) && (
+                                            <span className="ml-1 opacity-80">x{formatRateMultiplier(log.rate_multiplier)}</span>
+                                        )}
                                     </Badge>
                                 )}
                                 <span className="text-muted-foreground truncate" title={log.actual_model_name}>
