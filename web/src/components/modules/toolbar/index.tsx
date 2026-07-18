@@ -335,7 +335,7 @@ export function Toolbar() {
                     </MorphingDialogTrigger>
 
                     <MorphingDialogContainer>
-                        <MorphingDialogContent className="w-fit max-w-full bg-card text-card-foreground px-6 py-4 rounded-3xl custom-shadow max-h-[calc(100vh-2rem)] flex flex-col overflow-hidden">
+                        <MorphingDialogContent className="custom-shadow flex max-h-full w-fit max-w-full flex-col overflow-hidden rounded-3xl bg-card px-4 py-4 text-card-foreground sm:px-6">
                             <CreateDialogContent activeItem={toolbarItem} />
                         </MorphingDialogContent>
                     </MorphingDialogContainer>

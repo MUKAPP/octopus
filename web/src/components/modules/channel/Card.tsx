@@ -222,7 +222,7 @@ export function Card({
 			</div>
 
 			<MorphingDialogContainer>
-				<MorphingDialogContent className="w-full md:max-w-xl bg-card text-card-foreground px-4 py-2 rounded-3xl max-h-[90vh] overflow-y-auto">
+				<MorphingDialogContent className="max-h-full w-full overflow-y-auto rounded-3xl bg-card px-4 py-2 text-card-foreground md:max-w-xl">
 					<CardContent channel={channel} stats={stats} />
 				</MorphingDialogContent>
 			</MorphingDialogContainer>

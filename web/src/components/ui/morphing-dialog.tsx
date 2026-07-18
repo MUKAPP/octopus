@@ -263,7 +263,7 @@ export type MorphingDialogContainerProps = {
   style?: React.CSSProperties;
 };
 
-function MorphingDialogContainer({ children }: MorphingDialogContainerProps) {
+function MorphingDialogContainer({ children, className, style }: MorphingDialogContainerProps) {
   const { isOpen, uniqueId } = useMorphingDialog();
   const [mounted, setMounted] = useState(false);
 
@@ -284,12 +284,19 @@ function MorphingDialogContainer({ children }: MorphingDialogContainerProps) {
         <>
           <motion.div
             key={`backdrop-${uniqueId}`}
-            className='fixed inset-0 h-full w-full bg-white/40 backdrop-blur-xs dark:bg-black/40 z-50'
+            className='fixed inset-0 bg-white/40 backdrop-blur-xs dark:bg-black/40 z-50'
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
           />
-          <div className='fixed inset-0 z-50 flex items-center justify-center'>
+          <div
+            className={cn(
+              'fixed inset-0 z-50 flex min-h-0 items-center justify-center overflow-hidden px-4',
+              'pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))]',
+              className
+            )}
+            style={style}
+          >
             {children}
           </div>
         </>

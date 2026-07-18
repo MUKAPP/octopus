@@ -196,7 +196,7 @@ export function CardContent({ channel, stats }: { channel: Channel; stats: Stats
                 <Tabs value={currentView}>
                     <TabsContents>
                         <TabsContent value="viewing" >
-                            <div className="max-h-[60vh] overflow-y-auto space-y-4 sm:space-y-5">
+                            <div className="max-h-[60dvh] space-y-4 overflow-y-auto sm:space-y-5">
                                 <dl className="grid gap-3 grid-cols-1 sm:grid-cols-3">
                                     <div className="rounded-2xl border bg-linear-to-br from-chart-1/10 to-chart-1/5 p-3 sm:p-4">
                                         <dt className="flex items-center gap-2 mb-2 text-xs font-medium text-muted-foreground">

@@ -8,11 +8,13 @@ import { usePreload } from "@/route/use-preload"
 import { ENTRANCE_VARIANTS } from "@/lib/animations/fluid-transitions"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/animate-ui/components/animate/tooltip"
 import { useTranslations } from "next-intl"
+import { useIsMobile } from "@/hooks/use-mobile"
 
 export function NavBar() {
     const { activeItem, setActiveItem } = useNavStore()
     const { preload } = usePreload()
     const t = useTranslations('navbar')
+    const isMobile = useIsMobile()
 
     return (
         <div className="relative z-50 md:min-h-screen">
@@ -32,7 +34,7 @@ export function NavBar() {
                     const isActive = activeItem === route.id
                     const label = t(route.id)
                     return (
-                        <Tooltip key={route.id} side="right" sideOffset={10}>
+                        <Tooltip key={route.id} side={isMobile ? "top" : "right"} sideOffset={10}>
                             <TooltipTrigger asChild>
                                 <motion.button
                                     type="button"
