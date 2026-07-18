@@ -1,0 +1,91 @@
+name: Publish Docker image
+
+on:
+  push:
+    branches:
+      - dev
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dockerhub-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  publish:
+    name: Build and push
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+
+    steps:
+      # 根 Dockerfile 以当前仓库和 axonhub 的父目录作为构建上下文。
+      - name: Checkout octopus
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          persist-credentials: false
+          path: src
+
+      - name: Checkout axonhub
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          repository: looplj/axonhub
+          ref: 213b8c888ae6f7d297ff59126798914d34152b98
+          persist-credentials: false
+          path: axonhub
+
+      - name: Set image build information
+        id: build-info
+        shell: bash
+        run: |
+          version="${GITHUB_REF_NAME}"
+          if [[ "${GITHUB_REF_TYPE}" == "branch" ]]; then
+            version="${GITHUB_REF_NAME}-${GITHUB_SHA::7}"
+          fi
+          echo "version=${version}" >> "${GITHUB_OUTPUT}"
+          echo "build_time=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> "${GITHUB_OUTPUT}"
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@96fe6ef7f33517b61c61be40b68a1882f3264fb8 # v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0 # v4
+        with:
+          username: ${{ vars.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Generate image metadata
+        id: meta
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6
+        with:
+          images: ${{ vars.DOCKERHUB_USERNAME }}/${{ github.event.repository.name }}
+          tags: |
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/dev' }}
+            type=raw,value=dev,enable=${{ github.ref == 'refs/heads/dev' }}
+            type=ref,event=tag
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=sha,prefix=sha-
+
+      - name: Build and push image
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7
+        with:
+          context: .
+          file: ./src/Dockerfile
+          push: true
+          platforms: linux/amd64,linux/arm64
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            APP_VERSION=${{ steps.build-info.outputs.version }}
+            BUILD_TIME=${{ steps.build-info.outputs.build_time }}
+            GIT_AUTHOR=${{ github.repository_owner }}
+            COMMIT_ID=${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
