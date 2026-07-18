@@ -31,6 +31,16 @@ export function Activity() {
     const t = useTranslations('home.activity');
 
     const [tooltip, setTooltip] = useState<{ day: StatsDailyData; x: number; y: number; visible: boolean } | null>(null);
+    const [pinnedDateStr, setPinnedDateStr] = useState<string | null>(null);
+
+    const showTooltip = useCallback((day: StatsDailyData, target: HTMLElement) => {
+        const rect = target.getBoundingClientRect();
+        setTooltip({ day, x: rect.left + rect.width / 2, y: rect.top, visible: true });
+    }, []);
+
+    const hideTooltip = useCallback(() => {
+        setTooltip((current) => current ? { ...current, visible: false } : null);
+    }, []);
 
     const days = useMemo(() => {
         if (!statsDailyFormatted) return [];
@@ -109,15 +119,41 @@ export function Activity() {
 
                             const level = getActivityLevel(day.formatted?.request_count.raw ?? 0);
 
+                            const requestCount = day.formatted?.request_count.raw ?? 0;
+                            const dateLabel = dayjs(day.dateStr, 'YYYYMMDD').format('YYYY-MM-DD');
+                            const isPinned = pinnedDateStr === day.dateStr;
+
                             return (
-                                <div
+                                <button
                                     key={day.dateStr}
-                                    className="rounded-sm transition-all cursor-pointer hover:scale-150"
-                                    onMouseEnter={(e) => {
-                                        const rect = e.currentTarget.getBoundingClientRect();
-                                        setTooltip({ day, x: rect.left + rect.width / 2, y: rect.top, visible: true });
+                                    type="button"
+                                    aria-label={`${dateLabel}, ${t('requestCount')} ${requestCount}`}
+                                    aria-pressed={isPinned}
+                                    className="h-full w-full cursor-pointer rounded-sm p-0 transition-all hover:scale-150 focus-visible:z-10 focus-visible:scale-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                                    onMouseEnter={(event) => {
+                                        if (!pinnedDateStr) showTooltip(day, event.currentTarget);
                                     }}
-                                    onMouseLeave={() => setTooltip(prev => prev ? { ...prev, visible: false } : null)}
+                                    onMouseLeave={() => {
+                                        if (!pinnedDateStr) hideTooltip();
+                                    }}
+                                    onFocus={(event) => showTooltip(day, event.currentTarget)}
+                                    onBlur={() => {
+                                        if (!isPinned) hideTooltip();
+                                    }}
+                                    onClick={(event) => {
+                                        if (isPinned) {
+                                            setPinnedDateStr(null);
+                                            hideTooltip();
+                                            return;
+                                        }
+                                        setPinnedDateStr(day.dateStr);
+                                        showTooltip(day, event.currentTarget);
+                                    }}
+                                    onKeyDown={(event) => {
+                                        if (event.key !== 'Escape') return;
+                                        setPinnedDateStr(null);
+                                        hideTooltip();
+                                    }}
                                     style={{ backgroundColor: level === 0 ? 'var(--muted)' : `color-mix(in oklch, var(--primary) ${level * 25}%, var(--muted))` }}
                                 />
                             );

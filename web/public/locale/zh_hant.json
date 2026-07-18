@@ -44,6 +44,7 @@
         "supportedModels": "支援的模型"
     },
     "navbar": {
+        "ariaLabel": "主導覽",
         "home": "主頁",
         "channel": "供應源",
         "group": "分組",
@@ -53,6 +54,10 @@
         "setting": "設定"
     },
     "toolbar": {
+        "search": "搜尋",
+        "searchPlaceholder": "搜尋名稱",
+        "closeSearch": "關閉搜尋",
+        "create": "建立",
         "popover": {
             "ariaLabel": "檢視選項",
             "layout": "佈局",
@@ -208,6 +213,7 @@
         },
         "apiKey": {
             "title": "API 金鑰",
+            "expand": "展開 API 金鑰清單",
             "empty": "暫無 API 金鑰",
             "add": "新增金鑰",
             "loadFailed": "載入失敗",
@@ -389,9 +395,12 @@
             "weighted": "加權分配",
             "ratePriority": "倍率優先"
         },
-        "empty": "暫無分組，點擊左上角按鈕建立"
+        "empty": "暫無分組，點擊上方建立按鈕新增",
+        "noResults": "沒有符合目前搜尋或篩選條件的分組"
     },
     "model": {
+        "empty": "暫無模型價格，點擊上方建立按鈕新增",
+        "noResults": "沒有符合目前搜尋或篩選條件的模型",
         "create": {
             "title": "建立模型",
             "name": "模型名稱",
@@ -427,6 +436,7 @@
     },
     "log": {
         "list": {
+            "empty": "暫無請求日誌",
             "noMore": "沒有更多日誌了"
         },
         "card": {
@@ -451,9 +461,13 @@
         }
     },
     "channel": {
+        "empty": "暫無供應源，點擊上方建立按鈕新增",
+        "noResults": "沒有符合目前搜尋或篩選條件的供應源",
         "card": {
             "requestCount": "請求次數",
             "totalCost": "總成本",
+            "enable": "啟用供應源",
+            "disable": "停用供應源",
             "toast": {
                 "enabled": "供應源已啟用",
                 "disabled": "供應源已停用"

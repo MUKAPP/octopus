@@ -44,6 +44,7 @@
         "supportedModels": "支持的模型"
     },
     "navbar": {
+        "ariaLabel": "主导航",
         "home": "主页",
         "channel": "渠道",
         "group": "分组",
@@ -53,6 +54,10 @@
         "setting": "设置"
     },
     "toolbar": {
+        "search": "搜索",
+        "searchPlaceholder": "搜索名称",
+        "closeSearch": "关闭搜索",
+        "create": "创建",
         "popover": {
             "ariaLabel": "视图选项",
             "layout": "布局",
@@ -208,6 +213,7 @@
         },
         "apiKey": {
             "title": "API 密钥",
+            "expand": "展开 API 密钥列表",
             "empty": "暂无 API 密钥",
             "add": "添加密钥",
             "loadFailed": "加载失败",
@@ -389,9 +395,12 @@
             "weighted": "加权分配",
             "ratePriority": "倍率优先"
         },
-        "empty": "暂无分组，点击左上角按钮创建"
+        "empty": "暂无分组，点击上方创建按钮添加",
+        "noResults": "没有符合当前搜索或筛选条件的分组"
     },
     "model": {
+        "empty": "暂无模型价格，点击上方创建按钮添加",
+        "noResults": "没有符合当前搜索或筛选条件的模型",
         "create": {
             "title": "创建模型",
             "name": "模型名称",
@@ -427,6 +436,7 @@
     },
     "log": {
         "list": {
+            "empty": "暂无请求日志",
             "noMore": "没有更多日志了"
         },
         "card": {
@@ -451,9 +461,13 @@
         }
     },
     "channel": {
+        "empty": "暂无渠道，点击上方创建按钮添加",
+        "noResults": "没有符合当前搜索或筛选条件的渠道",
         "card": {
             "requestCount": "请求次数",
             "totalCost": "总成本",
+            "enable": "启用渠道",
+            "disable": "停用渠道",
             "toast": {
                 "enabled": "渠道已启用",
                 "disabled": "渠道已禁用"

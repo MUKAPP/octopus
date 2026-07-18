@@ -30,6 +30,7 @@ interface VirtualizedGridProps<T> {
     overscan?: number;
     getItemKey: (item: T, index: number) => string | number;
     renderItem: (item: T, index: number) => ReactNode;
+    emptyState?: ReactNode;
     footer?: ReactNode;
     onReachEnd?: () => void;
     reachEndEnabled?: boolean;
@@ -57,6 +58,7 @@ export function VirtualizedGrid<T>({
     overscan = 4,
     getItemKey,
     renderItem,
+    emptyState = null,
     footer = null,
     onReachEnd,
     reachEndEnabled = false,
@@ -153,7 +155,12 @@ export function VirtualizedGrid<T>({
                 ref={containerRef}
                 className="relative h-full w-full overflow-y-auto overscroll-contain rounded-t-3xl"
             >
-                {rowCount === 0 ? null : (
+                {rowCount === 0 ? (
+                    <div className="flex min-h-full items-center justify-center px-4 pb-[calc(6rem+env(safe-area-inset-bottom))] md:pb-4">
+                        {emptyState}
+                    </div>
+                ) : (
+                    <>
                     <div className="relative w-full" style={{ height: `${rowVirtualizer.getTotalSize()}px` }}>
                         {virtualRows.map((virtualRow) => {
                             if (hasFooterRow && virtualRow.index === itemRowCount) {
@@ -208,6 +215,11 @@ export function VirtualizedGrid<T>({
                             );
                         })}
                     </div>
+                    <div
+                        aria-hidden="true"
+                        className="h-[calc(6rem+env(safe-area-inset-bottom))] md:h-4"
+                    />
+                    </>
                 )}
             </div>
         </div>

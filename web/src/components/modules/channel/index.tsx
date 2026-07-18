@@ -1,6 +1,8 @@
 'use client';
 
 import { useMemo } from 'react';
+import { SearchX } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { useChannelList } from '@/api/endpoints/channel';
 import { Card } from './Card';
 import { useSearchStore, useToolbarViewOptionsStore } from '@/components/modules/toolbar';
@@ -8,6 +10,7 @@ import { VirtualizedGrid } from '@/components/common/VirtualizedGrid';
 
 export function Channel() {
     const { data: channelsData } = useChannelList();
+    const t = useTranslations('channel');
     const pageKey = 'channel' as const;
     const searchTerm = useSearchStore((s) => s.getSearchTerm(pageKey));
     const layout = useToolbarViewOptionsStore((s) => s.getLayout(pageKey));
@@ -41,6 +44,12 @@ export function Channel() {
             layout={layout}
             columns={{ default: 1, md: 2, lg: 3 }}
             estimateItemHeight={216}
+            emptyState={
+                <div className="flex flex-col items-center gap-3 text-center text-muted-foreground">
+                    <SearchX className="size-10 opacity-40" aria-hidden="true" />
+                    <p className="text-sm">{channelsData?.length ? t('noResults') : t('empty')}</p>
+                </div>
+            }
             getItemKey={(item) => `channel-${item.raw.id}`}
             renderItem={(item) => <Card channel={item.raw} stats={item.formatted} layout={layout} />}
         />

@@ -153,10 +153,12 @@ export function Toolbar() {
                     {!searchExpanded ? (
                         <motion.button
                             layoutId="search-box"
+                            type="button"
+                            aria-label={t('search')}
                             onClick={() => setExpandedSearchItem(toolbarItem)}
                             className={buttonVariants({ variant: "ghost", size: "icon", className: "absolute inset-0 rounded-xl transition-none hover:bg-transparent text-muted-foreground hover:text-foreground" })}
                         >
-                            <motion.span layout="position"><Search className="size-4 transition-colors duration-300" /></motion.span>
+                            <motion.span layout="position"><Search className="size-4 transition-colors duration-300" aria-hidden="true" /></motion.span>
                         </motion.button>
                     ) : (
                         <motion.div
@@ -166,13 +168,17 @@ export function Toolbar() {
                         >
                             <motion.span layout="position"><Search className="size-4 text-muted-foreground shrink-0" /></motion.span>
                             <input
-                                type="text"
+                                type="search"
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(toolbarItem, e.target.value)}
+                                aria-label={t('search')}
+                                placeholder={t('searchPlaceholder')}
                                 autoFocus
-                                className="w-20 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+                                className="w-32 bg-transparent text-sm outline-none placeholder:text-muted-foreground sm:w-48"
                             />
                             <button
+                                type="button"
+                                aria-label={t('closeSearch')}
                                 onClick={() => {
                                     setSearchTerm(toolbarItem, '');
                                     setExpandedSearchItem(null);
@@ -324,7 +330,8 @@ export function Toolbar() {
                 {/* 创建按钮 */}
                 <MorphingDialog>
                     <MorphingDialogTrigger className={buttonVariants({ variant: "ghost", size: "icon", className: "rounded-xl transition-none hover:bg-transparent text-muted-foreground hover:text-foreground" })}>
-                        <Plus className="size-4 transition-colors duration-300" />
+                        <Plus className="size-4 transition-colors duration-300" aria-hidden="true" />
+                        <span className="sr-only">{t('create')}</span>
                     </MorphingDialogTrigger>
 
                     <MorphingDialogContainer>

@@ -1,6 +1,8 @@
 'use client';
 
 import { useMemo } from 'react';
+import { SearchX } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { useModelList } from '@/api/endpoints/model';
 import { ModelItem } from './Item';
 import { useSearchStore, useToolbarViewOptionsStore } from '@/components/modules/toolbar';
@@ -8,6 +10,7 @@ import { VirtualizedGrid } from '@/components/common/VirtualizedGrid';
 
 export function Model() {
     const { data: models } = useModelList();
+    const t = useTranslations('model');
     const pageKey = 'model' as const;
     const searchTerm = useSearchStore((s) => s.getSearchTerm(pageKey));
     const layout = useToolbarViewOptionsStore((s) => s.getLayout(pageKey));
@@ -43,6 +46,12 @@ export function Model() {
             layout={layout}
             columns={{ default: 1, md: 2, lg: 3 }}
             estimateItemHeight={112}
+            emptyState={
+                <div className="flex flex-col items-center gap-3 text-center text-muted-foreground">
+                    <SearchX className="size-10 opacity-40" aria-hidden="true" />
+                    <p className="text-sm">{models?.length ? t('noResults') : t('empty')}</p>
+                </div>
+            }
             getItemKey={(model) => `model-${model.name}`}
             renderItem={(model) => <ModelItem model={model} layout={layout} />}
         />

@@ -263,7 +263,10 @@ export function GroupCard({ group }: { group: Group }) {
 
                 <div className="flex items-center gap-1 shrink-0">
                     <MorphingDialog>
-                        <MorphingDialogTrigger className="p-1.5 rounded-lg transition-colors hover:bg-muted text-muted-foreground hover:text-foreground">
+                        <MorphingDialogTrigger
+                            className="p-1.5 rounded-lg transition-colors hover:bg-muted text-muted-foreground hover:text-foreground"
+                            ariaLabel={t('detail.actions.edit')}
+                        >
                             <Tooltip side="top" sideOffset={10} align="center">
                                 <TooltipTrigger asChild>
                                     <Pencil className="size-4" />

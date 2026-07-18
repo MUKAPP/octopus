@@ -767,6 +767,8 @@ function APIKeyDialogPanel() {
 }
 
 export function SettingAPIKey() {
+    const t = useTranslations('setting');
+
     return (
         <APIKeyPanelBase
             idPrefix="apikey"
@@ -774,7 +776,10 @@ export function SettingAPIKey() {
             listClassName="space-y-2 h-36 overflow-y-auto"
             renderHeaderExtra={() => (
                 <MorphingDialog>
-                    <MorphingDialogTrigger className="h-9 w-9 flex items-center justify-center rounded-lg bg-muted/60 text-muted-foreground transition-colors hover:bg-muted">
+                    <MorphingDialogTrigger
+                        className="h-9 w-9 flex items-center justify-center rounded-lg bg-muted/60 text-muted-foreground transition-colors hover:bg-muted"
+                        ariaLabel={t('apiKey.expand')}
+                    >
                         <Maximize2 className="size-4" />
                     </MorphingDialogTrigger>
                     <MorphingDialogContainer>

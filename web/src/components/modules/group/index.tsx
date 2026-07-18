@@ -1,6 +1,8 @@
 'use client';
 
 import { useMemo } from 'react';
+import { SearchX } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { GroupCard } from './Card';
 import { useGroupList } from '@/api/endpoints/group';
 import { useSearchStore, useToolbarViewOptionsStore } from '@/components/modules/toolbar';
@@ -8,6 +10,7 @@ import { VirtualizedGrid } from '@/components/common/VirtualizedGrid';
 
 export function Group() {
     const { data: groups } = useGroupList();
+    const t = useTranslations('group');
     const pageKey = 'group' as const;
     const searchTerm = useSearchStore((s) => s.getSearchTerm(pageKey));
     const sortField = useToolbarViewOptionsStore((s) => s.getSortField(pageKey));
@@ -39,6 +42,12 @@ export function Group() {
             items={visibleGroups}
             columns={{ default: 1, md: 2, lg: 3 }}
             estimateItemHeight={520}
+            emptyState={
+                <div className="flex flex-col items-center gap-3 text-center text-muted-foreground">
+                    <SearchX className="size-10 opacity-40" aria-hidden="true" />
+                    <p className="text-sm">{groups?.length ? t('noResults') : t('empty')}</p>
+                </div>
+            }
             getItemKey={(group, index) => group.id ?? `group-${index}`}
             renderItem={(group) => <GroupCard group={group} />}
         />

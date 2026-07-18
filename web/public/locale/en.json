@@ -44,6 +44,7 @@
         "supportedModels": "Supported Models"
     },
     "navbar": {
+        "ariaLabel": "Primary navigation",
         "home": "Home",
         "channel": "Channel",
         "group": "Group",
@@ -53,6 +54,10 @@
         "setting": "Setting"
     },
     "toolbar": {
+        "search": "Search",
+        "searchPlaceholder": "Search by name",
+        "closeSearch": "Close search",
+        "create": "Create",
         "popover": {
             "ariaLabel": "View options",
             "layout": "Layout",
@@ -208,6 +213,7 @@
         },
         "apiKey": {
             "title": "API Keys",
+            "expand": "Expand API key list",
             "empty": "No API keys",
             "add": "Add Key",
             "loadFailed": "Failed to load",
@@ -389,9 +395,12 @@
             "weighted": "Weighted",
             "ratePriority": "Rate Priority"
         },
-        "empty": "No groups yet, click the button above to create one"
+        "empty": "No groups yet. Use the create button above to add one.",
+        "noResults": "No groups match the current search or filters"
     },
     "model": {
+        "empty": "No model prices yet. Use the create button above to add one.",
+        "noResults": "No models match the current search or filters",
         "create": {
             "title": "Create Model",
             "name": "Model Name",
@@ -427,6 +436,7 @@
     },
     "log": {
         "list": {
+            "empty": "No request logs yet",
             "noMore": "No more logs"
         },
         "card": {
@@ -451,9 +461,13 @@
         }
     },
     "channel": {
+        "empty": "No channels yet. Use the create button above to add one.",
+        "noResults": "No channels match the current search or filters",
         "card": {
             "requestCount": "Requests",
             "totalCost": "Total Cost",
+            "enable": "Enable channel",
+            "disable": "Disable channel",
             "toast": {
                 "enabled": "Channel enabled",
                 "disabled": "Channel disabled"

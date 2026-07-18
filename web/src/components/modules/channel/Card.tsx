@@ -37,6 +37,7 @@ export function Card({
 	const t = useTranslations("channel.card");
 	const tForm = useTranslations("channel.form");
 	const tSections = useTranslations("channel.detail.sections");
+	const tDetailTitle = useTranslations("channel.detail.title");
 	const tMetrics = useTranslations("channel.detail.metrics");
 	const enableChannel = useEnableChannel();
 	const isListLayout = layout === "list";
@@ -69,9 +70,13 @@ export function Card({
 
 	return (
 		<MorphingDialog>
-			<MorphingDialogTrigger className="w-full">
+			<div className="relative">
+				<MorphingDialogTrigger
+					className="w-full"
+					ariaLabel={`${tDetailTitle("view")}: ${channel.name}`}
+				>
 				<article className="flex flex-col gap-4 rounded-3xl border border-border bg-card text-card-foreground p-4 transition-all duration-300">
-					<header className="relative flex items-center justify-between gap-2">
+					<header className="relative flex items-center justify-between gap-2 pr-12">
 						<Tooltip side="top" sideOffset={10} align="center">
 							<TooltipTrigger asChild>
 								<h3 className="flex min-w-0 items-center gap-1.5 text-lg font-bold">
@@ -104,12 +109,6 @@ export function Card({
 									` · ${tForm("rateAutoSynced")}`}
 							</TooltipContent>
 						</Tooltip>
-						<Switch
-							checked={channel.enabled}
-							onCheckedChange={handleEnableChange}
-							disabled={enableChannel.isPending}
-							onClick={(e) => e.stopPropagation()}
-						/>
 					</header>
 
 					{isListLayout ? (
@@ -211,7 +210,16 @@ export function Card({
 						</dl>
 					)}
 				</article>
-			</MorphingDialogTrigger>
+				</MorphingDialogTrigger>
+				<div className="absolute right-4 top-4 z-10 flex size-9 items-center justify-center">
+					<Switch
+						checked={channel.enabled}
+						onCheckedChange={handleEnableChange}
+						disabled={enableChannel.isPending}
+						aria-label={`${channel.name}: ${channel.enabled ? t("disable") : t("enable")}`}
+					/>
+				</div>
+			</div>
 
 			<MorphingDialogContainer>
 				<MorphingDialogContent className="w-full md:max-w-xl bg-card text-card-foreground px-4 py-2 rounded-3xl max-h-[90vh] overflow-y-auto">

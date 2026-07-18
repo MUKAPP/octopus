@@ -3,7 +3,7 @@
 import { useCallback, useMemo } from 'react';
 import { useLogs } from '@/api/endpoints/log';
 import { LogCard } from './Item';
-import { Loader2 } from 'lucide-react';
+import { FileClock, Loader2 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { VirtualizedGrid } from '@/components/common/VirtualizedGrid';
 
@@ -47,6 +47,12 @@ export function Log() {
             layout="list"
             columns={{ default: 1 }}
             estimateItemHeight={80}
+            emptyState={
+                <div className="flex flex-col items-center gap-3 text-center text-muted-foreground">
+                    <FileClock className="size-10 opacity-40" aria-hidden="true" />
+                    <p className="text-sm">{t('list.empty')}</p>
+                </div>
+            }
             overscan={8}
             getItemKey={(log) => `log-${log.id}`}
             renderItem={(log) => <LogCard log={log} />}
