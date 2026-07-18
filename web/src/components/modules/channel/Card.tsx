@@ -76,9 +76,6 @@ export function Card({
 							<TooltipTrigger asChild>
 								<h3 className="flex min-w-0 items-center gap-1.5 text-lg font-bold">
 									<span className="truncate">{channel.name}</span>
-									<span className="shrink-0 rounded-full border border-border bg-muted px-2 py-0.5 text-xs font-semibold text-muted-foreground">
-										×{channel.rate_multiplier}
-									</span>
 									{channel.auto_sync && (
 										<span
 											className="flex size-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary"
@@ -88,11 +85,23 @@ export function Card({
 											<RefreshCw className="size-3" aria-hidden="true" />
 										</span>
 									)}
+									<span className="flex shrink-0 items-center gap-1 rounded-full border border-border bg-muted px-2 py-0.5 text-xs font-semibold text-muted-foreground">
+										×{channel.rate_multiplier}
+										{channel.rate_multiplier_auto_synced && (
+											<RefreshCw
+												className="size-2.5 text-primary"
+												aria-label={tForm("rateAutoSynced")}
+											/>
+										)}
+									</span>
 								</h3>
 							</TooltipTrigger>
 							<TooltipContent key={channel.name}>
-								{channel.name} · ×{channel.rate_multiplier}
+								{channel.name}
 								{channel.auto_sync && ` · ${tForm("autoSync")}`}
+								{` · ×${channel.rate_multiplier}`}
+								{channel.rate_multiplier_auto_synced &&
+									` · ${tForm("rateAutoSynced")}`}
 							</TooltipContent>
 						</Tooltip>
 						<Switch

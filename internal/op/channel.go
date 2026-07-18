@@ -171,6 +171,13 @@ func ChannelUpdate(req *model.ChannelUpdateRequest, ctx context.Context) (*model
 		selectFields = append(selectFields, "rate_multiplier")
 		updates.RateMultiplier = *req.RateMultiplier
 	}
+	if req.RateMultiplierAutoSynced != nil {
+		selectFields = append(selectFields, "rate_multiplier_auto_synced")
+		updates.RateMultiplierAutoSynced = *req.RateMultiplierAutoSynced
+	} else if req.RateMultiplier != nil {
+		selectFields = append(selectFields, "rate_multiplier_auto_synced")
+		updates.RateMultiplierAutoSynced = false
+	}
 	if req.AutoGroup != nil {
 		selectFields = append(selectFields, "auto_group")
 		updates.AutoGroup = *req.AutoGroup

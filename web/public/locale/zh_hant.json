@@ -538,6 +538,7 @@
             "typeVolcengine": "火山引擎",
             "autoSync": "自動同步",
             "rateMultiplier": "倍率",
+            "rateAutoSynced": "倍率已自動同步",
             "autoGroup": "自動分組",
             "autoGroupNone": "不自動分組",
             "autoGroupFuzzy": "模糊比對",

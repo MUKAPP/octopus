@@ -112,18 +112,21 @@ func syncChannelRateMultiplier(ctx context.Context, channel *model.Channel) {
 		log.Warnf("渠道 %s 获取倍率失败，保留原倍率：%v", channel.Name, err)
 		return
 	}
-	if rateMultiplier == channel.RateMultiplier {
+	if rateMultiplier == channel.RateMultiplier && channel.RateMultiplierAutoSynced {
 		return
 	}
+	autoSynced := true
 	updated, err := op.ChannelUpdate(&model.ChannelUpdateRequest{
-		ID:             channel.ID,
-		RateMultiplier: &rateMultiplier,
+		ID:                       channel.ID,
+		RateMultiplier:           &rateMultiplier,
+		RateMultiplierAutoSynced: &autoSynced,
 	}, ctx)
 	if err != nil {
 		log.Errorf("渠道 %s 更新倍率失败：%v", channel.Name, err)
 		return
 	}
 	channel.RateMultiplier = updated.RateMultiplier
+	channel.RateMultiplierAutoSynced = updated.RateMultiplierAutoSynced
 	log.Infof("渠道 %s 倍率已自动更新为 %g", channel.Name, rateMultiplier)
 }
 

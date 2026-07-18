@@ -76,6 +76,7 @@ func createChannel(c *gin.Context) {
 		resp.Error(c, http.StatusBadRequest, resp.ErrInvalidJSON)
 		return
 	}
+	channel.RateMultiplierAutoSynced = false
 	if err := op.ChannelCreate(&channel, c.Request.Context()); err != nil {
 		resp.Error(c, http.StatusInternalServerError, err.Error())
 		return

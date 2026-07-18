@@ -266,7 +266,7 @@ Groups aggregate multiple channels into a unified external model name.
 | ⚖️ **Weighted** | Distributes requests based on configured channel weights |
 | 💸 **Rate Priority** | Selects channels from the lowest multiplier to the highest and falls back on failure |
 
-Channel multipliers can be configured manually. When automatic synchronization is enabled, Sub2API channels also fetch the effective multiplier for the selected API key; failures preserve the existing value.
+Channel multipliers can be configured manually. When automatic synchronization is enabled, Sub2API channels also fetch the effective multiplier for the selected API key; failures preserve the existing value. The channel list marks successfully synchronized multipliers inside the rate capsule; manually changing the multiplier clears that marker.
 
 > 💡 **Example**: Create a group named `gpt-4o`, add multiple providers' GPT-4o channels to it, then access all channels via a unified `model: gpt-4o`.
 

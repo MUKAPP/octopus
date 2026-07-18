@@ -538,6 +538,7 @@
             "typeVolcengine": "Volcengine",
             "autoSync": "Auto Sync",
             "rateMultiplier": "Rate Multiplier",
+            "rateAutoSynced": "Rate automatically synced",
             "autoGroup": "Auto Group",
             "autoGroupNone": "None",
             "autoGroupFuzzy": "Fuzzy",
