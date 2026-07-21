@@ -488,7 +488,7 @@ export function GroupEditor({
                 </FieldGroup>
             </div>
 
-            <div className="pt-4 mt-auto shrink-0">
+            <div className="shrink-0 pt-4">
                 <div className="flex gap-2">
                     {onCancel && (
                         <Button type="button" variant="secondary" className="flex-1 rounded-xl h-11" onClick={onCancel}>

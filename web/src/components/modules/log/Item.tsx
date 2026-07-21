@@ -296,9 +296,9 @@ export function LogCard({ log }: { log: RelayLog }) {
                 </MorphingDialogTrigger>
 
                 <MorphingDialogContainer>
-                    <MorphingDialogContent className="relative flex h-full max-h-full w-full flex-col overflow-hidden rounded-3xl bg-card px-4 py-4 text-card-foreground sm:px-6 md:w-[80vw]">
+                    <MorphingDialogContent className="relative flex h-full max-h-full w-full flex-col overflow-hidden rounded-3xl bg-card px-4 py-5 text-card-foreground sm:px-6 md:w-[80vw]">
                         <MorphingDialogClose className="top-4 right-5 text-muted-foreground hover:text-foreground transition-colors" />
-                        <MorphingDialogTitle className="flex items-center gap-2 mb-3 text-sm">
+                        <MorphingDialogTitle className="flex items-center gap-2 mb-4 text-sm">
                             <ModelAvatar size={28} />
                             <span className="font-semibold text-card-foreground">{log.request_model_name}</span>
                             <ArrowRight className="size-3.5 text-muted-foreground/50" />

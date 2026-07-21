@@ -177,7 +177,7 @@ export function CardContent({ channel, stats }: { channel: Channel; stats: Stats
     return (
         <>
             <MorphingDialogTitle>
-                <header className="mb-6 flex items-center justify-between">
+                <header className="mb-4 flex items-center justify-between">
                     <h2 className="text-2xl font-bold text-card-foreground">
                         {isEditing ? t('title.edit') : t('title.view')}
                     </h2>
@@ -434,7 +434,7 @@ export function CardContent({ channel, stats }: { channel: Channel; stats: Stats
                             </div>
 
                             {/* 操作按钮 */}
-                            <div className="grid gap-3 sm:grid-cols-2 pt-2">
+                            <div className="grid gap-3 sm:grid-cols-2 pt-4">
                                 <Button
                                     onClick={() => (isConfirmingDelete ? setIsConfirmingDelete(false) : setIsEditing(true))}
                                     variant={isConfirmingDelete ? 'secondary' : 'default'}

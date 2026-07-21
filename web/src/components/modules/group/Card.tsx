@@ -39,7 +39,7 @@ function EditDialogContent({ group, displayMembers, isSubmitting, onSubmit }: Ed
     return (
         <>
             <MorphingDialogTitle className="shrink-0">
-                <header className="mb-3 flex items-center justify-between">
+                <header className="mb-4 flex items-center justify-between">
                     <h2 className="text-2xl font-bold text-card-foreground">
                         {t('detail.actions.edit')}
                     </h2>
@@ -276,7 +276,7 @@ export function GroupCard({ group }: { group: Group }) {
                         </MorphingDialogTrigger>
 
                         <MorphingDialogContainer>
-                            <MorphingDialogContent className="relative flex h-full max-h-full w-full flex-col overflow-hidden rounded-3xl bg-card px-4 py-4 text-card-foreground sm:px-6 md:max-w-4xl">
+                            <MorphingDialogContent className="relative flex h-full max-h-full w-full flex-col overflow-hidden rounded-3xl bg-card px-4 py-5 text-card-foreground sm:px-6 md:max-w-4xl">
                                 <EditDialogContent
                                     group={group}
                                     displayMembers={displayMembers}

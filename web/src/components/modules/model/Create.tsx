@@ -47,7 +47,7 @@ export function CreateDialogContent() {
     return (
         <div className="w-screen max-w-full md:max-w-xl">
             <MorphingDialogTitle>
-                <header className="mb-5 flex items-center justify-between">
+                <header className="mb-4 flex items-center justify-between">
                     <h2 className="text-2xl font-bold text-card-foreground">{t('title')}</h2>
                     <MorphingDialogClose
                         className="relative right-0 top-0"
@@ -117,13 +117,15 @@ export function CreateDialogContent() {
                                 />
                             </Field>
                         </div>
-                        <Button
-                            type="submit"
-                            disabled={createModel.isPending || !formData.name.trim()}
-                            className="w-full rounded-xl h-11"
-                        >
-                            {createModel.isPending ? t('submitting') : t('submit')}
-                        </Button>
+                        <div className="pt-4">
+                            <Button
+                                type="submit"
+                                disabled={createModel.isPending || !formData.name.trim()}
+                                className="w-full rounded-xl h-11"
+                            >
+                                {createModel.isPending ? t('submitting') : t('submit')}
+                            </Button>
+                        </div>
                     </FieldGroup>
                 </form>
             </MorphingDialogDescription>

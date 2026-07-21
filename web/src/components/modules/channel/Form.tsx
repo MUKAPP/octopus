@@ -666,7 +666,7 @@ export function ChannelForm({
                 </div>
             </div>
 
-            <div className={`flex flex-col gap-3 pt-2 ${onCancel ? 'sm:flex-row' : ''}`}>
+            <div className={`flex flex-col gap-3 pt-4 ${onCancel ? 'sm:flex-row' : ''}`}>
                 {onCancel && cancelText && (
                     <Button
                         type="button"

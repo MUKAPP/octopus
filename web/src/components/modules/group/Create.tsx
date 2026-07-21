@@ -18,9 +18,9 @@ export function CreateDialogContent() {
     const t = useTranslations('group');
 
     return (
-        <div className="flex h-full max-h-full min-h-0 w-full flex-col md:max-w-4xl">
+        <div className="flex h-full max-h-full min-h-0 w-screen max-w-full flex-col md:max-w-4xl">
             <MorphingDialogTitle className="shrink-0">
-                <header className="mb-5 flex items-center justify-between">
+                <header className="mb-4 flex items-center justify-between">
                     <h2 className="text-2xl font-bold text-card-foreground">
                         {t('create.title')}
                     </h2>
