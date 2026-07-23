@@ -101,6 +101,9 @@ export function ChannelForm({
         : [];
     const [inputValue, setInputValue] = useState('');
     const inputRef = useRef<HTMLInputElement>(null);
+    // 倍率用字符串草稿，避免 type=number + 即时 parse 时无法输入 0.0x
+    const [rateMultiplierDraft, setRateMultiplierDraft] = useState(() => String(formData.rate_multiplier));
+    const rateMultiplierFocusedRef = useRef(false);
 
     const fetchModel = useFetchModel();
 
@@ -112,6 +115,40 @@ export function ChannelForm({
         const custom_model = nextCustom.join(',');
         if (formData.model === model && formData.custom_model === custom_model) return;
         onFormDataChange({ ...formData, model, custom_model });
+    };
+
+    // 外部重置/切换渠道时同步显示；输入聚焦期间保留草稿中间态
+    useEffect(() => {
+        if (rateMultiplierFocusedRef.current) return;
+        setRateMultiplierDraft(String(formData.rate_multiplier));
+    }, [formData.rate_multiplier]);
+
+    const isValidRateMultiplierDraft = (raw: string) => /^\d*\.?\d*$/.test(raw);
+
+    const parsePositiveRateMultiplier = (raw: string): number | null => {
+        if (raw.trim() === '') return null;
+        const value = Number.parseFloat(raw);
+        if (!Number.isFinite(value) || value <= 0) return null;
+        return value;
+    };
+
+    const handleRateMultiplierChange = (raw: string) => {
+        if (raw !== '' && !isValidRateMultiplierDraft(raw)) return;
+        setRateMultiplierDraft(raw);
+        const value = parsePositiveRateMultiplier(raw);
+        if (value !== null && value !== formData.rate_multiplier) {
+            onFormDataChange({ ...formData, rate_multiplier: value });
+        }
+    };
+
+    const handleRateMultiplierBlur = () => {
+        rateMultiplierFocusedRef.current = false;
+        const value = parsePositiveRateMultiplier(rateMultiplierDraft);
+        const normalized = value ?? (formData.rate_multiplier > 0 ? formData.rate_multiplier : 1);
+        setRateMultiplierDraft(String(normalized));
+        if (normalized !== formData.rate_multiplier) {
+            onFormDataChange({ ...formData, rate_multiplier: normalized });
+        }
     };
 
     const handleRefreshModels = async () => {
@@ -269,17 +306,15 @@ export function ChannelForm({
                     </label>
                     <Input
                         id={`${idPrefix}-rate-multiplier`}
-                        type="number"
-                        min={0.0001}
-                        step="any"
-                        value={String(formData.rate_multiplier)}
-                        onChange={(event) => {
-                            const value = Number.parseFloat(event.target.value);
-                            onFormDataChange({
-                                ...formData,
-                                rate_multiplier: Number.isFinite(value) && value > 0 ? value : 1,
-                            });
+                        type="text"
+                        inputMode="decimal"
+                        autoComplete="off"
+                        value={rateMultiplierDraft}
+                        onFocus={() => {
+                            rateMultiplierFocusedRef.current = true;
                         }}
+                        onChange={(event) => handleRateMultiplierChange(event.target.value)}
+                        onBlur={handleRateMultiplierBlur}
                         className="rounded-xl"
                     />
                 </div>
