@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/bestruirui/octopus/internal/op"
 	"github.com/bestruirui/octopus/internal/server/middleware"
@@ -105,6 +106,11 @@ func streamLog(c *gin.Context) {
 	c.Header("Connection", "keep-alive")
 	c.Header("X-Accel-Buffering", "no")
 
+	// 定期发送注释心跳，避免 Cloudflare 等反向代理因长时间无数据返回 524
+	const sseHeartbeatInterval = 15 * time.Second
+	heartbeatTicker := time.NewTicker(sseHeartbeatInterval)
+	defer heartbeatTicker.Stop()
+
 	logChan := op.RelayLogSubscribe()
 	defer op.RelayLogUnsubscribe(logChan)
 
@@ -114,6 +120,11 @@ func streamLog(c *gin.Context) {
 		select {
 		case <-ctx.Done():
 			return
+		case <-heartbeatTicker.C:
+			if _, err := c.Writer.Write([]byte(": ping\n\n")); err != nil {
+				return
+			}
+			c.Writer.Flush()
 		case log, ok := <-logChan:
 			if !ok {
 				return
@@ -122,7 +133,9 @@ func streamLog(c *gin.Context) {
 			if err != nil {
 				continue
 			}
-			c.Writer.Write([]byte(fmt.Sprintf("data: %s\n\n", data)))
+			if _, err := c.Writer.Write([]byte(fmt.Sprintf("data: %s\n\n", data))); err != nil {
+				return
+			}
 			c.Writer.Flush()
 		}
 	}

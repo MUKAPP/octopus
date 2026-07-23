@@ -108,6 +108,11 @@ export function useLogs(options: { pageSize?: number } = {}) {
     const reconnectAttemptRef = useRef(0);
     const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const connectGenerationRef = useRef(0);
+    // 后台期间 JS 定时器会被冻结/节流，用标记 + 隐藏时长判断是否必须强制重建连接
+    const needsReconnectRef = useRef(false);
+    const hiddenAtRef = useRef<number | null>(null);
+    const connectingRef = useRef(false);
+    const catchUpInFlightRef = useRef(false);
 
     const queryClient = useQueryClient();
 
@@ -191,6 +196,8 @@ export function useLogs(options: { pageSize?: number } = {}) {
     }, [pageSize, queryClient]);
 
     const catchUpLatestLogs = useCallback(async () => {
+        if (catchUpInFlightRef.current) return;
+        catchUpInFlightRef.current = true;
         try {
             // 断线期间可能漏推，回前台/重连后补拉最近一页
             const catchUpPageSize = Math.min(100, Math.max(pageSize, 50));
@@ -203,12 +210,16 @@ export function useLogs(options: { pageSize?: number } = {}) {
             }
         } catch (e) {
             logger.error('补拉最新日志失败:', e);
+        } finally {
+            catchUpInFlightRef.current = false;
         }
     }, [pageSize, prependLogs]);
 
     useEffect(() => {
         let cancelled = false;
         const maxReconnectDelayMs = 30_000;
+        // 后台超过该时长后，即使 readyState 仍是 OPEN 也强制重建（避免僵尸连接）
+        const forceReconnectAfterHiddenMs = 5_000;
 
         const clearReconnectTimer = () => {
             if (reconnectTimerRef.current !== null) {
@@ -226,10 +237,18 @@ export function useLogs(options: { pageSize?: number } = {}) {
                 eventSourceRef.current = null;
             }
             setIsConnected(false);
+            connectingRef.current = false;
         };
 
         const scheduleReconnect = () => {
             if (cancelled || reconnectTimerRef.current !== null) return;
+
+            needsReconnectRef.current = true;
+
+            // 后台标签页里定时器不可靠，只记标记，等 visibilitychange 再连
+            if (typeof document !== 'undefined' && document.visibilityState === 'hidden') {
+                return;
+            }
 
             const attempt = reconnectAttemptRef.current;
             const delayMs = Math.min(1000 * 2 ** attempt, maxReconnectDelayMs);
@@ -237,35 +256,49 @@ export function useLogs(options: { pageSize?: number } = {}) {
 
             reconnectTimerRef.current = setTimeout(() => {
                 reconnectTimerRef.current = null;
-                // 后台标签页里重连意义不大，等回到前台再连，节省资源
                 if (typeof document !== 'undefined' && document.visibilityState === 'hidden') {
+                    needsReconnectRef.current = true;
                     return;
                 }
                 void connect();
             }, delayMs);
         };
 
-        const connect = async (options?: { catchUp?: boolean }) => {
+        const connect = async (options?: { catchUp?: boolean; force?: boolean }) => {
             if (cancelled) return;
+            // force 时允许打断卡住的连接过程（长时间后台后 connecting 可能残留）
+            if (connectingRef.current && !options?.force) return;
 
             clearReconnectTimer();
             closeEventSource();
 
+            connectingRef.current = true;
             const generation = ++connectGenerationRef.current;
-            const shouldCatchUp = options?.catchUp ?? reconnectAttemptRef.current > 0;
+            const shouldCatchUp =
+                Boolean(options?.catchUp)
+                || needsReconnectRef.current
+                || reconnectAttemptRef.current > 0;
 
             try {
                 const { token } = await apiClient.get<{ token: string }>('/api/v1/log/stream-token');
-                if (cancelled || generation !== connectGenerationRef.current) return;
+                if (cancelled || generation !== connectGenerationRef.current) {
+                    if (generation === connectGenerationRef.current) {
+                        connectingRef.current = false;
+                    }
+                    return;
+                }
 
                 const eventSource = new EventSource(`${API_BASE_URL}/api/v1/log/stream?token=${token}`);
                 eventSourceRef.current = eventSource;
+                // EventSource 已创建后就释放 connecting 锁；是否连上由 onopen/onerror 处理
+                connectingRef.current = false;
 
                 eventSource.onopen = () => {
                     if (cancelled || generation !== connectGenerationRef.current) return;
                     setIsConnected(true);
                     setError(null);
                     reconnectAttemptRef.current = 0;
+                    needsReconnectRef.current = false;
                     if (shouldCatchUp) {
                         void catchUpLatestLogs();
                     }
@@ -289,40 +322,75 @@ export function useLogs(options: { pageSize?: number } = {}) {
                     scheduleReconnect();
                 };
             } catch (e) {
-                if (cancelled) return;
+                if (cancelled || generation !== connectGenerationRef.current) return;
+                connectingRef.current = false;
                 setError(e instanceof Error ? e : new Error('获取 stream token 失败'));
                 logger.error('获取 stream token 失败:', e);
                 scheduleReconnect();
             }
         };
 
-        const handleVisibilityOrOnline = () => {
+        const resumeStream = (reason: string) => {
             if (cancelled) return;
             if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
 
             const readyState = eventSourceRef.current?.readyState;
             const isOpen = readyState === EventSource.OPEN;
+            const hiddenForMs =
+                hiddenAtRef.current !== null ? Date.now() - hiddenAtRef.current : 0;
+            const wasHiddenLongEnough = hiddenForMs >= forceReconnectAfterHiddenMs;
+            const shouldForceReconnect =
+                !isOpen || needsReconnectRef.current || wasHiddenLongEnough;
 
-            if (!isOpen) {
-                // 切回前台后立刻重连，并补拉断线期间的日志
+            logger.log(`日志 SSE 恢复: ${reason}`, {
+                isOpen,
+                needsReconnect: needsReconnectRef.current,
+                hiddenForMs,
+                shouldForceReconnect,
+            });
+
+            // 无论 SSE 是否可用，先用列表接口补齐，避免长时间后台后“既不推也不拉”
+            void catchUpLatestLogs();
+
+            if (shouldForceReconnect) {
+                // 切回前台后立刻重建连接，并补拉断线期间的日志
                 reconnectAttemptRef.current = 0;
                 clearReconnectTimer();
-                void connect({ catchUp: true });
+                needsReconnectRef.current = true;
+                void connect({ catchUp: true, force: true });
+                return;
+            }
+        };
+
+        const handleVisibilityChange = () => {
+            if (typeof document === 'undefined') return;
+
+            if (document.visibilityState === 'hidden') {
+                hiddenAtRef.current = Date.now();
                 return;
             }
 
-            // 连接仍显示 OPEN 时也可能漏消息，补拉最近日志兜底
-            void catchUpLatestLogs();
+            resumeStream('visibilitychange');
+            hiddenAtRef.current = null;
+        };
+
+        const handleFocusOrOnline = () => {
+            resumeStream('focus/online');
+            hiddenAtRef.current = null;
         };
 
         void connect();
 
         if (typeof document !== 'undefined') {
-            document.addEventListener('visibilitychange', handleVisibilityOrOnline);
+            if (document.visibilityState === 'hidden') {
+                hiddenAtRef.current = Date.now();
+            }
+            document.addEventListener('visibilitychange', handleVisibilityChange);
         }
         if (typeof window !== 'undefined') {
-            window.addEventListener('online', handleVisibilityOrOnline);
-            window.addEventListener('focus', handleVisibilityOrOnline);
+            window.addEventListener('online', handleFocusOrOnline);
+            window.addEventListener('focus', handleFocusOrOnline);
+            window.addEventListener('pageshow', handleFocusOrOnline);
         }
 
         return () => {
@@ -330,13 +398,16 @@ export function useLogs(options: { pageSize?: number } = {}) {
             connectGenerationRef.current += 1;
             clearReconnectTimer();
             closeEventSource();
+            needsReconnectRef.current = false;
+            hiddenAtRef.current = null;
 
             if (typeof document !== 'undefined') {
-                document.removeEventListener('visibilitychange', handleVisibilityOrOnline);
+                document.removeEventListener('visibilitychange', handleVisibilityChange);
             }
             if (typeof window !== 'undefined') {
-                window.removeEventListener('online', handleVisibilityOrOnline);
-                window.removeEventListener('focus', handleVisibilityOrOnline);
+                window.removeEventListener('online', handleFocusOrOnline);
+                window.removeEventListener('focus', handleFocusOrOnline);
+                window.removeEventListener('pageshow', handleFocusOrOnline);
             }
         };
     }, [catchUpLatestLogs, pageSize, prependLogs]);
