@@ -35,9 +35,23 @@ func ChannelCreate(channel *model.Channel, ctx context.Context) error {
 	if channel.RateMultiplier == 0 {
 		channel.RateMultiplier = 1
 	}
-	if err := db.GetDB().WithContext(ctx).Create(channel).Error; err != nil {
+	tx := db.GetDB().WithContext(ctx).Begin()
+	if tx.Error != nil {
+		return tx.Error
+	}
+	if err := tx.Create(channel).Error; err != nil {
+		tx.Rollback()
 		return err
 	}
+	// 渠道 ID 可能复用；删除同 ID 的历史统计，避免新渠道继承已删除渠道的数据。
+	if err := tx.Where("channel_id = ?", channel.ID).Delete(&model.StatsChannel{}).Error; err != nil {
+		tx.Rollback()
+		return err
+	}
+	if err := tx.Commit().Error; err != nil {
+		return err
+	}
+	statsChannelCacheClear(channel.ID)
 	channelCache.Set(channel.ID, *channel)
 	for _, k := range channel.Keys {
 		if k.ID != 0 {
@@ -349,7 +363,7 @@ func ChannelDel(id int, ctx context.Context) error {
 		return fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
-	// 删除缓存
+	// 先移除渠道缓存，阻止在途请求在删除后重新写入统计。
 	channelCache.Del(id)
 	for _, k := range ch.Keys {
 		if k.ID != 0 {

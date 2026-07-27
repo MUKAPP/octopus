@@ -27,6 +27,7 @@ var statsHourlyCacheLock sync.RWMutex
 var statsChannelCache = cache.New[int, model.StatsChannel](16)
 var statsChannelCacheNeedUpdate = make(map[int]struct{})
 var statsChannelCacheNeedUpdateLock sync.Mutex
+var statsChannelCacheLock sync.RWMutex
 
 var statsModelCache = cache.New[int, model.StatsModel](16)
 var statsModelCacheNeedUpdate = make(map[int]struct{})
@@ -128,13 +129,18 @@ func persistStatsSnapshots(
 	}
 
 	for _, id := range channelIDs {
-		ch, ok := statsChannelCache.Get(id)
-		if !ok {
+		statsChannelCacheLock.RLock()
+		ch, statsExists := statsChannelCache.Get(id)
+		_, channelExists := channelCache.Get(id)
+		if !statsExists || !channelExists {
+			statsChannelCacheLock.RUnlock()
 			continue
 		}
 		if result := dbConn.Save(&ch); result.Error != nil {
+			statsChannelCacheLock.RUnlock()
 			return result.Error
 		}
+		statsChannelCacheLock.RUnlock()
 	}
 
 	for _, id := range modelIDs {
@@ -228,14 +234,21 @@ func StatsTotalUpdate(metrics model.StatsMetrics) error {
 }
 
 func StatsChannelUpdate(channelID int, metrics model.StatsMetrics) error {
-	channelCache, ok := statsChannelCache.Get(channelID)
+	if _, ok := channelCache.Get(channelID); !ok {
+		return nil
+	}
+
+	statsChannelCacheLock.Lock()
+	defer statsChannelCacheLock.Unlock()
+
+	channelStats, ok := statsChannelCache.Get(channelID)
 	if !ok {
-		channelCache = model.StatsChannel{
+		channelStats = model.StatsChannel{
 			ChannelID: channelID,
 		}
 	}
-	channelCache.StatsMetrics.Add(metrics)
-	statsChannelCache.Set(channelID, channelCache)
+	channelStats.StatsMetrics.Add(metrics)
+	statsChannelCache.Set(channelID, channelStats)
 	statsChannelCacheNeedUpdateLock.Lock()
 	statsChannelCacheNeedUpdate[channelID] = struct{}{}
 	statsChannelCacheNeedUpdateLock.Unlock()
@@ -291,15 +304,25 @@ func StatsAPIKeyUpdate(apiKeyID int, metrics model.StatsMetrics) error {
 	return nil
 }
 
-func StatsChannelDel(id int) error {
-	if _, ok := statsChannelCache.Get(id); !ok {
-		return nil
-	}
+func statsChannelCacheClear(id int) {
+	statsChannelCacheLock.Lock()
+	defer statsChannelCacheLock.Unlock()
+	statsChannelCacheClearLocked(id)
+}
+
+func statsChannelCacheClearLocked(id int) {
 	statsChannelCache.Del(id)
 	statsChannelCacheNeedUpdateLock.Lock()
 	delete(statsChannelCacheNeedUpdate, id)
 	statsChannelCacheNeedUpdateLock.Unlock()
-	return db.GetDB().Delete(&model.StatsChannel{}, id).Error
+}
+
+func StatsChannelDel(id int) error {
+	statsChannelCacheLock.Lock()
+	defer statsChannelCacheLock.Unlock()
+
+	statsChannelCacheClearLocked(id)
+	return db.GetDB().Where("channel_id = ?", id).Delete(&model.StatsChannel{}).Error
 }
 
 func StatsAPIKeyDel(id int) error {
@@ -326,6 +349,9 @@ func StatsTodayGet() model.StatsDaily {
 }
 
 func StatsChannelGet(id int) model.StatsChannel {
+	statsChannelCacheLock.Lock()
+	defer statsChannelCacheLock.Unlock()
+
 	stats, ok := statsChannelCache.Get(id)
 	if !ok {
 		tmp := model.StatsChannel{
@@ -440,6 +466,7 @@ func statsRefreshCache(ctx context.Context) error {
 	statsTotalCache = loadedTotal
 	statsTotalCacheLock.Unlock()
 
+	statsChannelCacheLock.Lock()
 	statsChannelCache.Clear()
 	statsChannelCacheNeedUpdateLock.Lock()
 	statsChannelCacheNeedUpdate = make(map[int]struct{})
@@ -447,6 +474,7 @@ func statsRefreshCache(ctx context.Context) error {
 	for _, v := range loadedChannels {
 		statsChannelCache.Set(v.ChannelID, v)
 	}
+	statsChannelCacheLock.Unlock()
 
 	var loadedAPIKeys []model.StatsAPIKey
 	result = dbConn.Find(&loadedAPIKeys)
