@@ -54,13 +54,15 @@ func SyncModelsTask() {
 		deletedModels, addedModels := diff.Diff(oldModels, newModels)
 		if len(deletedModels) > 0 || len(addedModels) > 0 {
 			fetchModelStr := strings.Join(newModels, ",")
-			if _, err := op.ChannelUpdate(&model.ChannelUpdateRequest{
+			updated, err := op.ChannelUpdate(&model.ChannelUpdateRequest{
 				ID:    channel.ID,
 				Model: &fetchModelStr,
-			}, ctx); err != nil {
+			}, ctx)
+			if err != nil {
 				log.Errorf("failed to update channel %s: %v", channel.Name, err)
 				continue
 			}
+			channel = *updated
 		}
 		// 批量删除消失的模型对应的 GroupItem
 		if len(deletedModels) > 0 {
