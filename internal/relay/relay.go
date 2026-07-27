@@ -120,7 +120,30 @@ func (r *relayRun) run() {
 		lastErr = errors.New("all channels failed")
 	}
 	r.metrics.Save(ctx, false, lastErr, r.iter.Attempts())
-	resp.Error(r.c, http.StatusBadGateway, lastErr.Error())
+	r.writeFinalError(ctx, lastErr)
+}
+
+// writeFinalError 以客户端 API 格式返回最后一次上游 HTTP 错误。
+// 网络错误和中继内部错误没有可保留的上游状态码，使用 424 避免被 5xx 错误页改写。
+func (r *relayRun) writeFinalError(ctx context.Context, err error) {
+	if pipeline.IsUpstreamError(err) {
+		clientErr := r.inAdapter.TransformError(ctx, err)
+		if clientErr != nil && clientErr.StatusCode >= http.StatusBadRequest && clientErr.StatusCode < 600 {
+			for key, values := range clientErr.Headers {
+				for _, value := range values {
+					r.c.Header(key, value)
+				}
+			}
+			contentType := clientErr.Headers.Get("Content-Type")
+			if contentType == "" {
+				contentType = "application/json"
+			}
+			r.c.Data(clientErr.StatusCode, contentType, clientErr.Body)
+			return
+		}
+	}
+
+	resp.Error(r.c, http.StatusFailedDependency, err.Error())
 }
 
 func (r *relayRun) prepareAttempt() (*relayAttempt, error) {
