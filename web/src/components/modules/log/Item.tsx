@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState, useEffect } from 'react';
-import { Clock, Cpu, Zap, AlertCircle, ArrowDownToLine, ArrowUpFromLine, DollarSign, ArrowRight, ArrowDown, Send, MessageSquare, Loader2, RotateCw, ChevronDown, ChevronUp, Pin, KeyRound } from 'lucide-react';
+import { Clock, Cpu, Zap, AlertCircle, ArrowDownToLine, ArrowUpFromLine, DollarSign, ArrowRight, ArrowDown, Send, MessageSquare, Loader2, RotateCw, ChevronDown, ChevronUp, Pin, KeyRound, Gauge } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { motion, AnimatePresence } from 'motion/react';
 import JsonView from '@uiw/react-json-view';
@@ -43,6 +43,17 @@ function formatDuration(ms: number): string {
 
 function formatRateMultiplier(rate: number): string {
     return rate > 0 ? rate.toLocaleString('zh-CN', { maximumFractionDigits: 4 }) : '';
+}
+
+function formatCacheRate(cachedTokens: number | undefined, inputTokens: number): string {
+    if (cachedTokens === undefined || inputTokens <= 0) return '—';
+    return `${((cachedTokens / inputTokens) * 100).toLocaleString('zh-CN', { maximumFractionDigits: 2 })}%`;
+}
+
+function formatOutputSpeed(outputTokens: number, totalTime: number, firstTokenTime: number): string {
+    const generationTime = totalTime - firstTokenTime;
+    if (generationTime <= 0) return '—';
+    return `${((outputTokens * 1000) / generationTime).toLocaleString('zh-CN', { maximumFractionDigits: 2 })} tokens/s`;
 }
 
 interface RetryBadgeWithTooltipProps {
@@ -250,7 +261,7 @@ export function LogCard({ log }: { log: RelayLog }) {
                                     <Pin className="size-3.5 shrink-0 text-amber-500" />
                                 )}
                             </div>
-                            <div className="grid grid-cols-2 md:grid-cols-7 gap-x-4 gap-y-2 text-xs tabular-nums text-muted-foreground">
+                            <div className="grid grid-cols-2 md:grid-cols-5 xl:grid-cols-10 gap-x-4 gap-y-2 text-xs tabular-nums text-muted-foreground">
                                 <div className="flex items-center gap-1.5">
                                     <Clock className="size-3.5 shrink-0" style={{ color: brandColor }} />
                                     <span>{formatTime(log.time)}</span>
@@ -278,6 +289,18 @@ export function LogCard({ log }: { log: RelayLog }) {
                                 <div className="flex items-center gap-1.5">
                                     <ArrowUpFromLine className="size-3.5 shrink-0 text-purple-500" />
                                     <span>{t('output')} {log.output_tokens.toLocaleString()}</span>
+                                </div>
+                                <div className="flex items-center gap-1.5">
+                                    <ArrowDownToLine className="size-3.5 shrink-0 text-cyan-500" />
+                                    <span>{t('cacheTokens')} {log.cached_tokens?.toLocaleString() ?? '—'}</span>
+                                </div>
+                                <div className="flex items-center gap-1.5">
+                                    <ArrowDownToLine className="size-3.5 shrink-0 text-cyan-500" />
+                                    <span>{t('cacheRate')} {formatCacheRate(log.cached_tokens, log.input_tokens)}</span>
+                                </div>
+                                <div className="flex items-center gap-1.5">
+                                    <Gauge className="size-3.5 shrink-0 text-rose-500" />
+                                    <span>{t('outputSpeed')} {formatOutputSpeed(log.output_tokens, log.use_time, log.ftut)}</span>
                                 </div>
                                 <div className="flex items-center gap-1.5">
                                     <DollarSign className="size-3.5 shrink-0 text-emerald-500" />

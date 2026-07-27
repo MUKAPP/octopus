@@ -27,8 +27,9 @@ type RelayMetrics struct {
 	InternalResponse []byte
 
 	// 统计指标
-	ActualModel string
-	Stats       model.StatsMetrics
+	ActualModel  string
+	Stats        model.StatsMetrics
+	CachedTokens int64
 
 	// 参数覆盖 / 参数追加
 	ParamOverride string
@@ -44,11 +45,16 @@ func (m *RelayMetrics) RecordUsage(usage *llm.Usage) {
 	m.Stats.InputToken = usage.PromptTokens
 	m.Stats.OutputToken = usage.CompletionTokens
 
+	tokenDetails := usage.PromptTokensDetails
+	m.CachedTokens = 0
+	if tokenDetails != nil {
+		m.CachedTokens = tokenDetails.CachedTokens
+	}
+
 	modelPrice := price.GetLLMPrice(m.ActualModel)
 	if modelPrice == nil {
 		return
 	}
-	tokenDetails := usage.PromptTokensDetails
 	if tokenDetails == nil {
 		tokenDetails = &llm.PromptTokensDetails{}
 	}
@@ -123,6 +129,7 @@ func finalChannel(attempts []model.ChannelAttempt) (int, string, float64) {
 }
 
 func (m *RelayMetrics) saveLog(ctx context.Context, err error, duration time.Duration, attempts []model.ChannelAttempt, channelID int, channelName string, rateMultiplier float64) {
+	cachedTokens := int(m.CachedTokens)
 	relayLog := model.RelayLog{
 		Time:             m.StartTime.Unix(),
 		RequestModelName: m.RequestModel,
@@ -131,6 +138,7 @@ func (m *RelayMetrics) saveLog(ctx context.Context, err error, duration time.Dur
 		RateMultiplier:   rateMultiplier,
 		ActualModelName:  m.ActualModel,
 		UseTime:          int(duration.Milliseconds()),
+		CachedTokens:     &cachedTokens,
 		Attempts:         attempts,
 		TotalAttempts:    len(attempts),
 	}
