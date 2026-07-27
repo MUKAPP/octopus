@@ -81,7 +81,7 @@ interface APIKeyFormProps {
 
 function APIKeyForm({ apiKey, isPending, submitLabel, onSubmit, onClose }: APIKeyFormProps) {
     const t = useTranslations('setting');
-    const { data: groups = [] } = useGroupList();
+    const { data: groups = [], isLoading: groupsLoading } = useGroupList();
 
     const [form, setForm] = useState<Omit<APIKey, 'id' | 'api_key'>>(() => ({
         name: apiKey?.name ?? '',
@@ -278,7 +278,11 @@ function APIKeyForm({ apiKey, isPending, submitLabel, onSubmit, onClose }: APIKe
             <div className="grid gap-1">
                 <div className="text-xs text-muted-foreground">{t('apiKey.form.supportedModels')}</div>
                 <div className="max-h-40 overflow-auto rounded-xl p-2">
-                    {availableModels.length === 0 ? (
+                    {groupsLoading ? (
+                        <div className="flex justify-center py-2">
+                            <Loader className="size-4 animate-spin" role="status" aria-label="加载中" />
+                        </div>
+                    ) : availableModels.length === 0 ? (
                         <div className="text-xs text-muted-foreground py-2 text-center">
                             {t('apiKey.form.noModels')}
                         </div>
@@ -386,7 +390,7 @@ function APIKeyStatsCard({
     onClose: () => void;
 }) {
     const t = useTranslations('setting');
-    const { data: statsList = [] } = useStatsAPIKey();
+    const { data: statsList = [], isLoading } = useStatsAPIKey();
     const stats = useMemo(() => statsList.find((s) => s.api_key_id === apiKey.id), [statsList, apiKey.id]);
 
     return (
@@ -408,7 +412,11 @@ function APIKeyStatsCard({
                 </button>
             </div>
 
-            {!stats ? (
+            {isLoading && statsList.length === 0 ? (
+                <div className="flex justify-center py-2">
+                    <Loader className="size-4 animate-spin text-muted-foreground" role="status" aria-label="加载中" />
+                </div>
+            ) : !stats ? (
                 <div className="text-sm text-muted-foreground">{t('apiKey.stats.noData')}</div>
             ) : (
                 <div className="grid grid-cols-2 gap-3 text-sm">

@@ -29,7 +29,8 @@ import {
     Languages,
     Zap,
     Layers,
-    Clock
+    Clock,
+    Loader2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -37,7 +38,7 @@ import dayjs from 'dayjs';
 
 export function APIKeyDashboard() {
     const t = useTranslations('apiKeyDashboard');
-    const { data, error } = useAPIKeyDashboardStats();
+    const { data, error, isLoading } = useAPIKeyDashboardStats();
     const { logout } = useAuthStore();
     const { theme, setTheme } = useTheme();
     const { locale, setLocale } = useSettingStore();
@@ -56,6 +57,14 @@ export function APIKeyDashboard() {
         },
         [copyToClipboard, t]
     );
+
+    if (isLoading) {
+        return (
+            <div className="min-h-screen flex items-center justify-center">
+                <Loader2 className="size-8 animate-spin text-muted-foreground" role="status" aria-label="加载中" />
+            </div>
+        );
+    }
 
     if (error || !data) {
         return (

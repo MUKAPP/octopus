@@ -3,14 +3,14 @@
 import { useChannelList } from '@/api/endpoints/channel';
 import { useMemo } from 'react';
 import { useTranslations } from 'next-intl';
-import { TrendingUp } from 'lucide-react';
+import { Loader2, TrendingUp } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger, TabsContents, TabsContent } from '@/components/animate-ui/components/animate/tabs';
 import { useHomeViewStore, type RankSortMode } from '@/components/modules/home/store';
 
 type ChannelData = NonNullable<ReturnType<typeof useChannelList>['data']>[number];
 
 export function Rank() {
-    const { data: channelData } = useChannelList();
+    const { data: channelData, isLoading } = useChannelList();
     const t = useTranslations('home.rank');
     const rankSortMode = useHomeViewStore((state) => state.rankSortMode);
     const setRankSortMode = useHomeViewStore((state) => state.setRankSortMode);
@@ -40,6 +40,13 @@ export function Rank() {
     };
 
     const renderList = (channels: ChannelData[], mode: RankSortMode) => {
+        if (isLoading) {
+            return (
+                <div className="flex items-center justify-center py-8">
+                    <Loader2 className="size-8 animate-spin text-muted-foreground" role="status" aria-label="加载中" />
+                </div>
+            );
+        }
         if (channels.length === 0) {
             return (
                 <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">

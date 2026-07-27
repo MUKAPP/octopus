@@ -9,7 +9,7 @@ import { useSearchStore, useToolbarViewOptionsStore } from '@/components/modules
 import { VirtualizedGrid } from '@/components/common/VirtualizedGrid';
 
 export function Model() {
-    const { data: models } = useModelList();
+    const { data: models, isLoading } = useModelList();
     const t = useTranslations('model');
     const pageKey = 'model' as const;
     const searchTerm = useSearchStore((s) => s.getSearchTerm(pageKey));
@@ -43,6 +43,7 @@ export function Model() {
     return (
         <VirtualizedGrid
             items={visibleModels}
+            isLoading={isLoading}
             layout={layout}
             columns={{ default: 1, md: 2, lg: 3 }}
             estimateItemHeight={112}

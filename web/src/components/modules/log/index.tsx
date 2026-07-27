@@ -44,6 +44,7 @@ export function Log() {
     return (
         <VirtualizedGrid
             items={logs}
+            isLoading={isLoading}
             layout="list"
             columns={{ default: 1 }}
             estimateItemHeight={80}

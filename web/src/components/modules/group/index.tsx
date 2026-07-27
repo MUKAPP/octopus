@@ -9,7 +9,7 @@ import { useSearchStore, useToolbarViewOptionsStore } from '@/components/modules
 import { VirtualizedGrid } from '@/components/common/VirtualizedGrid';
 
 export function Group() {
-    const { data: groups } = useGroupList();
+    const { data: groups, isLoading } = useGroupList();
     const t = useTranslations('group');
     const pageKey = 'group' as const;
     const searchTerm = useSearchStore((s) => s.getSearchTerm(pageKey));
@@ -40,6 +40,7 @@ export function Group() {
     return (
         <VirtualizedGrid
             items={visibleGroups}
+            isLoading={isLoading}
             columns={{ default: 1, md: 2, lg: 3 }}
             estimateItemHeight={520}
             emptyState={

@@ -9,7 +9,7 @@ import { useSearchStore, useToolbarViewOptionsStore } from '@/components/modules
 import { VirtualizedGrid } from '@/components/common/VirtualizedGrid';
 
 export function Channel() {
-    const { data: channelsData } = useChannelList();
+    const { data: channelsData, isLoading } = useChannelList();
     const t = useTranslations('channel');
     const pageKey = 'channel' as const;
     const searchTerm = useSearchStore((s) => s.getSearchTerm(pageKey));
@@ -41,6 +41,7 @@ export function Channel() {
     return (
         <VirtualizedGrid
             items={visibleChannels}
+            isLoading={isLoading}
             layout={layout}
             columns={{ default: 1, md: 2, lg: 3 }}
             estimateItemHeight={216}

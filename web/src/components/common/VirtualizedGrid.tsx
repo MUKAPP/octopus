@@ -8,6 +8,7 @@ import {
     useRef,
     useState,
 } from 'react';
+import { Loader2 } from 'lucide-react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 
 const BREAKPOINTS = {
@@ -31,6 +32,7 @@ interface VirtualizedGridProps<T> {
     getItemKey: (item: T, index: number) => string | number;
     renderItem: (item: T, index: number) => ReactNode;
     emptyState?: ReactNode;
+    isLoading?: boolean;
     footer?: ReactNode;
     onReachEnd?: () => void;
     reachEndEnabled?: boolean;
@@ -59,6 +61,7 @@ export function VirtualizedGrid<T>({
     getItemKey,
     renderItem,
     emptyState = null,
+    isLoading = false,
     footer = null,
     onReachEnd,
     reachEndEnabled = false,
@@ -155,7 +158,11 @@ export function VirtualizedGrid<T>({
                 ref={containerRef}
                 className="relative h-full w-full overflow-y-auto overscroll-contain rounded-t-3xl"
             >
-                {rowCount === 0 ? (
+                {isLoading && items.length === 0 ? (
+                    <div className="flex min-h-full items-center justify-center px-4 pb-[calc(6rem+env(safe-area-inset-bottom))] md:pb-4">
+                        <Loader2 className="size-8 animate-spin text-muted-foreground" role="status" aria-label="加载中" />
+                    </div>
+                ) : rowCount === 0 ? (
                     <div className="flex min-h-full items-center justify-center px-4 pb-[calc(6rem+env(safe-area-inset-bottom))] md:pb-4">
                         {emptyState}
                     </div>

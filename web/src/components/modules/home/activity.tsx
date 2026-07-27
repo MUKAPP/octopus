@@ -5,6 +5,7 @@ import { useMemo, useRef, useLayoutEffect, useState, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslations } from 'next-intl';
 import { Fragment } from 'react';
+import { Loader2 } from 'lucide-react';
 import dayjs from 'dayjs';
 
 interface StatsDailyData {
@@ -104,7 +105,12 @@ export function Activity() {
                 className="overflow-x-auto p-4"
                 style={{ maskImage, WebkitMaskImage: maskImage }}
             >
-                <div className="ml-auto w-fit">
+                {isLoading ? (
+                    <div className="flex h-[7.375rem] min-w-[47.25rem] items-center justify-center">
+                        <Loader2 className="size-8 animate-spin text-muted-foreground" role="status" aria-label="加载中" />
+                    </div>
+                ) : (
+                    <div className="ml-auto w-fit">
                     <div className="grid gap-1"
                         style={{
                             gridTemplateColumns: 'repeat(54, 0.875rem)',
@@ -159,7 +165,8 @@ export function Activity() {
                             );
                         })}
                     </div>
-                </div>
+                    </div>
+                )}
             </div>
             {tooltip && typeof document !== 'undefined' && createPortal(
                 (() => {
