@@ -261,48 +261,48 @@ export function LogCard({ log }: { log: RelayLog }) {
                                     <Pin className="size-3.5 shrink-0 text-amber-500" />
                                 )}
                             </div>
-                            <div className="grid grid-cols-2 md:grid-cols-5 xl:grid-cols-10 gap-x-4 gap-y-2 text-xs tabular-nums text-muted-foreground">
-                                <div className="flex items-center gap-1.5">
+                            <div className="grid grid-cols-2 gap-x-5 gap-y-2 text-xs tabular-nums text-muted-foreground sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+                                <div className="flex shrink-0 items-center gap-1.5 whitespace-nowrap">
                                     <Clock className="size-3.5 shrink-0" style={{ color: brandColor }} />
                                     <span>{formatTime(log.time)}</span>
                                 </div>
                                 {requestAPIKeyName && (
-                                    <div className="flex items-center gap-1.5">
+                                    <div className="flex min-w-0 max-w-44 items-center gap-1.5">
                                         <KeyRound className="size-3.5 shrink-0 text-orange-500" />
                                         <span className="truncate" title={requestAPIKeyName}>
                                             {requestAPIKeyName}
                                         </span>
                                     </div>
                                 )}
-                                <div className="flex items-center gap-1.5">
+                                <div className="flex shrink-0 items-center gap-1.5 whitespace-nowrap">
                                     <Zap className="size-3.5 shrink-0 text-amber-500" />
                                     <span>{t('firstToken')} {formatDuration(log.ftut)}</span>
                                 </div>
-                                <div className="flex items-center gap-1.5">
+                                <div className="flex shrink-0 items-center gap-1.5 whitespace-nowrap">
                                     <Cpu className="size-3.5 shrink-0 text-blue-500" />
                                     <span>{t('totalTime')} {formatDuration(log.use_time)}</span>
                                 </div>
-                                <div className="flex items-center gap-1.5">
+                                <div className="flex shrink-0 items-center gap-1.5 whitespace-nowrap">
                                     <ArrowDownToLine className="size-3.5 shrink-0 text-green-500" />
                                     <span>{t('input')} {log.input_tokens.toLocaleString()}</span>
                                 </div>
-                                <div className="flex items-center gap-1.5">
+                                <div className="flex shrink-0 items-center gap-1.5 whitespace-nowrap">
                                     <ArrowUpFromLine className="size-3.5 shrink-0 text-purple-500" />
                                     <span>{t('output')} {log.output_tokens.toLocaleString()}</span>
                                 </div>
-                                <div className="flex items-center gap-1.5">
+                                <div className="flex shrink-0 items-center gap-1.5 whitespace-nowrap">
                                     <ArrowDownToLine className="size-3.5 shrink-0 text-cyan-500" />
                                     <span>{t('cacheTokens')} {log.cached_tokens?.toLocaleString() ?? '—'}</span>
                                 </div>
-                                <div className="flex items-center gap-1.5">
+                                <div className="flex shrink-0 items-center gap-1.5 whitespace-nowrap">
                                     <ArrowDownToLine className="size-3.5 shrink-0 text-cyan-500" />
                                     <span>{t('cacheRate')} {formatCacheRate(log.cached_tokens, log.input_tokens)}</span>
                                 </div>
-                                <div className="flex items-center gap-1.5">
+                                <div className="flex shrink-0 items-center gap-1.5 whitespace-nowrap">
                                     <Gauge className="size-3.5 shrink-0 text-rose-500" />
                                     <span>{t('outputSpeed')} {formatOutputSpeed(log.output_tokens, log.use_time, log.ftut)}</span>
                                 </div>
-                                <div className="flex items-center gap-1.5">
+                                <div className="flex shrink-0 items-center gap-1.5 whitespace-nowrap">
                                     <DollarSign className="size-3.5 shrink-0 text-emerald-500" />
                                     <span className="font-medium text-emerald-600 dark:text-emerald-400">
                                         {t('cost')} {Number(log.cost).toFixed(6)}
