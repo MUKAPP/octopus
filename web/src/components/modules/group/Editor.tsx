@@ -76,13 +76,13 @@ function ModelPickerSection({
     }, [channels, normalizedSearch]);
 
     return (
-        <div className="rounded-xl border border-border/50 bg-muted/30 flex flex-col min-h-0">
-            <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 px-3 py-2 border-b border-border/30 bg-muted/50">
+        <div className="min-w-0 rounded-xl border border-border/50 bg-muted/30 flex flex-col min-h-0">
+            <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 px-3 py-2 border-b border-border/30 bg-muted/50">
                 <span className="min-w-0 justify-self-start text-sm font-medium text-foreground">
                     {t('form.addItem')}
                 </span>
 
-                <div className="relative justify-self-center w-30">
+                <div className="relative justify-self-center w-24 sm:w-30">
                     <Search className="pointer-events-none absolute left-2 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
                     <Input
                         value={searchKeyword}
@@ -109,7 +109,7 @@ function ModelPickerSection({
                 </button>
             </div>
 
-            <div className="flex-1 min-h-0 overflow-y-auto p-2">
+            <div className="flex-1 min-h-0 min-w-0 overflow-y-auto p-2">
                 <Accordion type="multiple" className="w-full space-y-2">
                     {filteredChannels.map((channel) => {
                         const total = channel.models.length;
@@ -194,7 +194,7 @@ function SortSection({
     const t = useTranslations('group');
 
     return (
-        <div className="rounded-xl border border-border/50 bg-muted/30 flex flex-col min-h-0">
+        <div className="min-w-0 rounded-xl border border-border/50 bg-muted/30 flex flex-col min-h-0">
             <div className="flex items-center justify-between px-3 py-2 border-b border-border/30 bg-muted/50">
                 <span className="text-sm font-medium text-foreground">
                     {t('form.items')}
@@ -221,7 +221,7 @@ function SortSection({
                 </button>
             </div>
 
-            <div className="flex-1 min-h-0">
+            <div className="flex-1 min-h-0 min-w-0">
                 <MemberList
                     members={members}
                     onReorder={onReorder}
@@ -349,10 +349,10 @@ export function GroupEditor({
 
 
     return (
-        <form onSubmit={handleSubmit} className="flex flex-col h-full min-h-0 ">
-            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pr-1">
-                <FieldGroup className="gap-4 flex flex-col min-h-0 h-full">
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <form onSubmit={handleSubmit} className="flex h-full min-h-0 min-w-0 w-full flex-col">
+            <div className="min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain pr-1">
+                <FieldGroup className="gap-4 flex min-h-0 h-full min-w-0 w-full flex-col">
+                    <div className="grid min-w-0 grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                         <Field>
                             <FieldLabel htmlFor="group-name">{t('form.name')}</FieldLabel>
                             <Input
@@ -448,14 +448,14 @@ export function GroupEditor({
                     </div>
 
                     {/* Mode */}
-                    <div className="flex gap-1">
+                    <div className="flex min-w-0 gap-1">
                         {([1, 2, 3, 4, 5] as const).map((m) => (
                             <button
                                 key={m}
                                 type="button"
                                 onClick={() => setMode(m)}
                                 className={cn(
-                                    'flex-1 py-1 text-xs rounded-lg transition-colors',
+                                    'min-w-0 flex-1 py-1 text-center text-xs rounded-lg transition-colors',
                                     mode === m ? 'bg-primary text-primary-foreground' : 'bg-muted hover:bg-muted/80'
                                 )}
                             >
@@ -464,8 +464,8 @@ export function GroupEditor({
                         ))}
                     </div>
 
-                    <div className="min-h-[32rem] md:min-h-0 md:flex-1">
-                        <div className="grid h-full min-h-[32rem] grid-cols-1 grid-rows-2 gap-4 md:min-h-0 md:grid-cols-2 md:grid-rows-1">
+                    <div className="min-h-[32rem] min-w-0 md:min-h-0 md:flex-1">
+                        <div className="grid h-full min-h-[32rem] min-w-0 grid-cols-1 grid-rows-2 gap-4 md:min-h-0 md:grid-cols-2 md:grid-rows-1">
                             <ModelPickerSection
                                 modelChannels={modelChannels}
                                 selectedMembers={selectedMembers}

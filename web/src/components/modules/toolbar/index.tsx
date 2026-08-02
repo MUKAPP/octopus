@@ -335,7 +335,14 @@ export function Toolbar() {
                     </MorphingDialogTrigger>
 
                     <MorphingDialogContainer>
-                        <MorphingDialogContent className="custom-shadow flex max-h-full w-fit max-w-full flex-col overflow-hidden rounded-3xl bg-card px-4 py-5 text-card-foreground sm:px-6">
+                        <MorphingDialogContent
+                            className={cn(
+                                'custom-shadow flex min-h-0 min-w-0 w-[calc(100dvw-2rem)] max-w-full flex-col overflow-hidden rounded-3xl bg-card px-4 py-5 text-card-foreground sm:px-6',
+                                toolbarItem === 'group'
+                                    ? 'h-full max-h-full md:max-w-[944px]'
+                                    : 'max-h-[calc(100dvh-2rem)] md:max-w-[624px]'
+                            )}
+                        >
                             <CreateDialogContent activeItem={toolbarItem} />
                         </MorphingDialogContent>
                     </MorphingDialogContainer>

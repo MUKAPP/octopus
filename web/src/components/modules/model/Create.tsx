@@ -45,8 +45,8 @@ export function CreateDialogContent() {
     };
 
     return (
-        <div className="w-screen max-w-full md:max-w-xl">
-            <MorphingDialogTitle>
+        <div className="flex max-h-[calc(100dvh-2rem)] min-h-0 min-w-0 w-full flex-col md:max-w-xl">
+            <MorphingDialogTitle className="shrink-0">
                 <header className="mb-4 flex items-center justify-between">
                     <h2 className="text-2xl font-bold text-card-foreground">{t('title')}</h2>
                     <MorphingDialogClose
@@ -59,8 +59,8 @@ export function CreateDialogContent() {
                     />
                 </header>
             </MorphingDialogTitle>
-            <MorphingDialogDescription>
-                <form onSubmit={handleSubmit}>
+            <MorphingDialogDescription className="flex-1 min-h-0 min-w-0 overflow-y-auto overscroll-contain">
+                <form onSubmit={handleSubmit} className="min-w-0">
                     <FieldGroup className="gap-4">
                         <Field>
                             <FieldLabel htmlFor="model-name">{t('name')}</FieldLabel>
@@ -71,7 +71,7 @@ export function CreateDialogContent() {
                                 className="rounded-xl"
                             />
                         </Field>
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 gap-4 min-[360px]:grid-cols-2">
                             <Field>
                                 <FieldLabel htmlFor="model-input">{t('input')}</FieldLabel>
                                 <Input

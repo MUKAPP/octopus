@@ -18,7 +18,7 @@ export function CreateDialogContent() {
     const t = useTranslations('group');
 
     return (
-        <div className="flex h-full max-h-full min-h-0 w-screen max-w-full flex-col md:max-w-4xl">
+        <div className="flex h-full max-h-full min-h-0 min-w-0 w-full flex-col md:max-w-4xl">
             <MorphingDialogTitle className="shrink-0">
                 <header className="mb-4 flex items-center justify-between">
                     <h2 className="text-2xl font-bold text-card-foreground">
@@ -34,7 +34,7 @@ export function CreateDialogContent() {
                     />
                 </header>
             </MorphingDialogTitle>
-            <MorphingDialogDescription className="flex-1 min-h-0 overflow-hidden">
+            <MorphingDialogDescription className="flex-1 min-h-0 min-w-0 overflow-hidden">
                 <GroupEditor
                     submitText={t('create.submit')}
                     submittingText={t('create.submitting')}
