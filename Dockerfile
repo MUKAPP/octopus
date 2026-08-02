@@ -11,12 +11,12 @@ ARG ALPINE_VERSION=3.21
 FROM node:${NODE_VERSION}-bookworm-slim AS frontend
 WORKDIR /src
 RUN corepack enable && corepack prepare pnpm@latest --activate
-COPY src/web/package.json src/web/pnpm-lock.yaml src/web/pnpm-workspace.yaml ./web/
+COPY src/web/package.json src/web/pnpm-lock.yaml ./web/
 WORKDIR /src/web
 RUN pnpm install --frozen-lockfile
 COPY src/web/ ./
 ARG APP_VERSION=dev
-ENV NEXT_PUBLIC_APP_VERSION=${APP_VERSION}
+ENV VITE_APP_VERSION=${APP_VERSION}
 RUN pnpm run build
 
 FROM golang:${GO_VERSION}-bookworm AS backend
@@ -30,7 +30,7 @@ WORKDIR /workspace/octopus
 RUN --mount=type=cache,target=/go/pkg/mod \
     go mod download
 COPY src/ ./
-COPY --from=frontend /src/web/out ./static/out
+COPY --from=frontend /src/static/out ./static/out
 ARG APP_VERSION=dev
 ARG BUILD_TIME=unknown
 ARG GIT_AUTHOR=MUKAPP
