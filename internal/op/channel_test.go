@@ -7,6 +7,7 @@ import (
 
 	"github.com/bestruirui/octopus/internal/db"
 	"github.com/bestruirui/octopus/internal/model"
+	"gorm.io/gorm"
 )
 
 func TestChannelUpdateTracksRateMultiplierSource(t *testing.T) {
@@ -97,7 +98,15 @@ func TestChannelCreateClearsReusedChannelStats(t *testing.T) {
 			WaitTime:      1234,
 		},
 	}
-	if err := db.GetDB().WithContext(ctx).Create(&staleStats).Error; err != nil {
+	if err := db.GetDB().Connection(func(tx *gorm.DB) error {
+		if err := tx.Exec("PRAGMA foreign_keys = OFF").Error; err != nil {
+			return err
+		}
+		if err := tx.Create(&staleStats).Error; err != nil {
+			return err
+		}
+		return tx.Exec("PRAGMA foreign_keys = ON").Error
+	}); err != nil {
 		t.Fatalf("写入遗留统计失败：%v", err)
 	}
 	if err := statsRefreshCache(ctx); err != nil {

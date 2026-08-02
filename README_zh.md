@@ -53,17 +53,15 @@ docker compose up -d
 **环境要求：**
 
 - Go 1.24.4
-- Node.js 18+
+- Node.js 20.19+ 或 22.12+
 - pnpm
 
 ```bash
 # 克隆项目
 git clone https://github.com/bestruirui/octopus.git
 cd octopus
-# 构建前端
+# 构建前端，产物会直接写入 static/out
 cd web && pnpm install && pnpm run build && cd ..
-# 移动前端产物到 static 目录
-mv web/out static/
 # 启动后端服务
 go run main.go start 
 ```
@@ -73,11 +71,11 @@ go run main.go start
 **开发模式**
 
 ```bash
-cd web && pnpm install && NEXT_PUBLIC_API_BASE_URL="http://127.0.0.1:8080" pnpm run dev
-## 新建终端,启动后端服务
+cd web && pnpm install && VITE_PROXY_TARGET="http://127.0.0.1:8080" pnpm run dev
+## 新建终端，启动后端服务
 go run main.go start
 ## 访问前端地址
-http://localhost:3000
+http://localhost:5173
 ```
 
 ### 🔐 默认账户

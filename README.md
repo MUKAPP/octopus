@@ -53,17 +53,15 @@ Download the binary for your platform from [Releases](https://github.com/bestrui
 **Requirements:**
 
 - Go 1.24.4
-- Node.js 18+
+- Node.js 20.19+ or 22.12+
 - pnpm
 
 ```bash
 # Clone the repository
 git clone https://github.com/bestruirui/octopus.git
 cd octopus
-# Build frontend
+# Build frontend; output is written to static/out
 cd web && pnpm install && pnpm run build && cd ..
-# Move frontend assets to static directory
-mv web/out static/
 # Start the backend service
 go run main.go start 
 ```
@@ -73,11 +71,11 @@ go run main.go start
 **Development Mode**
 
 ```bash
-cd web && pnpm install && NEXT_PUBLIC_API_BASE_URL="http://127.0.0.1:8080" pnpm run dev
+cd web && pnpm install && VITE_PROXY_TARGET="http://127.0.0.1:8080" pnpm run dev
 ## Open a new terminal, start the backend service
 go run main.go start
 ## Access the frontend at
-http://localhost:3000
+http://localhost:5173
 ```
 
 ### 🔐 Default Credentials

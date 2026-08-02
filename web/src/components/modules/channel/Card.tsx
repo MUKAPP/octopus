@@ -16,7 +16,7 @@ import {
 import { type StatsMetricsFormatted } from "@/api/endpoints/stats";
 import { type Channel, useEnableChannel } from "@/api/endpoints/channel";
 import { CardContent } from "./CardContent";
-import { useTranslations } from "next-intl";
+import { useTranslations } from "use-intl";
 import {
 	Tooltip,
 	TooltipTrigger,
