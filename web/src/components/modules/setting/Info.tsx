@@ -1,24 +1,24 @@
 import { useTranslations } from 'use-intl';
-import { Info, Tag, Github, RefreshCw, AlertTriangle, Download, Loader2 } from 'lucide-react';
+import { Info, Tag, Github, AlertTriangle, Download, Loader2 } from 'lucide-react';
 import { APP_VERSION, GITHUB_REPO } from '@/lib/info';
-import { useLatestInfo, useNowVersion, useUpdateCore } from '@/api/endpoints/update';
+import { useLatestInfo, useNowVersion } from '@/api/endpoints/update';
 import { Button } from '@/components/ui/button';
-import { toast } from '@/components/common/Toast';
 import { isOctopusCacheName, isFontCacheName, SW_MESSAGE_TYPE } from '@/lib/sw';
 
 export function SettingInfo() {
     const t = useTranslations('setting');
     const latestInfoQuery = useLatestInfo();
     const nowVersionQuery = useNowVersion();
-    const updateCore = useUpdateCore();
 
     const backendNowVersion = nowVersionQuery.data || '';
     const latestVersion = latestInfoQuery.data?.tag_name || '';
 
     // 前端版本与后端当前版本不一致 → 浏览器缓存问题
     const isCacheMismatch = !!backendNowVersion && backendNowVersion !== APP_VERSION;
-    // 最新版本与后端当前版本不一致 → 有新版本可更新
-    const hasNewVersion = latestVersion && backendNowVersion && latestVersion !== backendNowVersion;
+    // 仅容器构建的版本参与镜像更新提示，源码运行不会收到 Docker 更新提示。
+    const hasNewVersion = /^dev-[0-9a-f]{7}$/i.test(backendNowVersion)
+        && !!latestVersion
+        && latestVersion !== backendNowVersion;
 
     const clearCacheAndReload = async () => {
         // 通知 Service Worker 清理缓存
@@ -47,20 +47,6 @@ export function SettingInfo() {
         clearCacheAndReload();
     };
 
-    const handleUpdate = () => {
-        updateCore.mutate(undefined, {
-            onSuccess: () => {
-                toast.success(t('info.updateSuccess'));
-                // 更新成功后清理缓存并刷新
-                setTimeout(() => {
-                    clearCacheAndReload();
-                }, 1500);
-            },
-            onError: () => {
-                toast.error(t('info.updateFailed'));
-            }
-        });
-    };
 
     return (
         <div className="rounded-3xl border border-border bg-card p-6 space-y-5">
@@ -144,7 +130,6 @@ export function SettingInfo() {
                 </div>
             )}
 
-            {/* 有新版本可更新 */}
             {hasNewVersion && (
                 <div className="p-3 bg-primary/10 border border-primary/20 rounded-xl space-y-2">
                     <div className="flex items-start gap-3">
@@ -156,18 +141,10 @@ export function SettingInfo() {
                             <p className="text-xs text-muted-foreground">
                                 {t('info.newVersionAvailableHint')}
                             </p>
+                            <code className="block rounded-lg bg-muted px-2 py-1 text-xs text-muted-foreground">
+                                {t('info.dockerPullCommand')}
+                            </code>
                         </div>
-                    </div>
-                    <div className="flex justify-end">
-                        <Button
-                            variant="default"
-                            size="sm"
-                            onClick={handleUpdate}
-                            disabled={updateCore.isPending}
-                            className="rounded-xl"
-                        >
-                            {updateCore.isPending ? t('info.updating') : t('info.updateNow')}
-                        </Button>
                     </div>
                 </div>
             )}

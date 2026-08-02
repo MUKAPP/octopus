@@ -30,22 +30,30 @@
 直接运行
 
 ```bash
-docker run -d --name octopus -v /path/to/data:/app/data -p 8080:8080 bestrui/octopus
+docker run -d --name octopus -v /path/to/data:/app/data -p 8080:8080 mukmiuikong/octopus:latest
 ```
 
 或者使用 docker compose 运行
 
 ```bash
-wget https://raw.githubusercontent.com/bestruirui/octopus/refs/heads/dev/docker-compose.yml
+wget https://raw.githubusercontent.com/MUKAPP/octopus/refs/heads/dev/docker-compose.yaml
 docker compose up -d
 ```
 
-### 📦 从 Release 下载
+### 🔄 更新 Docker 镜像
 
-从 [Releases](https://github.com/bestruirui/octopus/releases) 下载对应平台的二进制文件，然后运行：
+设置页会比对 Docker Hub `latest` 镜像及其相同摘要的 `dev-<短 SHA>` 标签；只有以 `dev-<短 SHA>` 构建的容器才会收到更新提示。
+
+使用 Docker Compose 部署时：
 
 ```bash
-./octopus start
+docker compose pull && docker compose up -d
+```
+
+使用 `docker run` 部署时，请拉取镜像后按原 `docker run` 命令重新创建容器，以保留端口、数据卷及其他参数：
+
+```bash
+docker pull mukmiuikong/octopus:latest
 ```
 
 ### 🛠️ 源码运行
@@ -58,7 +66,7 @@ docker compose up -d
 
 ```bash
 # 克隆项目
-git clone https://github.com/bestruirui/octopus.git
+git clone https://github.com/MUKAPP/octopus.git
 cd octopus
 # 构建前端，产物会直接写入 static/out
 cd web && pnpm install && pnpm run build && cd ..
@@ -164,7 +172,6 @@ http://localhost:5173
 | `OCTOPUS_DATABASE_TYPE` | `database.type` |
 | `OCTOPUS_DATABASE_PATH` | `database.path` |
 | `OCTOPUS_LOG_LEVEL` | `log.level` |
-| `OCTOPUS_GITHUB_PAT` | 用于获取最新版本时的速率限制(可选) |
 | `OCTOPUS_RELAY_MAX_SSE_EVENT_SIZE` | 最大 SSE 事件大小(可选) |
 | `OCTOPUS_IMAGES_BODY_MEMORY_THRESHOLD_MB` | Images 请求体内存缓存阈值，超过阈值会落盘临时文件(可选，默认 16) |
 | `OCTOPUS_IMAGES_BODY_MAX_MB` | Images 请求体最大大小限制，超过限制将拒绝请求(可选，默认 256) |

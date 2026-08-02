@@ -30,22 +30,30 @@
 Run directly:
 
 ```bash
-docker run -d --name octopus -v /path/to/data:/app/data -p 8080:8080 bestrui/octopus
+docker run -d --name octopus -v /path/to/data:/app/data -p 8080:8080 mukmiuikong/octopus:latest
 ```
 
 Or use docker compose:
 
 ```bash
-wget https://raw.githubusercontent.com/bestruirui/octopus/refs/heads/dev/docker-compose.yml
+wget https://raw.githubusercontent.com/MUKAPP/octopus/refs/heads/dev/docker-compose.yaml
 docker compose up -d
 ```
 
-### 📦 Download from Release
+### 🔄 Update Docker Image
 
-Download the binary for your platform from [Releases](https://github.com/bestruirui/octopus/releases), then run:
+The settings page compares the Docker Hub `latest` image with its same-digest `dev-<short-sha>` tag. It reports an update only to containers built as `dev-<short-sha>`.
+
+For Docker Compose deployments:
 
 ```bash
-./octopus start
+docker compose pull && docker compose up -d
+```
+
+For `docker run` deployments, pull the image and recreate the container with the original `docker run` command so its ports, volumes, and other options are retained:
+
+```bash
+docker pull mukmiuikong/octopus:latest
 ```
 
 ### 🛠️ Build from Source
@@ -58,7 +66,7 @@ Download the binary for your platform from [Releases](https://github.com/bestrui
 
 ```bash
 # Clone the repository
-git clone https://github.com/bestruirui/octopus.git
+git clone https://github.com/MUKAPP/octopus.git
 cd octopus
 # Build frontend; output is written to static/out
 cd web && pnpm install && pnpm run build && cd ..
@@ -164,7 +172,6 @@ All configuration options can be overridden via environment variables using the 
 | `OCTOPUS_DATABASE_TYPE` | `database.type` |
 | `OCTOPUS_DATABASE_PATH` | `database.path` |
 | `OCTOPUS_LOG_LEVEL` | `log.level` |
-| `OCTOPUS_GITHUB_PAT` | For rate limiting when getting the latest version (optional) |
 | `OCTOPUS_RELAY_MAX_SSE_EVENT_SIZE` | Maximum SSE event size (optional) |
 | `OCTOPUS_IMAGES_BODY_MEMORY_THRESHOLD_MB` | Images request body in-memory threshold. If exceeded, it will be spooled to a temporary file (optional, default 16) |
 | `OCTOPUS_IMAGES_BODY_MAX_MB` | Images request body maximum size. Requests above this limit are rejected (optional, default 256) |
