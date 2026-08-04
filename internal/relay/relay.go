@@ -150,11 +150,15 @@ func (r *relayRun) run() {
 }
 
 // writeFinalError 以客户端 API 格式返回最后一次上游 HTTP 错误。
-// 已提交 SSE 响应时只记录错误并结束，避免向注释帧后追加 JSON。
+// 已提交 SSE 响应时发送客户端格式的 error 事件，避免静默结束。
 // 网络错误和中继内部错误没有可保留的上游状态码，使用 424 避免被 5xx 错误页改写。
 func (r *relayRun) writeFinalError(ctx context.Context, err error) {
 	if r.c.Writer.Written() {
-		log.Warnf("all channels failed after SSE response started: %v", err)
+		if strings.HasPrefix(strings.ToLower(r.c.Writer.Header().Get("Content-Type")), "text/event-stream") {
+			r.writeCommittedSSEError(ctx, err)
+			return
+		}
+		log.Warnf("all channels failed after response started: %v", err)
 		return
 	}
 	if pipeline.IsUpstreamError(err) {
@@ -175,6 +179,26 @@ func (r *relayRun) writeFinalError(ctx context.Context, err error) {
 	}
 
 	resp.Error(r.c, http.StatusFailedDependency, err.Error())
+}
+
+func (r *relayRun) writeCommittedSSEError(ctx context.Context, err error) {
+	var body []byte
+	if r.inAdapter != nil {
+		if clientErr := r.inAdapter.TransformError(ctx, err); clientErr != nil {
+			body = clientErr.Body
+		}
+	}
+	if len(body) == 0 {
+		body, _ = json.Marshal(map[string]any{
+			"error": map[string]string{
+				"message": err.Error(),
+				"type":    "internal_server_error",
+			},
+		})
+	}
+	r.c.SSEvent("error", body)
+	r.c.Writer.Flush()
+	log.Warnf("all channels failed after SSE response started: %v", err)
 }
 
 func (r *relayRun) prepareAttempt() (*relayAttempt, error) {
@@ -255,7 +279,7 @@ func (ra *relayAttempt) run() (bool, error) {
 	})
 	balancer.RecordFailure(ra.channel.ID, ra.usedKey.ID, ra.internalRequest.Model)
 
-	return ra.responseFinalized(), fmt.Errorf("channel %s failed: %v", ra.channel.Name, fwdErr)
+	return ra.responseFinalized(), fmt.Errorf("channel %s failed: %w", ra.channel.Name, fwdErr)
 }
 
 // parseRequest 解析并验证入站请求
@@ -418,8 +442,12 @@ func (ra *relayAttempt) writeSSEHeartbeat() error {
 	return nil
 }
 
+func isRelayStreamDone(data []byte) bool {
+	return len(data) > 0 && bytes.Equal(bytes.TrimSpace(data), []byte("[DONE]"))
+}
+
 func isRelayStreamEventContent(data []byte) bool {
-	return len(data) > 0 && !bytes.Equal(bytes.TrimSpace(data), []byte("[DONE]"))
+	return len(data) > 0 && !isRelayStreamDone(data)
 }
 
 func (ra *relayAttempt) prepareSSEStreamResponse() error {
@@ -621,8 +649,11 @@ func (ra *relayAttempt) writeStreamWithHeartbeatTicker(
 
 			ra.c.SSEvent(r.event.Type, r.event.Data)
 			ra.c.Writer.Flush()
-			if hasContent {
+			switch {
+			case hasContent:
 				ra.streamEventWritten = true
+			case isRelayStreamDone(r.event.Data):
+				ra.streamTerminated = true
 			}
 		}
 	}

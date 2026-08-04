@@ -317,15 +317,15 @@ func TestRelayAttemptWriteStreamDoesNotCountDoneAsFirstToken(t *testing.T) {
 	go func() { writeDone <- attempt.writeStreamWithHeartbeatTicker(context.Background(), stream, ticker) }()
 
 	stream.steps <- relayStreamStep{event: &httpclient.StreamEvent{Data: []byte("[DONE]")}}
-	stream.steps <- relayStreamStep{ended: true}
-	if err := <-writeDone; err != nil {
-		t.Fatalf("write stream: %v", err)
+	stream.steps <- relayStreamStep{err: errRelayReadSentinel}
+	if err := <-writeDone; !errors.Is(err, errRelayReadSentinel) {
+		t.Fatalf("write stream error = %v, want sentinel", err)
 	}
 	if !attempt.metrics.FirstTokenTime.IsZero() {
 		t.Fatal("[DONE] must not set first token time")
 	}
-	if attempt.streamEventWritten || attempt.responseFinalized() {
-		t.Fatal("[DONE] must not finalize response")
+	if !attempt.streamTerminated || !attempt.responseFinalized() {
+		t.Fatal("[DONE] must finalize response without counting as content")
 	}
 	waitClosed(t, ticker.stopped, "ticker stop")
 	waitClosed(t, stream.closed, "stream close")

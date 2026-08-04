@@ -27,10 +27,13 @@ type relayAttempt struct {
 	usedKey    dbmodel.ChannelKey
 
 	// streamEventWritten 表示至少一个真实模型事件已经写入客户端。
-	streamEventWritten      bool
+	streamEventWritten bool
+
+	// streamTerminated 表示终止帧已经写入客户端；它不计入首 token。
+	streamTerminated        bool
 	clientStreamWriteFailed bool
 }
 
 func (ra *relayAttempt) responseFinalized() bool {
-	return ra.streamEventWritten || ra.clientStreamWriteFailed
+	return ra.streamEventWritten || ra.streamTerminated || ra.clientStreamWriteFailed
 }

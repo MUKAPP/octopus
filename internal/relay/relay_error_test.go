@@ -4,8 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/gin-gonic/gin"
@@ -66,7 +68,7 @@ func TestWriteFinalErrorUsesFailedDependencyForTransportFailure(t *testing.T) {
 	}
 }
 
-func TestWriteFinalErrorSkipsCommittedSSEStream(t *testing.T) {
+func TestWriteFinalErrorWritesCommittedSSEError(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	recorder := httptest.NewRecorder()
 	ctx, _ := gin.CreateTestContext(recorder)
@@ -83,12 +85,22 @@ func TestWriteFinalErrorSkipsCommittedSSEStream(t *testing.T) {
 	ctx.Writer.Flush()
 	body := recorder.Body.String()
 
-	run.writeFinalError(context.Background(), errors.New("stream failed"))
+	run.writeFinalError(context.Background(), fmt.Errorf("channel primary failed: %w", pipeline.WrapUpstreamError(&llm.ResponseError{
+		StatusCode: http.StatusTooManyRequests,
+		Detail: llm.ErrorDetail{
+			Message: "rate limited",
+			Type:    "rate_limit_error",
+		},
+	})))
 
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("status = %d, want %d", recorder.Code, http.StatusOK)
 	}
-	if got := recorder.Body.String(); got != body {
-		t.Fatalf("body = %q, want unchanged %q", got, body)
+	got := recorder.Body.String()
+	if got == body || !strings.Contains(got, "event:error\n") {
+		t.Fatalf("body = %q, want an SSE error event after %q", got, body)
+	}
+	if !strings.Contains(got, "data: {\"error\":") || !strings.Contains(got, "rate limited") || !strings.Contains(got, "rate_limit_error") {
+		t.Fatalf("body = %q, want OpenAI-formatted upstream error data", got)
 	}
 }
