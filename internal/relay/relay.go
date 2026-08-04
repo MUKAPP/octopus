@@ -1,6 +1,7 @@
 package relay
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -417,6 +418,10 @@ func (ra *relayAttempt) writeSSEHeartbeat() error {
 	return nil
 }
 
+func isRelayStreamEventContent(data []byte) bool {
+	return len(data) > 0 && !bytes.Equal(bytes.TrimSpace(data), []byte("[DONE]"))
+}
+
 func (ra *relayAttempt) prepareSSEStreamResponse() error {
 	ra.c.Header("Content-Type", "text/event-stream")
 	ra.c.Header("Cache-Control", "no-cache")
@@ -528,6 +533,7 @@ func (ra *relayAttempt) writeStreamWithHeartbeatTicker(
 			select {
 			case results <- sseReadResult{event: clientStream.Current()}:
 			case <-done:
+				return
 			case <-ctx.Done():
 				return
 			}
@@ -595,9 +601,10 @@ func (ra *relayAttempt) writeStreamWithHeartbeatTicker(
 			if r.event == nil || len(r.event.Data) == 0 {
 				continue
 			}
-			// 这里只临时保存 pipeline 已经转换好的客户端格式事件，正常结束后聚合成最终响应体用于日志；不会把分片逐条落库。
+			// 终止帧仍需原样透传并参与最终聚合，但不能被当作首个模型内容事件。
 			responseEvents = append(responseEvents, r.event)
-			if firstToken {
+			hasContent := isRelayStreamEventContent(r.event.Data)
+			if hasContent && firstToken {
 				ra.metrics.FirstTokenTime = time.Now()
 				firstToken = false
 				if firstTokenTimer != nil {
@@ -614,7 +621,9 @@ func (ra *relayAttempt) writeStreamWithHeartbeatTicker(
 
 			ra.c.SSEvent(r.event.Type, r.event.Data)
 			ra.c.Writer.Flush()
-			ra.streamEventWritten = true
+			if hasContent {
+				ra.streamEventWritten = true
+			}
 		}
 	}
 }

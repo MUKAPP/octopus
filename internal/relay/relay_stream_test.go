@@ -305,6 +305,32 @@ func TestRelayAttemptWriteStreamPassesEventAfterHeartbeat(t *testing.T) {
 	waitClosed(t, stream.closed, "stream close")
 }
 
+func TestRelayAttemptWriteStreamDoesNotCountDoneAsFirstToken(t *testing.T) {
+	writer := newRecordingRelayWriter(0)
+	attempt := newTestRelayAttempt(t, writer)
+	if err := attempt.prepareSSEStreamResponse(); err != nil {
+		t.Fatal(err)
+	}
+	ticker := newManualRelaySSEHeartbeatTicker()
+	stream := newControllableRelayStream()
+	writeDone := make(chan error, 1)
+	go func() { writeDone <- attempt.writeStreamWithHeartbeatTicker(context.Background(), stream, ticker) }()
+
+	stream.steps <- relayStreamStep{event: &httpclient.StreamEvent{Data: []byte("[DONE]")}}
+	stream.steps <- relayStreamStep{ended: true}
+	if err := <-writeDone; err != nil {
+		t.Fatalf("write stream: %v", err)
+	}
+	if !attempt.metrics.FirstTokenTime.IsZero() {
+		t.Fatal("[DONE] must not set first token time")
+	}
+	if attempt.streamEventWritten || attempt.responseFinalized() {
+		t.Fatal("[DONE] must not finalize response")
+	}
+	waitClosed(t, ticker.stopped, "ticker stop")
+	waitClosed(t, stream.closed, "stream close")
+}
+
 func TestRelayAttemptWriteStreamKeepsRetryOpenAfterHeartbeatError(t *testing.T) {
 	writer := newRecordingRelayWriter(0)
 	attempt := newTestRelayAttempt(t, writer)
