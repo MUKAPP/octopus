@@ -65,3 +65,30 @@ func TestWriteFinalErrorUsesFailedDependencyForTransportFailure(t *testing.T) {
 		t.Fatalf("status = %d, want %d", recorder.Code, http.StatusFailedDependency)
 	}
 }
+
+func TestWriteFinalErrorSkipsCommittedSSEStream(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	recorder := httptest.NewRecorder()
+	ctx, _ := gin.CreateTestContext(recorder)
+	run := &relayRun{
+		c:         ctx,
+		inAdapter: newInbound(llm.APIFormatOpenAIChatCompletion),
+		metrics:   &RelayMetrics{},
+	}
+	ctx.Header("Content-Type", "text/event-stream")
+	ctx.Status(http.StatusOK)
+	if _, err := ctx.Writer.Write(relaySSEHeartbeatComment); err != nil {
+		t.Fatal(err)
+	}
+	ctx.Writer.Flush()
+	body := recorder.Body.String()
+
+	run.writeFinalError(context.Background(), errors.New("stream failed"))
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d", recorder.Code, http.StatusOK)
+	}
+	if got := recorder.Body.String(); got != body {
+		t.Fatalf("body = %q, want unchanged %q", got, body)
+	}
+}

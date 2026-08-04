@@ -25,4 +25,12 @@ type relayAttempt struct {
 	outAdapter transformer.Outbound
 	channel    *dbmodel.Channel
 	usedKey    dbmodel.ChannelKey
+
+	// streamEventWritten 表示至少一个真实模型事件已经写入客户端。
+	streamEventWritten      bool
+	clientStreamWriteFailed bool
+}
+
+func (ra *relayAttempt) responseFinalized() bool {
+	return ra.streamEventWritten || ra.clientStreamWriteFailed
 }

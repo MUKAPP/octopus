@@ -26,6 +26,31 @@ import (
 	"github.com/looplj/axonhub/llm/transformer"
 )
 
+const relaySSEHeartbeatInterval = 15 * time.Second
+
+var relaySSEHeartbeatComment = []byte(": ping\n\n")
+
+type relaySSEHeartbeatTicker interface {
+	Chan() <-chan time.Time
+	Stop()
+}
+
+type relaySSEHeartbeatTimeTicker struct {
+	ticker *time.Ticker
+}
+
+func newRelaySSEHeartbeatTicker(interval time.Duration) relaySSEHeartbeatTicker {
+	return &relaySSEHeartbeatTimeTicker{ticker: time.NewTicker(interval)}
+}
+
+func (t *relaySSEHeartbeatTimeTicker) Chan() <-chan time.Time {
+	return t.ticker.C
+}
+
+func (t *relaySSEHeartbeatTimeTicker) Stop() {
+	t.ticker.Stop()
+}
+
 // Handler 返回处理入站请求并转发到上游服务的 Gin handler。
 func Handler(inboundType llm.APIFormat) gin.HandlerFunc {
 	inAdapter := newInbound(inboundType)
@@ -104,12 +129,12 @@ func (r *relayRun) run() {
 			continue
 		}
 
-		written, err := attempt.run()
+		responseFinalized, err := attempt.run()
 		if err == nil {
 			r.metrics.Save(ctx, true, nil, r.iter.Attempts())
 			return
 		}
-		if written {
+		if responseFinalized {
 			r.metrics.Save(ctx, false, err, r.iter.Attempts())
 			return
 		}
@@ -124,8 +149,13 @@ func (r *relayRun) run() {
 }
 
 // writeFinalError 以客户端 API 格式返回最后一次上游 HTTP 错误。
+// 已提交 SSE 响应时只记录错误并结束，避免向注释帧后追加 JSON。
 // 网络错误和中继内部错误没有可保留的上游状态码，使用 424 避免被 5xx 错误页改写。
 func (r *relayRun) writeFinalError(ctx context.Context, err error) {
+	if r.c.Writer.Written() {
+		log.Warnf("all channels failed after SSE response started: %v", err)
+		return
+	}
 	if pipeline.IsUpstreamError(err) {
 		clientErr := r.inAdapter.TransformError(ctx, err)
 		if clientErr != nil && clientErr.StatusCode >= http.StatusBadRequest && clientErr.StatusCode < 600 {
@@ -224,7 +254,7 @@ func (ra *relayAttempt) run() (bool, error) {
 	})
 	balancer.RecordFailure(ra.channel.ID, ra.usedKey.ID, ra.internalRequest.Model)
 
-	return ra.c.Writer.Written(), fmt.Errorf("channel %s failed: %v", ra.channel.Name, fwdErr)
+	return ra.responseFinalized(), fmt.Errorf("channel %s failed: %v", ra.channel.Name, fwdErr)
 }
 
 // parseRequest 解析并验证入站请求
@@ -257,7 +287,7 @@ func parseRequest(c *gin.Context, inboundType llm.APIFormat, inAdapter transform
 	return internalRequest, nil
 }
 
-// forward 转发请求到上游服务
+// forward 转发请求到上游服务。流请求在 pipeline 首事件预读期间也保持 SSE 心跳。
 func (ra *relayAttempt) forward() (int, error) {
 	ctx := ra.c.Request.Context()
 	if ra.internalRequest.RawRequest == nil {
@@ -271,14 +301,32 @@ func (ra *relayAttempt) forward() (int, error) {
 	}
 
 	relayMiddleware := &relayPipelineMiddleware{attempt: ra}
-	result, err := pipeline.NewFactory(httpclient.NewHttpClientWithClient(httpClient)).
-		Pipeline(
-			&parsedRequestInbound{Inbound: ra.inAdapter, request: ra.internalRequest},
-			ra.outAdapter,
-			pipeline.WithMiddlewares(stream.EnsureUsage(), relayMiddleware),
-			pipeline.WithEmptyResponseDetection(),
-		).
-		Process(ctx, ra.internalRequest.RawRequest)
+	process := func(processCtx context.Context) (*pipeline.Result, error) {
+		return pipeline.NewFactory(httpclient.NewHttpClientWithClient(httpClient)).
+			Pipeline(
+				&parsedRequestInbound{Inbound: ra.inAdapter, request: ra.internalRequest},
+				ra.outAdapter,
+				pipeline.WithMiddlewares(stream.EnsureUsage(), relayMiddleware),
+				pipeline.WithEmptyResponseDetection(),
+			).
+			Process(processCtx, ra.internalRequest.RawRequest)
+	}
+
+	if ra.internalRequest.Stream != nil && *ra.internalRequest.Stream {
+		heartbeatTicker := newRelaySSEHeartbeatTicker(relaySSEHeartbeatInterval)
+		result, heartbeatTicker, processCancel, err := ra.processStreamWithHeartbeat(ctx, heartbeatTicker, process)
+		if err != nil {
+			return relayMiddleware.upstreamStatusCode, err
+		}
+		streamErr := ra.writeStreamWithHeartbeatTicker(ctx, result.EventStream, heartbeatTicker)
+		processCancel()
+		if streamErr != nil {
+			return http.StatusOK, streamErr
+		}
+		return http.StatusOK, nil
+	}
+
+	result, err := process(ctx)
 	if err != nil {
 		return relayMiddleware.upstreamStatusCode, err
 	}
@@ -286,10 +334,7 @@ func (ra *relayAttempt) forward() (int, error) {
 		return 0, fmt.Errorf("empty pipeline result")
 	}
 	if result.Stream {
-		if err := ra.writeStream(ctx, result.EventStream); err != nil {
-			return http.StatusOK, err
-		}
-		return http.StatusOK, nil
+		return 0, fmt.Errorf("unexpected stream pipeline result")
 	}
 	if result.Response == nil {
 		return 0, fmt.Errorf("empty pipeline response")
@@ -364,17 +409,97 @@ func (ra *relayAttempt) applyChannelRequestOptions(outboundRequest *httpclient.R
 	}
 }
 
-// writeStream 把 pipeline 输出的客户端格式流写回请求方，并保留首 token 超时切换通道的行为。
-func (ra *relayAttempt) writeStream(ctx context.Context, clientStream streams.Stream[*httpclient.StreamEvent]) error {
-	if clientStream == nil {
-		return fmt.Errorf("empty pipeline stream")
+func (ra *relayAttempt) writeSSEHeartbeat() error {
+	if _, err := ra.c.Writer.Write(relaySSEHeartbeatComment); err != nil {
+		return err
 	}
+	ra.c.Writer.Flush()
+	return nil
+}
 
-	// 设置 SSE 响应头
+func (ra *relayAttempt) prepareSSEStreamResponse() error {
 	ra.c.Header("Content-Type", "text/event-stream")
 	ra.c.Header("Cache-Control", "no-cache")
 	ra.c.Header("Connection", "keep-alive")
 	ra.c.Header("X-Accel-Buffering", "no")
+	ra.c.Status(http.StatusOK)
+	if err := ra.writeSSEHeartbeat(); err != nil {
+		ra.clientStreamWriteFailed = true
+		return fmt.Errorf("failed to write initial SSE heartbeat: %w", err)
+	}
+	return nil
+}
+
+// processStreamWithHeartbeat 在 pipeline 首事件预读期间提交 SSE 响应并持续发送心跳。
+// 只有流结果才把 ticker 和 process cancel 的所有权转交给调用方。
+func (ra *relayAttempt) processStreamWithHeartbeat(
+	ctx context.Context,
+	heartbeatTicker relaySSEHeartbeatTicker,
+	process func(context.Context) (*pipeline.Result, error),
+) (*pipeline.Result, relaySSEHeartbeatTicker, context.CancelFunc, error) {
+	if heartbeatTicker == nil {
+		return nil, nil, nil, errors.New("nil SSE heartbeat ticker")
+	}
+	if err := ra.prepareSSEStreamResponse(); err != nil {
+		heartbeatTicker.Stop()
+		return nil, nil, nil, err
+	}
+
+	processCtx, processCancel := context.WithCancel(ctx)
+	type processResult struct {
+		result *pipeline.Result
+		err    error
+	}
+	results := make(chan processResult, 1)
+	go func() {
+		result, err := process(processCtx)
+		results <- processResult{result: result, err: err}
+	}()
+
+	stop := func() {
+		heartbeatTicker.Stop()
+		processCancel()
+	}
+	for {
+		select {
+		case <-heartbeatTicker.Chan():
+			if err := ra.writeSSEHeartbeat(); err != nil {
+				ra.clientStreamWriteFailed = true
+				stop()
+				return nil, nil, nil, fmt.Errorf("failed to write SSE heartbeat: %w", err)
+			}
+		case <-ctx.Done():
+			stop()
+			return nil, nil, nil, ctx.Err()
+		case processed := <-results:
+			if processed.err != nil {
+				stop()
+				return nil, nil, nil, processed.err
+			}
+			if processed.result == nil || !processed.result.Stream {
+				stop()
+				return nil, nil, nil, errors.New("stream request returned non-stream result")
+			}
+			return processed.result, heartbeatTicker, processCancel, nil
+		}
+	}
+}
+
+// writeStreamWithHeartbeatTicker 把客户端格式流写回请求方，并保留首 token 超时切换通道的行为。
+func (ra *relayAttempt) writeStreamWithHeartbeatTicker(
+	ctx context.Context,
+	clientStream streams.Stream[*httpclient.StreamEvent],
+	heartbeatTicker relaySSEHeartbeatTicker,
+) error {
+	if heartbeatTicker != nil {
+		defer heartbeatTicker.Stop()
+	}
+	if clientStream == nil {
+		return fmt.Errorf("empty pipeline stream")
+	}
+	if heartbeatTicker == nil {
+		return errors.New("nil SSE heartbeat ticker")
+	}
 
 	firstToken := true
 	responseEvents := make([]*httpclient.StreamEvent, 0, 8)
@@ -403,7 +528,6 @@ func (ra *relayAttempt) writeStream(ctx context.Context, clientStream streams.St
 			select {
 			case results <- sseReadResult{event: clientStream.Current()}:
 			case <-done:
-				return
 			case <-ctx.Done():
 				return
 			}
@@ -436,6 +560,12 @@ func (ra *relayAttempt) writeStream(ctx context.Context, clientStream streams.St
 			log.Infof("client disconnected, stopping stream")
 			_ = clientStream.Close()
 			return nil
+		case <-heartbeatTicker.Chan():
+			if err := ra.writeSSEHeartbeat(); err != nil {
+				ra.clientStreamWriteFailed = true
+				_ = clientStream.Close()
+				return fmt.Errorf("failed to write SSE heartbeat: %w", err)
+			}
 		case <-firstTokenC:
 			log.Warnf("first token timeout (%ds), switching channel", firstTokenTimeoutSec)
 			_ = clientStream.Close()
@@ -484,6 +614,7 @@ func (ra *relayAttempt) writeStream(ctx context.Context, clientStream streams.St
 
 			ra.c.SSEvent(r.event.Type, r.event.Data)
 			ra.c.Writer.Flush()
+			ra.streamEventWritten = true
 		}
 	}
 }
