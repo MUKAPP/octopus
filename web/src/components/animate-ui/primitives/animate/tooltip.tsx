@@ -1,7 +1,6 @@
 import * as React from 'react';
 import {
   motion,
-  AnimatePresence,
   LayoutGroup,
   type Transition,
   type HTMLMotionProps,
@@ -231,26 +230,31 @@ function TooltipPortal(props: TooltipPortalProps) {
   return <FloatingPortal {...props} />;
 }
 
-function TooltipOverlay() {
-  const { currentTooltip, transition, referenceElRef } = useGlobalTooltip();
+type TooltipPositionerProps = {
+  data: TooltipData;
+  open: boolean;
+  transition: Transition;
+  referenceElRef: React.RefObject<HTMLElement | null>;
+  onExitComplete: () => void;
+};
 
-  const [rendered, setRendered] = React.useState<{
-    data: TooltipData | null;
-    open: boolean;
-  }>({ data: null, open: false });
-
+function TooltipPositioner({
+  data,
+  open,
+  transition,
+  referenceElRef,
+  onExitComplete,
+}: TooltipPositionerProps) {
   const arrowRef = React.useRef<SVGSVGElement | null>(null);
 
-  const side = rendered.data?.side ?? 'top';
-  const align = rendered.data?.align ?? 'center';
-
   const { refs, x, y, strategy, context, update, isPositioned } = useFloating({
-    open: rendered.open,
+    placement: data.align === 'center' ? data.side : `${data.side}-${data.align}`,
+    open,
     whileElementsMounted: autoUpdate,
     middleware: [
       floatingOffset({
-        mainAxis: rendered.data?.sideOffset ?? 0,
-        crossAxis: rendered.data?.alignOffset ?? 0,
+        mainAxis: data.sideOffset,
+        crossAxis: data.alignOffset,
       }),
       flip(),
       shift({ padding: 8 }),
@@ -261,6 +265,93 @@ function TooltipOverlay() {
     ],
   });
 
+  React.useLayoutEffect(() => {
+    if (referenceElRef.current) {
+      refs.setReference(referenceElRef.current);
+      update();
+    }
+  }, [referenceElRef, refs, update, data]);
+
+  const ready = x != null && y != null;
+  const Component = data.contentAsChild ? Slot : motion.div;
+  const resolvedSide = getResolvedSide(context.placement);
+
+  if (!ready) return null;
+
+  return (
+    <TooltipPortal>
+      <div
+        ref={refs.setFloating}
+        data-slot="tooltip-overlay"
+        data-side={resolvedSide}
+        data-align={data.align}
+        data-state={open ? 'open' : 'closed'}
+        style={{
+          position: strategy,
+          top: 0,
+          left: 0,
+          zIndex: 50,
+          transform: `translate3d(${x!}px, ${y!}px, 0)`,
+          visibility: open && !isPositioned ? 'hidden' : undefined,
+        }}
+      >
+        <FloatingProvider value={{ context, arrowRef }}>
+          <RenderedTooltipProvider
+            value={{
+              side: resolvedSide,
+              align: data.align,
+              open,
+            }}
+          >
+            <Component
+              data-slot="tooltip-content"
+              data-side={resolvedSide}
+              data-align={data.align}
+              data-state={open ? 'open' : 'closed'}
+              initial={{
+                opacity: 0,
+                scale: 0.96,
+                ...initialFromSide(data.side),
+              }}
+              animate={
+                open
+                  ? { opacity: 1, scale: 1, x: 0, y: 0 }
+                  : {
+                      opacity: 0,
+                      scale: 0.96,
+                      ...initialFromSide(data.side),
+                    }
+              }
+              exit={{
+                opacity: 0,
+                scale: 0.96,
+                ...initialFromSide(data.side),
+              }}
+              onAnimationComplete={() => {
+                if (!open) onExitComplete();
+              }}
+              transition={transition}
+              {...data.contentProps}
+              style={{
+                position: 'relative',
+                ...(data.contentProps?.style || {}),
+              }}
+            />
+          </RenderedTooltipProvider>
+        </FloatingProvider>
+      </div>
+    </TooltipPortal>
+  );
+}
+
+function TooltipOverlay() {
+  const { currentTooltip, transition, referenceElRef } = useGlobalTooltip();
+
+  const [rendered, setRendered] = React.useState<{
+    data: TooltipData | null;
+    open: boolean;
+  }>({ data: null, open: false });
+
   React.useEffect(() => {
     if (currentTooltip) {
       setRendered({ data: currentTooltip, open: true });
@@ -269,85 +360,17 @@ function TooltipOverlay() {
     }
   }, [currentTooltip]);
 
-  React.useLayoutEffect(() => {
-    if (referenceElRef.current) {
-      refs.setReference(referenceElRef.current);
-      update();
-    }
-  }, [referenceElRef, refs, update, rendered.data]);
-
-  const ready = x != null && y != null;
-  const Component = rendered.data?.contentAsChild ? Slot : motion.div;
-  const resolvedSide = getResolvedSide(context.placement);
+  if (!rendered.data) return null;
 
   return (
-    <AnimatePresence mode="wait">
-      {rendered.data && ready && (
-        <TooltipPortal>
-          <div
-            ref={refs.setFloating}
-            data-slot="tooltip-overlay"
-            data-side={resolvedSide}
-            data-align={rendered.data.align}
-            data-state={rendered.open ? 'open' : 'closed'}
-            style={{
-              position: strategy,
-              top: 0,
-              left: 0,
-              zIndex: 50,
-              transform: `translate3d(${x!}px, ${y!}px, 0)`,
-              visibility: rendered.open && !isPositioned ? 'hidden' : undefined,
-            }}
-          >
-            <FloatingProvider value={{ context, arrowRef }}>
-              <RenderedTooltipProvider
-                value={{
-                  side: resolvedSide,
-                  align: rendered.data.align,
-                  open: rendered.open,
-                }}
-              >
-                <Component
-                  data-slot="tooltip-content"
-                  data-side={resolvedSide}
-                  data-align={rendered.data.align}
-                  data-state={rendered.open ? 'open' : 'closed'}
-                  initial={{
-                    opacity: 0,
-                    scale: 0.96,
-                    ...initialFromSide(rendered.data.side),
-                  }}
-                  animate={
-                    rendered.open
-                      ? { opacity: 1, scale: 1, x: 0, y: 0 }
-                      : {
-                        opacity: 0,
-                        scale: 0.96,
-                        ...initialFromSide(rendered.data.side),
-                      }
-                  }
-                  exit={{
-                    opacity: 0,
-                    scale: 0.96,
-                    ...initialFromSide(rendered.data.side),
-                  }}
-                  onAnimationComplete={() => {
-                    if (!rendered.open)
-                      setRendered({ data: null, open: false });
-                  }}
-                  transition={transition}
-                  {...rendered.data.contentProps}
-                  style={{
-                    position: 'relative',
-                    ...(rendered.data.contentProps?.style || {}),
-                  }}
-                />
-              </RenderedTooltipProvider>
-            </FloatingProvider>
-          </div>
-        </TooltipPortal>
-      )}
-    </AnimatePresence>
+    <TooltipPositioner
+      key={rendered.data.id}
+      data={rendered.data}
+      open={rendered.open}
+      transition={transition}
+      referenceElRef={referenceElRef}
+      onExitComplete={() => setRendered({ data: null, open: false })}
+    />
   );
 }
 
