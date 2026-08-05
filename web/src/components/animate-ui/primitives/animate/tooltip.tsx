@@ -312,7 +312,6 @@ function TooltipOverlay() {
                   data-side={resolvedSide}
                   data-align={rendered.data.align}
                   data-state={rendered.open ? 'open' : 'closed'}
-                  layoutId={`tooltip-content-${globalId}`}
                   initial={{
                     opacity: 0,
                     scale: 0.96,
