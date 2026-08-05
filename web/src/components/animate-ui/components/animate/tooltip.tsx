@@ -1,5 +1,4 @@
 import * as React from 'react';
-import * as motion from 'motion/react-client';
 
 import {
   TooltipProvider as TooltipProviderPrimitive,
@@ -51,10 +50,11 @@ function TooltipContent({
       )}
       {...props}
     >
-      <motion.div className="overflow-hidden px-3 py-1.5 text-xs text-balance">
-        <motion.div layout={layout}>{children}</motion.div>
-      </motion.div>
+      <div className="overflow-hidden px-3 py-1.5 text-xs text-balance">
+        <div>{children}</div>
+      </div>
       <TooltipArrowPrimitive
+        withTransition={false}
         className="fill-muted size-3 data-[side='bottom']:translate-y-[1px] data-[side='right']:translate-x-[1px] data-[side='left']:translate-x-[-1px] data-[side='top']:translate-y-[-1px]"
         tipRadius={2}
       />

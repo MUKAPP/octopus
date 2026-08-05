@@ -94,7 +94,7 @@ function TooltipProvider({
   id,
   openDelay = 700,
   closeDelay = 300,
-  transition = { type: 'spring', stiffness: 300, damping: 35 },
+  transition = { type: 'tween', duration: 0.16, ease: [0.16, 1, 0.3, 1] },
 }: TooltipProviderProps) {
   const globalId = React.useId();
   const [currentTooltip, setCurrentTooltip] =
@@ -232,8 +232,7 @@ function TooltipPortal(props: TooltipPortalProps) {
 }
 
 function TooltipOverlay() {
-  const { currentTooltip, transition, globalId, referenceElRef } =
-    useGlobalTooltip();
+  const { currentTooltip, transition, referenceElRef } = useGlobalTooltip();
 
   const [rendered, setRendered] = React.useState<{
     data: TooltipData | null;
@@ -245,8 +244,8 @@ function TooltipOverlay() {
   const side = rendered.data?.side ?? 'top';
   const align = rendered.data?.align ?? 'center';
 
-  const { refs, x, y, strategy, context, update } = useFloating({
-    placement: align === 'center' ? side : `${side}-${align}`,
+  const { refs, x, y, strategy, context, update, isPositioned } = useFloating({
+    open: rendered.open,
     whileElementsMounted: autoUpdate,
     middleware: [
       floatingOffset({
@@ -297,6 +296,7 @@ function TooltipOverlay() {
               left: 0,
               zIndex: 50,
               transform: `translate3d(${x!}px, ${y!}px, 0)`,
+              visibility: rendered.open && !isPositioned ? 'hidden' : undefined,
             }}
           >
             <FloatingProvider value={{ context, arrowRef }}>
