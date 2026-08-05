@@ -357,12 +357,15 @@ export function LogCard({ log }: { log: RelayLog }) {
                                             ? "bg-destructive/5 border-destructive/20"
                                             : "bg-secondary/30 border-border/50"
                                     )}>
-                                        <div
+                                        <button
+                                            type="button"
                                             className={cn(
-                                                "flex items-center gap-2 px-3 py-2.5 shrink-0 cursor-pointer select-none hover:bg-muted/50 transition-colors",
+                                                "flex w-full items-center gap-2 border-0 bg-transparent px-3 py-2.5 text-left shrink-0 cursor-pointer select-none hover:bg-muted/50 transition-colors focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ring",
                                                 hasError && "hover:bg-destructive/10"
                                             )}
                                             onClick={() => setIsDiagnosticExpanded(!isDiagnosticExpanded)}
+                                            aria-expanded={isDiagnosticExpanded}
+                                            aria-controls={`log-diagnostic-${log.id}`}
                                         >
                                             {hasError ? (
                                                 <AlertCircle className="size-4 text-destructive" />
@@ -375,7 +378,7 @@ export function LogCard({ log }: { log: RelayLog }) {
                                             )}>
                                                 {hasError ? t('errorInfo') : t('retryDetails')}
                                             </span>
-                                            <div className="ml-auto flex items-center gap-2">
+                                            <span className="ml-auto flex items-center gap-2">
                                                 {hasMultipleAttempts && (
                                                     <Badge
                                                         variant="outline"
@@ -394,12 +397,13 @@ export function LogCard({ log }: { log: RelayLog }) {
                                                 ) : (
                                                     <ChevronDown className="size-4 text-muted-foreground" />
                                                 )}
-                                            </div>
-                                        </div>
+                                            </span>
+                                        </button>
 
                                         <AnimatePresence initial={false}>
                                             {isDiagnosticExpanded && (
                                                 <motion.div
+                                                    id={`log-diagnostic-${log.id}`}
                                                     initial={{ height: 0, opacity: 0 }}
                                                     animate={{ height: "auto", opacity: 1 }}
                                                     exit={{ height: 0, opacity: 0 }}

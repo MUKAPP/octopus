@@ -1,6 +1,6 @@
 
 import { useState, useEffect, useRef } from 'react';
-import { motion, AnimatePresence } from "motion/react"
+import { motion, AnimatePresence, useReducedMotion } from "motion/react"
 import { useAuth } from '@/api/endpoints/user';
 import { LoginForm } from '@/components/modules/login';
 import { APIKeyDashboard } from '@/components/modules/apikey-dashboard';
@@ -9,7 +9,13 @@ import { NavBar, useNavStore } from '@/components/modules/navbar';
 import { useTranslations } from 'use-intl'
 import Logo, { LOGO_DRAW_END_MS } from '@/components/modules/logo';
 import { Toolbar } from '@/components/modules/toolbar';
-import { ENTRANCE_VARIANTS } from '@/lib/animations/fluid-transitions';
+import {
+    ENTRANCE_VARIANTS,
+    REDUCED_MOTION_ENTRANCE_VARIANTS,
+    REDUCED_MOTION_ROUTE_TITLE_VARIANTS,
+    REDUCED_MOTION_TRANSITION,
+    ROUTE_TITLE_VARIANTS,
+} from '@/lib/animations/fluid-transitions';
 import { useQueryClient } from '@tanstack/react-query';
 import { CONTENT_MAP } from '@/route';
 import { apiClient } from '@/api/client';
@@ -24,6 +30,9 @@ export function AppContainer() {
     const { activeItem, direction } = useNavStore();
     const t = useTranslations('navbar');
     const queryClient = useQueryClient();
+    const shouldReduceMotion = useReducedMotion() ?? false;
+    const entranceVariants = shouldReduceMotion ? REDUCED_MOTION_ENTRANCE_VARIANTS : ENTRANCE_VARIANTS;
+    const routeTitleVariants = shouldReduceMotion ? REDUCED_MOTION_ROUTE_TITLE_VARIANTS : ROUTE_TITLE_VARIANTS;
 
     // Logo 动画完成状态
     const [logoAnimationComplete, setLogoAnimationComplete] = useState(false);
@@ -219,24 +228,11 @@ export function AppContainer() {
                             <motion.div
                                 key={activeItem}
                                 custom={direction}
-                                variants={{
-                                    initial: (direction: number) => ({
-                                        y: 32 * direction,
-                                        opacity: 0
-                                    }),
-                                    animate: {
-                                        y: 0,
-                                        opacity: 1
-                                    },
-                                    exit: (direction: number) => ({
-                                        y: -32 * direction,
-                                        opacity: 0
-                                    })
-                                }}
+                                variants={routeTitleVariants}
                                 initial="initial"
                                 animate="animate"
                                 exit="exit"
-                                transition={{ duration: 0.3 }}
+                                transition={shouldReduceMotion ? REDUCED_MOTION_TRANSITION : { duration: 0.3 }}
                                 className="flex items-center"
                             >
                                 <span className="text-3xl font-bold mt-1">{t(activeItem)}</span>
@@ -250,14 +246,11 @@ export function AppContainer() {
                 <AnimatePresence mode="wait" initial={false}>
                     <motion.div
                         key={activeItem}
-                        variants={ENTRANCE_VARIANTS.content}
+                        variants={entranceVariants.content}
                         initial="initial"
                         animate="animate"
-                        exit={{
-                            opacity: 0,
-                            scale: 0.98,
-                        }}
-                        transition={{ duration: 0.25 }}
+                        exit={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.98 }}
+                        transition={shouldReduceMotion ? REDUCED_MOTION_TRANSITION : { duration: 0.25 }}
                         className="h-full min-h-0 flex-1"
                     >
                         <ContentLoader activeRoute={activeItem} />

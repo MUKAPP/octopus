@@ -25,9 +25,10 @@ function getActivityLevel(value: number): number {
 }
 
 export function Activity() {
-    const { data: statsDailyFormatted, isLoading } = useStatsDaily();
+    const { data: statsDailyFormatted, isLoading, isError, refetch } = useStatsDaily();
     const scrollRef = useRef<HTMLDivElement>(null);
     const t = useTranslations('home.activity');
+    const tHome = useTranslations('home');
 
     const [tooltip, setTooltip] = useState<{ day: StatsDailyData; x: number; y: number; visible: boolean } | null>(null);
     const [pinnedDateStr, setPinnedDateStr] = useState<string | null>(null);
@@ -97,25 +98,34 @@ export function Activity() {
 
     return (
         <div className="rounded-3xl bg-card border-card-border border text-card-foreground custom-shadow">
+            {isError && statsDailyFormatted && (
+                <div role="alert" className="mx-4 mt-4 flex items-center justify-between gap-3 rounded-2xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-muted-foreground">
+                    <span>{tHome('feedback.loadFailed')}</span>
+                    <button type="button" onClick={() => void refetch()} className="shrink-0 rounded-xl border border-border px-3 py-1.5 font-medium text-foreground transition-colors hover:bg-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
+                        {tHome('feedback.retry')}
+                    </button>
+                </div>
+            )}
             <div
                 ref={scrollRef}
                 onScroll={checkScroll}
                 className="overflow-x-auto p-4"
                 style={{ maskImage, WebkitMaskImage: maskImage }}
             >
-                {isLoading ? (
+                {isLoading && !statsDailyFormatted ? (
                     <div className="flex h-[7.375rem] min-w-[47.25rem] items-center justify-center">
-                        <Loader2 className="size-8 animate-spin text-muted-foreground" role="status" aria-label="加载中" />
+                        <Loader2 className="size-8 animate-spin text-muted-foreground" role="status" aria-label={tHome('feedback.loading')} />
+                    </div>
+                ) : isError && !statsDailyFormatted ? (
+                    <div role="alert" className="flex h-[7.375rem] min-w-[47.25rem] flex-col items-center justify-center gap-3 text-sm text-muted-foreground">
+                        <p>{tHome('feedback.loadFailed')}</p>
+                        <button type="button" onClick={() => void refetch()} className="rounded-xl border border-border px-3 py-1.5 font-medium text-foreground transition-colors hover:bg-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
+                            {tHome('feedback.retry')}
+                        </button>
                     </div>
                 ) : (
                     <div className="ml-auto w-fit">
-                    <div className="grid gap-1"
-                        style={{
-                            gridTemplateColumns: 'repeat(54, 0.875rem)',
-                            gridTemplateRows: 'repeat(7, 0.875rem)',
-                            gridAutoFlow: 'column'
-                        }}
-                    >
+                    <div className="activity-heatmap-grid grid gap-1">
                         {days.map((day) => {
                             if (day.isFuture) {
                                 return <div key={day.dateStr} />;
@@ -133,7 +143,7 @@ export function Activity() {
                                     type="button"
                                     aria-label={`${dateLabel}, ${t('requestCount')} ${requestCount}`}
                                     aria-pressed={isPinned}
-                                    className="h-full w-full cursor-pointer rounded-sm p-0 transition-all hover:scale-150 focus-visible:z-10 focus-visible:scale-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                                    className="activity-heatmap-cell group relative flex h-full w-full items-center justify-center rounded-sm p-0 focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                                     onMouseEnter={(event) => {
                                         if (!pinnedDateStr) showTooltip(day, event.currentTarget);
                                     }}
@@ -158,8 +168,13 @@ export function Activity() {
                                         setPinnedDateStr(null);
                                         hideTooltip();
                                     }}
-                                    style={{ backgroundColor: level === 0 ? 'var(--muted)' : `color-mix(in oklch, var(--primary) ${level * 25}%, var(--muted))` }}
-                                />
+                                >
+                                    <span
+                                        aria-hidden="true"
+                                        className="size-full rounded-sm transition-[transform,background-color] motion-safe:group-hover:scale-150 motion-safe:group-focus-visible:scale-150"
+                                        style={{ backgroundColor: level === 0 ? 'var(--muted)' : `color-mix(in oklch, var(--primary) ${level * 25}%, var(--muted))` }}
+                                    />
+                                </button>
                             );
                         })}
                     </div>

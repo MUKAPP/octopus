@@ -1,10 +1,11 @@
 import { lazyWithPreload } from './lazy-with-preload';
-import { lazy, ComponentType } from 'react';
+import type { ComponentType, LazyExoticComponent } from 'react';
 import type { LucideIcon } from 'lucide-react';
 import { Home, Radio, Sparkles, FolderTree, Settings, Logs } from 'lucide-react';
 
-export type LazyComponent = ReturnType<typeof lazy> & {
-    preload: () => Promise<{ default: ComponentType<Record<string, never>> }>
+export type LazyComponent = LazyExoticComponent<ComponentType<Record<string, never>>> & {
+    preload: () => Promise<{ default: ComponentType<Record<string, never>> }>;
+    retry: () => LazyExoticComponent<ComponentType<Record<string, never>>>;
 };
 
 export interface RouteConfig {

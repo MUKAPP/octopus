@@ -1,4 +1,4 @@
-import { motion } from 'motion/react';
+import { motion, useReducedMotion } from 'motion/react';
 import {
     Activity,
     MessageSquare,
@@ -9,17 +9,43 @@ import {
     ArrowUpFromLine,
     Rewind,
     DollarSign,
-    FastForward
+    FastForward,
+    Loader2,
 } from 'lucide-react';
 import { useTranslations } from 'use-intl';
 import { useStatsTotal } from '@/api/endpoints/stats';
 import { AnimatedNumber } from '@/components/common/AnimatedNumber';
-import { EASING } from '@/lib/animations/fluid-transitions';
+import { EASING, REDUCED_MOTION_TRANSITION } from '@/lib/animations/fluid-transitions';
 
 
 export function Total() {
-    const { data: statsTotalFormatted } = useStatsTotal();
+    const { data: statsTotalFormatted, isLoading, isError, refetch } = useStatsTotal();
     const t = useTranslations('home.total');
+    const tHome = useTranslations('home');
+    const shouldReduceMotion = useReducedMotion() ?? false;
+
+    if (isLoading && !statsTotalFormatted) {
+        return (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="col-span-full flex min-h-40 items-center justify-center rounded-3xl border border-card-border bg-card text-muted-foreground">
+                    <Loader2 className="size-8 animate-spin" role="status" aria-label={tHome('feedback.loading')} />
+                </div>
+            </div>
+        );
+    }
+
+    if (isError && !statsTotalFormatted) {
+        return (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div role="alert" className="col-span-full flex min-h-40 flex-col items-center justify-center gap-3 rounded-3xl border border-destructive/30 bg-card p-4 text-center text-sm text-muted-foreground">
+                    <p>{tHome('feedback.loadFailed')}</p>
+                    <button type="button" onClick={() => void refetch()} className="rounded-xl border border-border px-3 py-1.5 font-medium text-foreground transition-colors hover:bg-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
+                        {tHome('feedback.retry')}
+                    </button>
+                </div>
+            </div>
+        );
+    }
 
     const cards = [
         {
@@ -114,13 +140,21 @@ export function Total() {
 
     return (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {isError && (
+                <div role="alert" className="col-span-full flex items-center justify-between gap-3 rounded-2xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-muted-foreground">
+                    <span>{tHome('feedback.loadFailed')}</span>
+                    <button type="button" onClick={() => void refetch()} className="shrink-0 rounded-xl border border-border px-3 py-1.5 font-medium text-foreground transition-colors hover:bg-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
+                        {tHome('feedback.retry')}
+                    </button>
+                </div>
+            )}
             {cards.map((card, index) => (
                 <motion.section
                     key={index}
                     className="rounded-3xl bg-card border-card-border border p-5 text-card-foreground flex flex-row items-center gap-4"
-                    initial={{ opacity: 0, y: 20, filter: 'blur(8px)' }}
-                    animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
-                    transition={{
+                    initial={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: 20, filter: 'blur(8px)' }}
+                    animate={shouldReduceMotion ? { opacity: 1 } : { opacity: 1, y: 0, filter: 'blur(0px)' }}
+                    transition={shouldReduceMotion ? REDUCED_MOTION_TRANSITION : {
                         duration: 0.5,
                         ease: EASING.easeOutExpo,
                         delay: index * 0.08,

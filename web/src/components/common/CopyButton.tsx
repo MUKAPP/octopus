@@ -63,11 +63,21 @@ export function CopyIconButton({
         >
             <AnimatePresence mode="wait" initial={false}>
                 {copied ? (
-                    <motion.div key="check" initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }}>
+                    <motion.div
+                        key="check"
+                        initial={{ opacity: 0, scale: 0.96 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.96 }}
+                    >
                         <Check className={cn(checkIconClassName)} />
                     </motion.div>
                 ) : (
-                    <motion.div key="copy" initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }}>
+                    <motion.div
+                        key="copy"
+                        initial={{ opacity: 0, scale: 0.96 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.96 }}
+                    >
                         <Copy className={cn(copyIconClassName)} />
                     </motion.div>
                 )}

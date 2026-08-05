@@ -242,6 +242,7 @@ function MorphingDialogContent({
   return (
     <motion.div
       ref={containerRef}
+      id={`motion-ui-morphing-dialog-content-${uniqueId}`}
       layoutId={`dialog-${uniqueId}`}
       className={cn('overflow-hidden', className)}
       style={style}
@@ -319,6 +320,7 @@ function MorphingDialogTitle({
 
   return (
     <motion.div
+      id={`motion-ui-morphing-dialog-title-${uniqueId}`}
       layoutId={`dialog-title-container-${uniqueId}`}
       className={className}
       style={style}

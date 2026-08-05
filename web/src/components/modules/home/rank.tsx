@@ -8,8 +8,9 @@ import { useHomeViewStore, type RankSortMode } from '@/components/modules/home/s
 type ChannelData = NonNullable<ReturnType<typeof useChannelList>['data']>[number];
 
 export function Rank() {
-    const { data: channelData, isLoading } = useChannelList();
+    const { data: channelData, isLoading, isError, refetch } = useChannelList();
     const t = useTranslations('home.rank');
+    const tHome = useTranslations('home');
     const rankSortMode = useHomeViewStore((state) => state.rankSortMode);
     const setRankSortMode = useHomeViewStore((state) => state.setRankSortMode);
 
@@ -38,10 +39,20 @@ export function Rank() {
     };
 
     const renderList = (channels: ChannelData[], mode: RankSortMode) => {
-        if (isLoading) {
+        if (isLoading && !channelData) {
             return (
                 <div className="flex items-center justify-center py-8">
-                    <Loader2 className="size-8 animate-spin text-muted-foreground" role="status" aria-label="加载中" />
+                    <Loader2 className="size-8 animate-spin text-muted-foreground" role="status" aria-label={tHome('feedback.loading')} />
+                </div>
+            );
+        }
+        if (isError && !channelData) {
+            return (
+                <div role="alert" className="flex flex-col items-center justify-center gap-3 py-8 text-sm text-muted-foreground">
+                    <p>{tHome('feedback.loadFailed')}</p>
+                    <button type="button" onClick={() => void refetch()} className="rounded-xl border border-border px-3 py-1.5 font-medium text-foreground transition-colors hover:bg-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
+                        {tHome('feedback.retry')}
+                    </button>
                 </div>
             );
         }
@@ -136,6 +147,14 @@ export function Rank() {
                         <TabsTrigger value="tokens">{t('sortByTokens')}</TabsTrigger>
                     </TabsList>
                 </div>
+                {isError && channelData && (
+                    <div role="alert" className="mt-3 flex items-center justify-between gap-3 rounded-2xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-muted-foreground">
+                        <span>{tHome('feedback.loadFailed')}</span>
+                        <button type="button" onClick={() => void refetch()} className="shrink-0 rounded-xl border border-border px-3 py-1.5 font-medium text-foreground transition-colors hover:bg-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
+                            {tHome('feedback.retry')}
+                        </button>
+                    </div>
+                )}
                 <TabsContents>
                     <TabsContent value="cost">
                         {renderList(rankedByCost, 'cost')}

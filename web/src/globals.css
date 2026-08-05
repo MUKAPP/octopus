@@ -158,8 +158,8 @@ html.dark,
 @layer base {
   * {
     @apply border-border outline-ring/50;
-    scrollbar-width: none;
-    -ms-overflow-style: none;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
   }
 
   body {
@@ -191,5 +191,39 @@ html.dark,
     background: radial-gradient(circle at 60% 40%, oklch(0.82 0.03 200) 0%, transparent 70%);
     bottom: 10%;
     left: 5%;
+  }
+}
+
+*::-webkit-scrollbar {
+  width: 0.75rem;
+  height: 0.75rem;
+}
+
+*::-webkit-scrollbar-thumb {
+  background-color: var(--border);
+  border: 0.2rem solid transparent;
+  border-radius: 9999px;
+  background-clip: content-box;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.activity-heatmap-grid {
+  grid-template-columns: repeat(54, 0.875rem);
+  grid-template-rows: repeat(7, 0.875rem);
+  grid-auto-flow: column;
+}
+
+@media (pointer: coarse) {
+  .activity-heatmap-grid {
+    grid-template-columns: repeat(54, 2.75rem);
+    grid-template-rows: repeat(7, 2.75rem);
+  }
+
+  .activity-heatmap-cell > span {
+    width: 0.875rem;
+    height: 0.875rem;
   }
 }

@@ -5,9 +5,11 @@ import { useModelList } from '@/api/endpoints/model';
 import { ModelItem } from './Item';
 import { useSearchStore, useToolbarViewOptionsStore } from '@/components/modules/toolbar';
 import { VirtualizedGrid } from '@/components/common/VirtualizedGrid';
+import { ListRequestError } from '@/components/common/ListRequestError';
 
 export function Model() {
-    const { data: models, isLoading } = useModelList();
+    const { data: models, isLoading, isError, isFetching, refetch } = useModelList();
+    const commonT = useTranslations('common');
     const t = useTranslations('model');
     const pageKey = 'model' as const;
     const searchTerm = useSearchStore((s) => s.getSearchTerm(pageKey));
@@ -39,20 +41,40 @@ export function Model() {
     }, [sortedModels, searchTerm, filter]);
 
     return (
-        <VirtualizedGrid
-            items={visibleModels}
-            isLoading={isLoading}
-            layout={layout}
-            columns={{ default: 1, md: 2, lg: 3 }}
-            estimateItemHeight={112}
-            emptyState={
-                <div className="flex flex-col items-center gap-3 text-center text-muted-foreground">
-                    <SearchX className="size-10 opacity-40" aria-hidden="true" />
-                    <p className="text-sm">{models?.length ? t('noResults') : t('empty')}</p>
-                </div>
-            }
-            getItemKey={(model) => `model-${model.name}`}
-            renderItem={(model) => <ModelItem model={model} layout={layout} />}
-        />
+        <div className="relative h-full min-h-0">
+            <VirtualizedGrid
+                items={visibleModels}
+                isLoading={isLoading}
+                layout={layout}
+                columns={{ default: 1, md: 2, lg: 3 }}
+                estimateItemHeight={112}
+                emptyState={
+                    isError && models === undefined ? (
+                        <ListRequestError
+                            description={commonT('listRequestError')}
+                            retryLabel={commonT('listRetry')}
+                            onRetry={refetch}
+                            isRetrying={isFetching}
+                        />
+                    ) : (
+                        <div className="flex flex-col items-center gap-3 text-center text-muted-foreground">
+                            <SearchX className="size-10 opacity-40" aria-hidden="true" />
+                            <p className="text-sm">{models?.length ? t('noResults') : t('empty')}</p>
+                        </div>
+                    )
+                }
+                getItemKey={(model) => `model-${model.name}`}
+                renderItem={(model) => <ModelItem model={model} layout={layout} />}
+            />
+            {isError && models !== undefined && (
+                <ListRequestError
+                    description={commonT('listRequestError')}
+                    retryLabel={commonT('listRetry')}
+                    variant="banner"
+                    onRetry={refetch}
+                    isRetrying={isFetching}
+                />
+            )}
+        </div>
     );
 }

@@ -27,12 +27,14 @@ import { formatMoney } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 
+import { toast } from '@/components/common/Toast';
 export function CardContent({ channel, stats }: { channel: Channel; stats: StatsMetricsFormatted }) {
     const { setIsOpen } = useMorphingDialog();
     const updateChannel = useUpdateChannel();
     const deleteChannel = useDeleteChannel();
     const [isEditing, setIsEditing] = useState(false);
     const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
+    const [hasDeleteError, setHasDeleteError] = useState(false);
     const [formData, setFormData] = useState<ChannelFormData>({
         name: channel.name,
         type: channel.type,
@@ -158,6 +160,10 @@ export function CardContent({ channel, stats }: { channel: Channel; stats: Stats
             onSuccess: () => {
                 setIsEditing(false);
                 setIsOpen(false);
+            },
+            onError: (error) => {
+                const description = error instanceof Error ? error.message : String(error);
+                toast.error(t('toast.updateFailed'), { description });
             }
         });
     };
@@ -165,13 +171,20 @@ export function CardContent({ channel, stats }: { channel: Channel; stats: Stats
     const handleDeleteClick = () => {
         if (!isConfirmingDelete) {
             setIsConfirmingDelete(true);
+            setHasDeleteError(false);
             return;
         }
 
-        setIsOpen(false);
-        setTimeout(() => {
-            deleteChannel.mutate(channel.id);
-        }, 300);
+        deleteChannel.mutate(channel.id, {
+            onSuccess: () => {
+                setIsOpen(false);
+            },
+            onError: (error) => {
+                setHasDeleteError(true);
+                const description = error instanceof Error ? error.message : String(error);
+                toast.error(t('toast.deleteFailed'), { description });
+            }
+        });
     };
 
     return (
@@ -436,7 +449,14 @@ export function CardContent({ channel, stats }: { channel: Channel; stats: Stats
                             {/* 操作按钮 */}
                             <div className="grid gap-3 sm:grid-cols-2 pt-4">
                                 <Button
-                                    onClick={() => (isConfirmingDelete ? setIsConfirmingDelete(false) : setIsEditing(true))}
+                                    onClick={() => {
+                                        if (isConfirmingDelete) {
+                                            setIsConfirmingDelete(false);
+                                            setHasDeleteError(false);
+                                        } else {
+                                            setIsEditing(true);
+                                        }
+                                    }}
                                     variant={isConfirmingDelete ? 'secondary' : 'default'}
                                     className="w-full rounded-2xl h-12"
                                 >
@@ -452,7 +472,9 @@ export function CardContent({ channel, stats }: { channel: Channel; stats: Stats
                                     {deleteChannel.isPending
                                         ? t('actions.deleting')
                                         : isConfirmingDelete
-                                            ? t('actions.confirmDelete')
+                                            ? hasDeleteError
+                                                ? t('actions.retryDelete')
+                                                : t('actions.confirmDelete')
                                             : t('actions.delete')}
                                 </Button>
                             </div>

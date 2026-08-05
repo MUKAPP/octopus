@@ -5,9 +5,11 @@ import { GroupCard } from './Card';
 import { useGroupList } from '@/api/endpoints/group';
 import { useSearchStore, useToolbarViewOptionsStore } from '@/components/modules/toolbar';
 import { VirtualizedGrid } from '@/components/common/VirtualizedGrid';
+import { ListRequestError } from '@/components/common/ListRequestError';
 
 export function Group() {
-    const { data: groups, isLoading } = useGroupList();
+    const { data: groups, isLoading, isError, isFetching, refetch } = useGroupList();
+    const commonT = useTranslations('common');
     const t = useTranslations('group');
     const pageKey = 'group' as const;
     const searchTerm = useSearchStore((s) => s.getSearchTerm(pageKey));
@@ -36,19 +38,39 @@ export function Group() {
     }, [sortedGroups, searchTerm, filter]);
 
     return (
-        <VirtualizedGrid
-            items={visibleGroups}
-            isLoading={isLoading}
-            columns={{ default: 1, md: 2, lg: 3 }}
-            estimateItemHeight={520}
-            emptyState={
-                <div className="flex flex-col items-center gap-3 text-center text-muted-foreground">
-                    <SearchX className="size-10 opacity-40" aria-hidden="true" />
-                    <p className="text-sm">{groups?.length ? t('noResults') : t('empty')}</p>
-                </div>
-            }
-            getItemKey={(group, index) => group.id ?? `group-${index}`}
-            renderItem={(group) => <GroupCard group={group} />}
-        />
+        <div className="relative h-full min-h-0">
+            <VirtualizedGrid
+                items={visibleGroups}
+                isLoading={isLoading}
+                columns={{ default: 1, md: 2, lg: 3 }}
+                estimateItemHeight={520}
+                emptyState={
+                    isError && groups === undefined ? (
+                        <ListRequestError
+                            description={commonT('listRequestError')}
+                            retryLabel={commonT('listRetry')}
+                            onRetry={refetch}
+                            isRetrying={isFetching}
+                        />
+                    ) : (
+                        <div className="flex flex-col items-center gap-3 text-center text-muted-foreground">
+                            <SearchX className="size-10 opacity-40" aria-hidden="true" />
+                            <p className="text-sm">{groups?.length ? t('noResults') : t('empty')}</p>
+                        </div>
+                    )
+                }
+                getItemKey={(group, index) => group.id ?? `group-${index}`}
+                renderItem={(group) => <GroupCard group={group} />}
+            />
+            {isError && groups !== undefined && (
+                <ListRequestError
+                    variant="banner"
+                    description={commonT('listRequestError')}
+                    onRetry={refetch}
+                    retryLabel={commonT('listRetry')}
+                    isRetrying={isFetching}
+                />
+            )}
+        </div>
     );
 }

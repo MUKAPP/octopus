@@ -5,7 +5,7 @@ export function usePreload() {
     const preload = useCallback((routeId: string) => {
         const component = CONTENT_MAP[routeId];
         if (component?.preload) {
-            component.preload();
+            void component.preload().catch(() => undefined);
         }
     }, []);
 

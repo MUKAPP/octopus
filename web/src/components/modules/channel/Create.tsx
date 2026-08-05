@@ -8,6 +8,7 @@ import {
 import { useCreateChannel, ChannelType, AutoGroupType } from '@/api/endpoints/channel';
 import { useTranslations } from 'use-intl';
 import { ChannelForm, type ChannelFormData } from './Form';
+import { toast } from '@/components/common/Toast';
 
 export function CreateDialogContent() {
     const { setIsOpen } = useMorphingDialog();
@@ -91,6 +92,10 @@ export function CreateDialogContent() {
                         match_regex: '',
                     });
                     setIsOpen(false);
+                },
+                onError: (error) => {
+                    const description = error instanceof Error ? error.message : String(error);
+                    toast.error(t('toast.createFailed'), { description });
                 }
             });
     };

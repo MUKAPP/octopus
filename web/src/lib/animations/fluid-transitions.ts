@@ -31,10 +31,9 @@ export const SPRING = {
 } as const;
 
 /**
- * 磁性吸附进入动画
+ * 固定入场动画：普通模式保留层级反馈，页面内容缩放不低于 0.95。
  */
 export const ENTRANCE_VARIANTS = {
-    // 导航栏进入
     navbar: {
         initial: {
             opacity: 0,
@@ -49,10 +48,9 @@ export const ENTRANCE_VARIANTS = {
         },
     } as Variants,
 
-    // 主内容进入
     content: {
         initial: {
-            scale: 0.8,
+            scale: 0.95,
             opacity: 0,
         },
         animate: {
@@ -66,7 +64,6 @@ export const ENTRANCE_VARIANTS = {
         },
     } as Variants,
 
-    // 头部进入
     header: {
         initial: {
             y: 100,
@@ -84,6 +81,36 @@ export const ENTRANCE_VARIANTS = {
             },
         },
     } as Variants,
-
 };
 
+export const REDUCED_MOTION_ENTRANCE_VARIANTS = {
+    navbar: {
+        initial: { opacity: 0 },
+        animate: { opacity: 1, transition: { duration: 0.15, ease: EASING.easeOutCubic } },
+    } as Variants,
+    content: {
+        initial: { opacity: 0 },
+        animate: { opacity: 1, transition: { duration: 0.15, ease: EASING.easeOutCubic } },
+    } as Variants,
+    header: {
+        initial: { opacity: 0 },
+        animate: { opacity: 1, transition: { duration: 0.15, ease: EASING.easeOutCubic } },
+    } as Variants,
+};
+
+export const ROUTE_TITLE_VARIANTS: Variants = {
+    initial: (direction: number) => ({ y: 32 * direction, opacity: 0 }),
+    animate: { y: 0, opacity: 1 },
+    exit: (direction: number) => ({ y: -32 * direction, opacity: 0 }),
+};
+
+export const REDUCED_MOTION_ROUTE_TITLE_VARIANTS: Variants = {
+    initial: { opacity: 0 },
+    animate: { opacity: 1 },
+    exit: { opacity: 0 },
+};
+
+export const REDUCED_MOTION_TRANSITION = {
+    duration: 0.15,
+    ease: EASING.easeOutCubic,
+} as const;

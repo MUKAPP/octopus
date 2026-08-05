@@ -41,7 +41,10 @@
         "neverExpire": "永不过期",
         "daysLeft": "天后到期",
         "expired": "已过期",
-        "supportedModels": "支持的模型"
+        "supportedModels": "支持的模型",
+        "switchToLightTheme": "切换到浅色主题",
+        "switchToDarkTheme": "切换到深色主题",
+        "switchLanguage": "切换语言"
     },
     "navbar": {
         "ariaLabel": "主导航",
@@ -95,9 +98,16 @@
             "success": "复制成功",
             "failed": "复制失败",
             "noContent": "无可复制内容"
-        }
+        },
+        "listRequestError": "加载列表失败，请重试",
+        "listRetry": "重试"
     },
     "home": {
+        "feedback": {
+            "loading": "正在加载数据",
+            "loadFailed": "加载数据失败，请重试",
+            "retry": "重试"
+        },
         "activity": {
             "requestCount": "请求次数",
             "waitTime": "等待时间",
@@ -125,6 +135,7 @@
             "totalCost": "消费金额",
             "totalTokens": "Tokens 消耗",
             "timePeriod": "时间周期",
+            "cyclePeriod": "切换时间周期，当前：{period}",
             "metricType": {
                 "cost": "金额",
                 "count": "次数",
@@ -506,13 +517,21 @@
                 "saving": "保存中...",
                 "delete": "删除",
                 "confirmDelete": "确认删除",
-                "deleting": "删除中..."
+                "deleting": "删除中...",
+                "retryDelete": "重试删除"
+            },
+            "toast": {
+                "updateFailed": "保存渠道失败",
+                "deleteFailed": "删除渠道失败"
             }
         },
         "create": {
             "dialogTitle": "创建新渠道",
             "submit": "创建渠道",
-            "submitting": "创建中..."
+            "submitting": "创建中...",
+            "toast": {
+                "createFailed": "创建渠道失败"
+            }
         },
         "form": {
             "add": "添加",
@@ -565,5 +584,11 @@
             "matchRegexPlaceholder": "可选：用于匹配请求模型名称的正则表达式",
             "remark": "备注"
         }
+    },
+    "route": {
+        "loading": "正在加载页面…",
+        "loadFailed": "无法加载此页面",
+        "retry": "重试",
+        "notFound": "此页面不可用"
     }
 }

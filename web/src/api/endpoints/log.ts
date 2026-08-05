@@ -421,10 +421,14 @@ export function useLogs(options: { pageSize?: number } = {}) {
         logs,
         isConnected,
         error,
+        listError: logsQuery.error,
+        isError: logsQuery.isError,
+        isFetching: logsQuery.isFetching,
         hasMore: !!logsQuery.hasNextPage,
         isLoading: logsQuery.isLoading,
         isLoadingMore: logsQuery.isFetchingNextPage,
         loadMore,
+        refetch: logsQuery.refetch,
         clear,
     };
 }

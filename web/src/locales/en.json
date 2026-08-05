@@ -41,7 +41,10 @@
         "neverExpire": "Never",
         "daysLeft": "days left",
         "expired": "Expired",
-        "supportedModels": "Supported Models"
+        "supportedModels": "Supported Models",
+        "switchToLightTheme": "Switch to light theme",
+        "switchToDarkTheme": "Switch to dark theme",
+        "switchLanguage": "Switch language"
     },
     "navbar": {
         "ariaLabel": "Primary navigation",
@@ -95,9 +98,16 @@
             "success": "Copied",
             "failed": "Copy failed",
             "noContent": "Nothing to copy"
-        }
+        },
+        "listRequestError": "Failed to load the list. Please try again.",
+        "listRetry": "Retry"
     },
     "home": {
+        "feedback": {
+            "loading": "Loading data",
+            "loadFailed": "Failed to load data. Please try again.",
+            "retry": "Retry"
+        },
         "activity": {
             "requestCount": "Requests",
             "waitTime": "Wait Time",
@@ -125,6 +135,7 @@
             "totalCost": "Total Cost",
             "totalTokens": "Total Tokens",
             "timePeriod": "Time Period",
+            "cyclePeriod": "Change time period, current: {period}",
             "metricType": {
                 "cost": "Cost",
                 "count": "Count",
@@ -506,13 +517,21 @@
                 "saving": "Saving...",
                 "delete": "Delete",
                 "confirmDelete": "Confirm Delete",
-                "deleting": "Deleting..."
+                "deleting": "Deleting...",
+                "retryDelete": "Retry Delete"
+            },
+            "toast": {
+                "updateFailed": "Failed to save channel",
+                "deleteFailed": "Failed to delete channel"
             }
         },
         "create": {
             "dialogTitle": "Create New Channel",
             "submit": "Create Channel",
-            "submitting": "Creating..."
+            "submitting": "Creating...",
+            "toast": {
+                "createFailed": "Failed to create channel"
+            }
         },
         "form": {
             "add": "Add",
@@ -565,5 +584,11 @@
             "matchRegexPlaceholder": "Optional: regex pattern to match request model names",
             "remark": "Remark"
         }
+    },
+    "route": {
+        "loading": "Loading page…",
+        "loadFailed": "Unable to load this page",
+        "retry": "Retry",
+        "notFound": "This page is unavailable"
     }
 }

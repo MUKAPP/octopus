@@ -8,17 +8,24 @@ import dayjs from 'dayjs';
 import { AnimatedNumber } from '@/components/common/AnimatedNumber';
 import { Tabs, TabsList, TabsTrigger } from '@/components/animate-ui/components/animate/tabs';
 import { useHomeViewStore, type ChartMetricType, type ChartPeriod } from '@/components/modules/home/store';
+import { Loader2 } from 'lucide-react';
 
 export function StatsChart() {
     const PERIODS: readonly ChartPeriod[] = ['1', '7', '30'];
-    const { data: statsDaily } = useStatsDaily();
-    const { data: statsHourly } = useStatsHourly();
+    const dailyQuery = useStatsDaily();
+    const hourlyQuery = useStatsHourly();
+    const { data: statsDaily } = dailyQuery;
+    const { data: statsHourly } = hourlyQuery;
     const t = useTranslations('home.chart');
+    const tHome = useTranslations('home');
 
     const chartMetricType = useHomeViewStore((state) => state.chartMetricType);
     const setChartMetricType = useHomeViewStore((state) => state.setChartMetricType);
     const period = useHomeViewStore((state) => state.chartPeriod);
     const setChartPeriod = useHomeViewStore((state) => state.setChartPeriod);
+    const activeQuery = period === '1' ? hourlyQuery : dailyQuery;
+    const hasActiveData = activeQuery.data !== undefined;
+
 
     const sortedDaily = useMemo(() => {
         if (!statsDaily) return [];
@@ -119,9 +126,35 @@ export function StatsChart() {
         if (type === 'count') return 'url(#fillMetric2)';
         return 'url(#fillMetric3)';
     };
+    if (activeQuery.isLoading && !hasActiveData) {
+        return (
+            <div className="flex h-64 items-center justify-center rounded-3xl border border-card-border bg-card text-muted-foreground custom-shadow">
+                <Loader2 className="size-8 animate-spin" role="status" aria-label={tHome('feedback.loading')} />
+            </div>
+        );
+    }
+
+    if (activeQuery.isError && !hasActiveData) {
+        return (
+            <div role="alert" className="flex h-64 flex-col items-center justify-center gap-3 rounded-3xl border border-destructive/30 bg-card p-4 text-center text-sm text-muted-foreground custom-shadow">
+                <p>{tHome('feedback.loadFailed')}</p>
+                <button type="button" onClick={() => void activeQuery.refetch()} className="rounded-xl border border-border px-3 py-1.5 font-medium text-foreground transition-colors hover:bg-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
+                    {tHome('feedback.retry')}
+                </button>
+            </div>
+        );
+    }
 
     return (
         <div className="rounded-3xl bg-card border-card-border border pt-4 pb-0 text-card-foreground custom-shadow">
+            {activeQuery.isError && hasActiveData && (
+                <div role="alert" className="mx-4 mb-2 flex items-center justify-between gap-3 rounded-2xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-muted-foreground">
+                    <span>{tHome('feedback.loadFailed')}</span>
+                    <button type="button" onClick={() => void activeQuery.refetch()} className="shrink-0 rounded-xl border border-border px-3 py-1.5 font-medium text-foreground transition-colors hover:bg-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
+                        {tHome('feedback.retry')}
+                    </button>
+                </div>
+            )}
             <div className="px-4 pb-2 space-y-2">
                 <div className="flex justify-between items-center">
                     <h3 className="font-semibold text-base">{t('title')}</h3>
@@ -161,15 +194,17 @@ export function StatsChart() {
                             </div>
                         </div>
                     </div>
-                    <div
-                        className="flex gap-2 text-sm cursor-pointer hover:opacity-80 transition-opacity"
+                    <button
+                        type="button"
+                        className="flex gap-2 border-0 bg-transparent text-left text-sm cursor-pointer hover:opacity-80 transition-opacity focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                         onClick={handlePeriodClick}
+                        aria-label={t('cyclePeriod', { period: getPeriodLabel(period) })}
                     >
-                        <div>
-                            <div className="text-xs text-muted-foreground">{t('timePeriod')}</div>
-                            <div className="text-base font-semibold">{getPeriodLabel(period)}</div>
-                        </div>
-                    </div>
+                        <span>
+                            <span className="block text-xs text-muted-foreground">{t('timePeriod')}</span>
+                            <span className="block text-base font-semibold">{getPeriodLabel(period)}</span>
+                        </span>
+                    </button>
                 </div>
             </div>
             <ChartContainer config={chartConfig} className="h-40 w-full" >

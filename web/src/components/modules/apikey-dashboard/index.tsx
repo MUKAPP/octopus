@@ -121,15 +121,33 @@ export function APIKeyDashboard() {
                 <Logo size={48} />
                 <h1 className="ml-2 flex-1 truncate text-2xl font-bold tracking-tight">octopus</h1>
                 <div className="flex items-center gap-2">
-                    <Button variant="ghost" size="icon" onClick={toggleTheme} className="rounded-xl hover:bg-accent">
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={toggleTheme}
+                        aria-label={theme === 'dark' ? t('switchToLightTheme') : t('switchToDarkTheme')}
+                        className="rounded-xl hover:bg-accent"
+                    >
                         <Sun className="size-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
                         <Moon className="absolute size-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
                     </Button>
-                    <Button variant="ghost" size="icon" onClick={toggleLanguage} className="rounded-xl hover:bg-accent">
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={toggleLanguage}
+                        aria-label={t('switchLanguage')}
+                        className="rounded-xl hover:bg-accent"
+                    >
                         <Languages className="size-4" />
                     </Button>
                     <div className="w-px h-6 bg-border mx-1" />
-                    <Button variant="ghost" size="icon" onClick={logout} className="rounded-xl hover:bg-destructive/10 hover:text-destructive">
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={logout}
+                        aria-label={t('logout')}
+                        className="rounded-xl hover:bg-destructive/10 hover:text-destructive"
+                    >
                         <LogOut className="size-4" />
                     </Button>
                 </div>
@@ -193,7 +211,7 @@ export function APIKeyDashboard() {
                     </div>
 
                     {/* Row 2: Request Health */}
-                    <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-4">
                         <div className="rounded-2xl border bg-card p-5">
                             <div className="mb-3 flex items-center gap-2 text-xs text-muted-foreground">
                                 <CheckCircle className="size-4 text-chart-2" />
@@ -243,12 +261,12 @@ export function APIKeyDashboard() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {/* Token breakdown */}
                         <div className="rounded-2xl border bg-card p-6">
-                            <div className="flex items-center gap-2 mb-4">
+                            <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center">
                                 <Zap className="w-5 h-5 text-chart-4" />
                                 <span className="font-semibold">{t('totalToken')}</span>
-                                <span className="ml-auto text-2xl font-bold"><AnimatedNumber value={stats.total_token.formatted.value} /><span className="text-sm font-normal text-muted-foreground ml-1">{stats.total_token.formatted.unit}</span></span>
+                                <span className="text-2xl font-bold sm:ml-auto"><AnimatedNumber value={stats.total_token.formatted.value} /><span className="ml-1 text-sm font-normal text-muted-foreground">{stats.total_token.formatted.unit}</span></span>
                             </div>
-                            <div className="grid grid-cols-2 gap-4 pt-4 border-t border-border/50">
+                            <div className="grid grid-cols-1 gap-4 border-t border-border/50 pt-4 sm:grid-cols-2">
                                 <div>
                                     <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1"><ArrowDownToLine className="w-3.5 h-3.5" />{t('inputTokens')}</div>
                                     <div className="text-lg font-semibold"><AnimatedNumber value={stats.input_token.formatted.value} /><span className="text-xs font-normal text-muted-foreground ml-1">{stats.input_token.formatted.unit}</span></div>
@@ -261,12 +279,12 @@ export function APIKeyDashboard() {
                         </div>
                         {/* Cost breakdown */}
                         <div className="rounded-2xl border bg-card p-6">
-                            <div className="flex items-center gap-2 mb-4">
+                            <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center">
                                 <DollarSign className="w-5 h-5 text-chart-1" />
                                 <span className="font-semibold">{t('totalCost')}</span>
-                                <span className="ml-auto text-2xl font-bold"><AnimatedNumber value={stats.total_cost.formatted.value} /><span className="text-sm font-normal text-muted-foreground ml-1">{stats.total_cost.formatted.unit}</span></span>
+                                <span className="text-2xl font-bold sm:ml-auto"><AnimatedNumber value={stats.total_cost.formatted.value} /><span className="ml-1 text-sm font-normal text-muted-foreground">{stats.total_cost.formatted.unit}</span></span>
                             </div>
-                            <div className="grid grid-cols-2 gap-4 pt-4 border-t border-border/50">
+                            <div className="grid grid-cols-1 gap-4 border-t border-border/50 pt-4 sm:grid-cols-2">
                                 <div>
                                     <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1"><ArrowDownToLine className="w-3.5 h-3.5" />{t('inputCost')}</div>
                                     <div className="text-lg font-semibold"><AnimatedNumber value={stats.input_cost.formatted.value} /><span className="text-xs font-normal text-muted-foreground ml-1">{stats.input_cost.formatted.unit}</span></div>

@@ -5,9 +5,11 @@ import { useChannelList } from '@/api/endpoints/channel';
 import { Card } from './Card';
 import { useSearchStore, useToolbarViewOptionsStore } from '@/components/modules/toolbar';
 import { VirtualizedGrid } from '@/components/common/VirtualizedGrid';
+import { ListRequestError } from '@/components/common/ListRequestError';
 
 export function Channel() {
-    const { data: channelsData, isLoading } = useChannelList();
+    const { data: channelsData, isLoading, isError, isFetching, refetch } = useChannelList();
+    const commonT = useTranslations('common');
     const t = useTranslations('channel');
     const pageKey = 'channel' as const;
     const searchTerm = useSearchStore((s) => s.getSearchTerm(pageKey));
@@ -37,20 +39,40 @@ export function Channel() {
     }, [sortedChannels, searchTerm, filter]);
 
     return (
-        <VirtualizedGrid
-            items={visibleChannels}
-            isLoading={isLoading}
-            layout={layout}
-            columns={{ default: 1, md: 2, lg: 3 }}
-            estimateItemHeight={216}
-            emptyState={
-                <div className="flex flex-col items-center gap-3 text-center text-muted-foreground">
-                    <SearchX className="size-10 opacity-40" aria-hidden="true" />
-                    <p className="text-sm">{channelsData?.length ? t('noResults') : t('empty')}</p>
-                </div>
-            }
-            getItemKey={(item) => `channel-${item.raw.id}`}
-            renderItem={(item) => <Card channel={item.raw} stats={item.formatted} layout={layout} />}
-        />
+        <div className="relative h-full min-h-0">
+            <VirtualizedGrid
+                items={visibleChannels}
+                isLoading={isLoading}
+                layout={layout}
+                columns={{ default: 1, md: 2, lg: 3 }}
+                estimateItemHeight={216}
+                emptyState={
+                    isError && channelsData === undefined ? (
+                        <ListRequestError
+                            description={commonT('listRequestError')}
+                            retryLabel={commonT('listRetry')}
+                            onRetry={refetch}
+                            isRetrying={isFetching}
+                        />
+                    ) : (
+                        <div className="flex flex-col items-center gap-3 text-center text-muted-foreground">
+                            <SearchX className="size-10 opacity-40" aria-hidden="true" />
+                            <p className="text-sm">{channelsData?.length ? t('noResults') : t('empty')}</p>
+                        </div>
+                    )
+                }
+                getItemKey={(item) => `channel-${item.raw.id}`}
+                renderItem={(item) => <Card channel={item.raw} stats={item.formatted} layout={layout} />}
+            />
+            {isError && channelsData !== undefined && (
+                <ListRequestError
+                    variant="banner"
+                    description={commonT('listRequestError')}
+                    onRetry={refetch}
+                    retryLabel={commonT('listRetry')}
+                    isRetrying={isFetching}
+                />
+            )}
+        </div>
     );
 }

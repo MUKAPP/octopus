@@ -1,4 +1,5 @@
 import { createRoot } from 'react-dom/client';
+import { MotionConfig } from 'motion/react';
 import { AppContainer } from '@/components/app';
 import { ServiceWorkerRegister } from '@/components/sw-register';
 import { TooltipProvider } from '@/components/animate-ui/components/animate/tooltip';
@@ -9,7 +10,7 @@ import { ThemeProvider } from '@/provider/theme';
 import './globals.css';
 
 createRoot(document.getElementById('root')!).render(
-  <>
+  <MotionConfig reducedMotion="user">
     <ServiceWorkerRegister />
     <ThemeProvider>
       <QueryProvider>
@@ -21,5 +22,5 @@ createRoot(document.getElementById('root')!).render(
         </LocaleProvider>
       </QueryProvider>
     </ThemeProvider>
-  </>,
+  </MotionConfig>
 );

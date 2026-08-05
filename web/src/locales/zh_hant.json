@@ -41,7 +41,10 @@
         "neverExpire": "永不過期",
         "daysLeft": "天後到期",
         "expired": "已過期",
-        "supportedModels": "支援的模型"
+        "supportedModels": "支援的模型",
+        "switchToLightTheme": "切換至淺色主題",
+        "switchToDarkTheme": "切換至深色主題",
+        "switchLanguage": "切換語言"
     },
     "navbar": {
         "ariaLabel": "主導覽",
@@ -95,9 +98,16 @@
             "success": "複製成功",
             "failed": "複製失敗",
             "noContent": "無可複製內容"
-        }
+        },
+        "listRequestError": "載入列表失敗，請重試",
+        "listRetry": "重試"
     },
     "home": {
+        "feedback": {
+            "loading": "正在載入資料",
+            "loadFailed": "載入資料失敗，請重試",
+            "retry": "重試"
+        },
         "activity": {
             "requestCount": "請求次數",
             "waitTime": "等待時間",
@@ -125,6 +135,7 @@
             "totalCost": "消費金額",
             "totalTokens": "Tokens 消耗",
             "timePeriod": "時間週期",
+            "cyclePeriod": "切換時間週期，目前：{period}",
             "metricType": {
                 "cost": "金額",
                 "count": "次數",
@@ -506,13 +517,21 @@
                 "saving": "儲存中...",
                 "delete": "刪除",
                 "confirmDelete": "確認刪除",
-                "deleting": "刪除中..."
+                "deleting": "刪除中...",
+                "retryDelete": "重試刪除"
+            },
+            "toast": {
+                "updateFailed": "儲存供應源失敗",
+                "deleteFailed": "刪除供應源失敗"
             }
         },
         "create": {
             "dialogTitle": "建立新供應源",
             "submit": "建立供應源",
-            "submitting": "建立中..."
+            "submitting": "建立中...",
+            "toast": {
+                "createFailed": "建立供應源失敗"
+            }
         },
         "form": {
             "add": "新增",
@@ -565,5 +584,11 @@
             "matchRegexPlaceholder": "可選：用於匹配請求模型名稱的正規表示式",
             "remark": "備註"
         }
+    },
+    "route": {
+        "loading": "正在載入頁面…",
+        "loadFailed": "無法載入此頁面",
+        "retry": "重試",
+        "notFound": "此頁面不可用"
     }
 }

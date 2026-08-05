@@ -1,6 +1,6 @@
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
 import { ReactNode, isValidElement, Children } from 'react';
-import { EASING } from '@/lib/animations/fluid-transitions';
+import { EASING, REDUCED_MOTION_TRANSITION } from '@/lib/animations/fluid-transitions';
 
 interface PageWrapperProps {
   children: ReactNode;
@@ -24,6 +24,7 @@ function getDiminishingDelay(index: number): number {
  */
 export function PageWrapper({ children, className = 'space-y-6' }: PageWrapperProps) {
   const childArray = Children.toArray(children);
+  const shouldReduceMotion = useReducedMotion() ?? false;
 
   return (
     <motion.div className={className}>
@@ -34,19 +35,19 @@ export function PageWrapper({ children, className = 'space-y-6' }: PageWrapperPr
           return (
             <motion.div
               key={key}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{
+              initial={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: 20 }}
+              animate={shouldReduceMotion ? { opacity: 1 } : { opacity: 1, y: 0 }}
+              exit={shouldReduceMotion ? { opacity: 0 } : {
                 opacity: 0,
                 scale: 0.95,
                 transition: { duration: 0.3 }
               }}
-              transition={{
+              transition={shouldReduceMotion ? REDUCED_MOTION_TRANSITION : {
                 duration: 0.5,
                 ease: EASING.easeOutExpo,
                 delay: getDiminishingDelay(index),
               }}
-              layout
+              layout={!shouldReduceMotion}
             >
               {child}
             </motion.div>
