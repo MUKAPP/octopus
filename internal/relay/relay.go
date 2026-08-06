@@ -18,6 +18,7 @@ import (
 	"github.com/bestruirui/octopus/internal/relay/balancer"
 	"github.com/bestruirui/octopus/internal/server/resp"
 	"github.com/bestruirui/octopus/internal/utils/log"
+	"github.com/bestruirui/octopus/internal/utils/snowflake"
 	"github.com/gin-gonic/gin"
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
@@ -110,6 +111,8 @@ func newRelayRun(c *gin.Context, inboundType llm.APIFormat, inAdapter transforme
 
 func (r *relayRun) run() {
 	ctx := r.c.Request.Context()
+	r.registerActive()
+	defer r.removeActive()
 	var lastErr error
 
 	for r.iter.Next() {
@@ -147,6 +150,25 @@ func (r *relayRun) run() {
 	}
 	r.metrics.Save(ctx, false, lastErr, r.iter.Attempts())
 	r.writeFinalError(ctx, lastErr)
+}
+
+// registerActive 在请求开始时登记为进行中状态；ID 同时用于最终 RelayLog，便于前端关联移除。
+func (r *relayRun) registerActive() {
+	apiKeyName := ""
+	if apiKey, err := op.APIKeyGet(r.metrics.APIKeyID, r.c.Request.Context()); err == nil {
+		apiKeyName = apiKey.Name
+	}
+	r.metrics.ID = snowflake.GenerateID()
+	op.RelayActiveAdd(op.ActiveRelayRequest{
+		ID:                r.metrics.ID,
+		Time:              r.metrics.StartTime.Unix(),
+		RequestModelName:  r.metrics.RequestModel,
+		RequestAPIKeyName: apiKeyName,
+	})
+}
+
+func (r *relayRun) removeActive() {
+	op.RelayActiveRemove(r.metrics.ID)
 }
 
 // writeFinalError 以客户端 API 格式返回最后一次上游 HTTP 错误。
@@ -237,6 +259,7 @@ func (r *relayRun) prepareAttempt() (*relayAttempt, error) {
 	log.Infof("request model %s, mode: %d, forwarding to channel: %s model: %s (attempt %d/%d, sticky=%t)",
 		r.metrics.RequestModel, r.group.Mode, channel.Name, item.ModelName,
 		r.iter.Index()+1, r.iter.Len(), r.iter.IsSticky())
+	op.RelayActiveUpdate(r.metrics.ID, channel.Name, item.ModelName)
 
 	return &relayAttempt{
 		relayRun:   r,

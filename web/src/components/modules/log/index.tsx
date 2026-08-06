@@ -1,6 +1,7 @@
 import { useCallback, useMemo } from 'react';
 import { useLogs } from '@/api/endpoints/log';
 import { LogCard } from './Item';
+import { ActiveRequests } from './ActiveRequests';
 import { FileClock, Loader2 } from 'lucide-react';
 import { useTranslations } from 'use-intl';
 import { VirtualizedGrid } from '@/components/common/VirtualizedGrid';
@@ -14,7 +15,7 @@ import { ListRequestError } from '@/components/common/ListRequestError';
  */
 export function Log() {
     const t = useTranslations('log');
-    const { logs, hasMore, isLoading, isLoadingMore, isError, listError, isFetching, loadMore, refetch } = useLogs({ pageSize: 10 });
+    const { logs, activeRequests, hasMore, isLoading, isLoadingMore, isError, listError, isFetching, loadMore, refetch } = useLogs({ pageSize: 10 });
     const commonT = useTranslations('common');
     const hasListError = isError || Boolean(listError);
 
@@ -42,45 +43,48 @@ export function Log() {
         return null;
     }, [hasMore, isLoading, isLoadingMore, logs.length, t]);
     return (
-        <div className="relative h-full min-h-0">
-            <VirtualizedGrid
-                items={logs}
-                isLoading={isLoading}
-                layout="list"
-                columns={{ default: 1 }}
-                estimateItemHeight={80}
-                emptyState={
-                    hasListError && logs.length === 0 ? (
-                        <ListRequestError
-                            description={commonT('listRequestError')}
-                            retryLabel={commonT('listRetry')}
-                            onRetry={refetch}
-                            isRetrying={isFetching}
-                        />
-                    ) : (
-                        <div className="flex flex-col items-center gap-3 text-center text-muted-foreground">
-                            <FileClock className="size-10 opacity-40" aria-hidden="true" />
-                            <p className="text-sm">{t('list.empty')}</p>
-                        </div>
-                    )
-                }
-                overscan={8}
-                getItemKey={(log) => `log-${log.id}`}
-                renderItem={(log) => <LogCard log={log} />}
-                footer={footer}
-                onReachEnd={handleReachEnd}
-                reachEndEnabled={canLoadMore}
-                reachEndOffset={2}
-            />
-            {hasListError && logs.length > 0 && (
-                <ListRequestError
-                    variant="banner"
-                    description={commonT('listRequestError')}
-                    retryLabel={commonT('listRetry')}
-                    onRetry={refetch}
-                    isRetrying={isFetching}
+        <div className="flex h-full min-h-0 flex-col gap-2">
+            <ActiveRequests requests={activeRequests} />
+            <div className="relative min-h-0 flex-1">
+                <VirtualizedGrid
+                    items={logs}
+                    isLoading={isLoading}
+                    layout="list"
+                    columns={{ default: 1 }}
+                    estimateItemHeight={80}
+                    emptyState={
+                        hasListError && logs.length === 0 ? (
+                            <ListRequestError
+                                description={commonT('listRequestError')}
+                                retryLabel={commonT('listRetry')}
+                                onRetry={refetch}
+                                isRetrying={isFetching}
+                            />
+                        ) : (
+                            <div className="flex flex-col items-center gap-3 text-center text-muted-foreground">
+                                <FileClock className="size-10 opacity-40" aria-hidden="true" />
+                                <p className="text-sm">{t('list.empty')}</p>
+                            </div>
+                        )
+                    }
+                    overscan={8}
+                    getItemKey={(log) => `log-${log.id}`}
+                    renderItem={(log) => <LogCard log={log} />}
+                    footer={footer}
+                    onReachEnd={handleReachEnd}
+                    reachEndEnabled={canLoadMore}
+                    reachEndOffset={2}
                 />
-            )}
+                {hasListError && logs.length > 0 && (
+                    <ListRequestError
+                        variant="banner"
+                        description={commonT('listRequestError')}
+                        retryLabel={commonT('listRetry')}
+                        onRetry={refetch}
+                        isRetrying={isFetching}
+                    />
+                )}
+            </div>
         </div>
     );
 }

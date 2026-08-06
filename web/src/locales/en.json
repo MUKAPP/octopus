@@ -447,6 +447,9 @@
             "empty": "No request logs yet",
             "noMore": "No more logs"
         },
+        "active": {
+            "title": "In-progress Requests"
+        },
         "card": {
             "error": "Error",
             "errorInfo": "Error Info",

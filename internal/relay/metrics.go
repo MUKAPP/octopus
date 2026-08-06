@@ -15,6 +15,7 @@ import (
 
 // RelayMetrics 负责最终的日志收集与持久化
 type RelayMetrics struct {
+	ID           int64 // Snowflake ID，进行中请求与最终日志共用
 	APIKeyID     int
 	RequestModel string
 	StartTime    time.Time
@@ -131,6 +132,7 @@ func finalChannel(attempts []model.ChannelAttempt) (int, string, float64) {
 func (m *RelayMetrics) saveLog(ctx context.Context, err error, duration time.Duration, attempts []model.ChannelAttempt, channelID int, channelName string, rateMultiplier float64) {
 	cachedTokens := int(m.CachedTokens)
 	relayLog := model.RelayLog{
+		ID:               m.ID,
 		Time:             m.StartTime.Unix(),
 		RequestModelName: m.RequestModel,
 		ChannelName:      channelName,

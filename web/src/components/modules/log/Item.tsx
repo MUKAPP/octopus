@@ -8,6 +8,7 @@ import { githubLightTheme } from '@uiw/react-json-view/githubLight';
 import { useTheme } from '@/provider/theme';
 import { type RelayLog, type ChannelAttempt } from '@/api/endpoints/log';
 import { getModelIcon } from '@/lib/model-icons';
+import { formatDuration } from './format';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { CopyIconButton } from '@/components/common/CopyButton';
@@ -32,11 +33,6 @@ function formatTime(timestamp: number): string {
         minute: '2-digit',
         second: '2-digit',
     });
-}
-
-function formatDuration(ms: number): string {
-    if (ms < 1000) return `${ms}ms`;
-    return `${(ms / 1000).toFixed(2)}s`;
 }
 
 function formatRateMultiplier(rate: number): string {

@@ -447,6 +447,9 @@
             "empty": "暂无请求日志",
             "noMore": "没有更多日志了"
         },
+        "active": {
+            "title": "进行中的请求"
+        },
         "card": {
             "error": "错误",
             "errorInfo": "错误信息",

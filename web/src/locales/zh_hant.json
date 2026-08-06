@@ -447,6 +447,9 @@
             "empty": "暫無請求日誌",
             "noMore": "沒有更多日誌了"
         },
+        "active": {
+            "title": "進行中的請求"
+        },
         "card": {
             "error": "錯誤",
             "errorInfo": "錯誤訊息",

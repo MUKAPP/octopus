@@ -61,6 +61,18 @@ export interface LogListParams {
 }
 
 /**
+ * 进行中请求数据
+ */
+export interface ActiveRelayRequest {
+    id: number;                    // Snowflake ID，与完成后的日志 ID 一致
+    time: number;                  // 开始时间戳（秒）
+    request_model_name: string;    // 请求模型名称
+    request_api_key_name?: string; // 请求使用的 API Key 名称
+    channel_name?: string;         // 当前尝试的渠道名称
+    actual_model_name?: string;    // 当前尝试的实际上游模型名称
+}
+
+/**
  * 清空日志 Hook
  * 
  * @example
@@ -105,6 +117,7 @@ export function useLogs(options: { pageSize?: number } = {}) {
 
     const [isConnected, setIsConnected] = useState(false);
     const [error, setError] = useState<Error | null>(null);
+    const [activeRequests, setActiveRequests] = useState<ActiveRelayRequest[]>([]);
     const eventSourceRef = useRef<EventSource | null>(null);
     const reconnectAttemptRef = useRef(0);
     const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -195,6 +208,37 @@ export function useLogs(options: { pageSize?: number } = {}) {
             }
         );
     }, [pageSize, queryClient]);
+
+    const applyActiveEvent = useCallback((event: { type: 'start' | 'update' | 'end'; request?: ActiveRelayRequest; id?: number }) => {
+        setActiveRequests((prev) => {
+            switch (event.type) {
+                case 'start':
+                    if (!event.request) return prev;
+                    if (prev.some((r) => r.id === event.request!.id)) return prev;
+                    return [...prev, event.request!];
+                case 'update': {
+                    if (!event.request) return prev;
+                    const exists = prev.some((r) => r.id === event.request!.id);
+                    if (!exists) return [...prev, event.request!];
+                    return prev.map((r) => (r.id === event.request!.id ? event.request! : r));
+                }
+                case 'end':
+                    if (event.id === undefined) return prev;
+                    return prev.filter((r) => r.id !== event.id);
+                default:
+                    return prev;
+            }
+        });
+    }, []);
+
+    const fetchActive = useCallback(async () => {
+        try {
+            const result = await apiClient.get<ActiveRelayRequest[] | null>('/api/v1/log/active');
+            setActiveRequests(result ?? []);
+        } catch (e) {
+            logger.error('获取进行中请求失败:', e);
+        }
+    }, []);
 
     const catchUpLatestLogs = useCallback(async () => {
         if (catchUpInFlightRef.current) return;
@@ -300,6 +344,7 @@ export function useLogs(options: { pageSize?: number } = {}) {
                     setError(null);
                     reconnectAttemptRef.current = 0;
                     needsReconnectRef.current = false;
+                    void fetchActive();
                     if (shouldCatchUp) {
                         void catchUpLatestLogs();
                     }
@@ -309,10 +354,41 @@ export function useLogs(options: { pageSize?: number } = {}) {
                     try {
                         const log: RelayLog = JSON.parse(event.data);
                         prependLogs([log]);
+                        // 请求结束的日志到达时同步移除进行中条目（active_end 事件丢失时的兜底）
+                        setActiveRequests((prev) => prev.filter((r) => r.id !== log.id));
                     } catch (e) {
                         logger.error('解析日志数据失败:', e);
                     }
                 };
+
+                eventSource.addEventListener('active_start', (event) => {
+                    try {
+                        const request: ActiveRelayRequest = JSON.parse(event.data);
+                        applyActiveEvent({ type: 'start', request });
+                    } catch (e) {
+                        logger.error('解析进行中请求事件失败:', e);
+                    }
+                });
+
+                eventSource.addEventListener('active_update', (event) => {
+                    try {
+                        const request: ActiveRelayRequest = JSON.parse(event.data);
+                        applyActiveEvent({ type: 'update', request });
+                    } catch (e) {
+                        logger.error('解析进行中请求事件失败:', e);
+                    }
+                });
+
+                eventSource.addEventListener('active_end', (event) => {
+                    try {
+                        const data: { id?: number } = JSON.parse(event.data);
+                        if (typeof data.id === 'number') {
+                            applyActiveEvent({ type: 'end', id: data.id });
+                        }
+                    } catch (e) {
+                        logger.error('解析进行中请求事件失败:', e);
+                    }
+                });
 
                 eventSource.onerror = () => {
                     if (cancelled || generation !== connectGenerationRef.current) return;
@@ -352,6 +428,7 @@ export function useLogs(options: { pageSize?: number } = {}) {
 
             // 无论 SSE 是否可用，先用列表接口补齐，避免长时间后台后“既不推也不拉”
             void catchUpLatestLogs();
+            void fetchActive();
 
             if (shouldForceReconnect) {
                 // 切回前台后立刻重建连接，并补拉断线期间的日志
@@ -411,7 +488,7 @@ export function useLogs(options: { pageSize?: number } = {}) {
                 window.removeEventListener('pageshow', handleFocusOrOnline);
             }
         };
-    }, [catchUpLatestLogs, pageSize, prependLogs]);
+    }, [applyActiveEvent, catchUpLatestLogs, fetchActive, pageSize, prependLogs]);
 
     const clear = useCallback(() => {
         queryClient.removeQueries({ queryKey: logsInfiniteQueryKey(pageSize) });
@@ -419,6 +496,7 @@ export function useLogs(options: { pageSize?: number } = {}) {
 
     return {
         logs,
+        activeRequests,
         isConnected,
         error,
         listError: logsQuery.error,

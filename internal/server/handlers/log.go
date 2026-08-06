@@ -22,6 +22,10 @@ func init() {
 				Handle(listLog),
 		).
 		AddRoute(
+			router.NewRoute("/active", http.MethodGet).
+				Handle(activeLog),
+		).
+		AddRoute(
 			router.NewRoute("/clear", http.MethodDelete).
 				Handle(clearLog),
 		).
@@ -75,6 +79,10 @@ func listLog(c *gin.Context) {
 	resp.Success(c, logs)
 }
 
+func activeLog(c *gin.Context) {
+	resp.Success(c, op.RelayActiveList())
+}
+
 func clearLog(c *gin.Context) {
 	if err := op.RelayLogClear(c.Request.Context()); err != nil {
 		resp.Error(c, http.StatusInternalServerError, err.Error())
@@ -113,6 +121,8 @@ func streamLog(c *gin.Context) {
 
 	logChan := op.RelayLogSubscribe()
 	defer op.RelayLogUnsubscribe(logChan)
+	activeChan := op.RelayActiveSubscribe()
+	defer op.RelayActiveUnsubscribe(activeChan)
 
 	ctx := c.Request.Context()
 
@@ -122,6 +132,36 @@ func streamLog(c *gin.Context) {
 			return
 		case <-heartbeatTicker.C:
 			if _, err := c.Writer.Write([]byte(": ping\n\n")); err != nil {
+				return
+			}
+			c.Writer.Flush()
+		case active, ok := <-activeChan:
+			if !ok {
+				return
+			}
+			var event []byte
+			switch active.Type {
+			case op.RelayActiveEventStart:
+				data, err := json.Marshal(active.Request)
+				if err != nil {
+					continue
+				}
+				event = []byte(fmt.Sprintf("event: active_start\ndata: %s\n\n", data))
+			case op.RelayActiveEventUpdate:
+				data, err := json.Marshal(active.Request)
+				if err != nil {
+					continue
+				}
+				event = []byte(fmt.Sprintf("event: active_update\ndata: %s\n\n", data))
+			case op.RelayActiveEventEnd:
+				data, _ := json.Marshal(struct {
+					ID int64 `json:"id"`
+				}{ID: active.ID})
+				event = []byte(fmt.Sprintf("event: active_end\ndata: %s\n\n", data))
+			default:
+				continue
+			}
+			if _, err := c.Writer.Write(event); err != nil {
 				return
 			}
 			c.Writer.Flush()
