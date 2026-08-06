@@ -218,12 +218,7 @@ html.dark,
 
 @media (pointer: coarse) {
   .activity-heatmap-grid {
-    grid-template-columns: repeat(54, 2.75rem);
-    grid-template-rows: repeat(7, 2.75rem);
-  }
-
-  .activity-heatmap-cell > span {
-    width: 0.875rem;
-    height: 0.875rem;
+    grid-template-columns: repeat(54, 1.25rem);
+    grid-template-rows: repeat(7, 1.25rem);
   }
 }

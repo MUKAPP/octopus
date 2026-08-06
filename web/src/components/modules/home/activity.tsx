@@ -1,5 +1,5 @@
 import { useStatsDaily, type StatsDailyFormatted } from '@/api/endpoints/stats';
-import { useMemo, useRef, useLayoutEffect, useState, useCallback } from 'react';
+import { useMemo, useRef, useLayoutEffect, useState, useCallback, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslations } from 'use-intl';
 import { Fragment } from 'react';
@@ -27,6 +27,7 @@ function getActivityLevel(value: number): number {
 export function Activity() {
     const { data: statsDailyFormatted, isLoading, isError, refetch } = useStatsDaily();
     const scrollRef = useRef<HTMLDivElement>(null);
+    const containerRef = useRef<HTMLDivElement>(null);
     const t = useTranslations('home.activity');
     const tHome = useTranslations('home');
 
@@ -96,8 +97,20 @@ export function Activity() {
         return () => window.removeEventListener('resize', scrollToRight);
     }, [days, isLoading, checkScroll]);
 
+    useEffect(() => {
+        if (!pinnedDateStr) return;
+        const handlePointerDown = (event: PointerEvent) => {
+            if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+                setPinnedDateStr(null);
+                hideTooltip();
+            }
+        };
+        document.addEventListener('pointerdown', handlePointerDown);
+        return () => document.removeEventListener('pointerdown', handlePointerDown);
+    }, [pinnedDateStr, hideTooltip]);
+
     return (
-        <div className="rounded-3xl bg-card border-card-border border text-card-foreground custom-shadow">
+        <div ref={containerRef} className="rounded-3xl bg-card border-card-border border text-card-foreground custom-shadow">
             {isError && statsDailyFormatted && (
                 <div role="alert" className="mx-4 mt-4 flex items-center justify-between gap-3 rounded-2xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-muted-foreground">
                     <span>{tHome('feedback.loadFailed')}</span>
