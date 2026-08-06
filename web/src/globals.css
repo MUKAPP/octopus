@@ -158,8 +158,8 @@ html.dark,
 @layer base {
   * {
     @apply border-border outline-ring/50;
-    scrollbar-width: thin;
-    scrollbar-color: var(--border) transparent;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
   }
 
   body {
@@ -192,22 +192,6 @@ html.dark,
     bottom: 10%;
     left: 5%;
   }
-}
-
-*::-webkit-scrollbar {
-  width: 0.75rem;
-  height: 0.75rem;
-}
-
-*::-webkit-scrollbar-thumb {
-  background-color: var(--border);
-  border: 0.2rem solid transparent;
-  border-radius: 9999px;
-  background-clip: content-box;
-}
-
-*::-webkit-scrollbar-track {
-  background: transparent;
 }
 
 .activity-heatmap-grid {
