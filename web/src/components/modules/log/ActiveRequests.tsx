@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { ArrowRight, Clock, Loader2 } from 'lucide-react';
 import { useTranslations } from 'use-intl';
@@ -68,6 +68,31 @@ function ActiveRequestCard({ request }: { request: ActiveRelayRequest }) {
  */
 export function ActiveRequests({ requests }: { requests: ActiveRelayRequest[] }) {
     const t = useTranslations('log.active');
+    const scrollRef = useRef<HTMLDivElement>(null);
+    const [maskImage, setMaskImage] = useState('none');
+
+    const checkScroll = useCallback(() => {
+        if (!scrollRef.current) return;
+        const { scrollLeft, scrollWidth, clientWidth } = scrollRef.current;
+        const isStart = scrollLeft <= 1;
+        const isEnd = Math.abs(scrollWidth - clientWidth - scrollLeft) <= 1;
+
+        if (isStart && isEnd) {
+            setMaskImage('none');
+        } else if (isStart) {
+            setMaskImage('linear-gradient(to left, transparent, rgba(0,0,0,0) 10px, black 40px)');
+        } else if (isEnd) {
+            setMaskImage('linear-gradient(to right, transparent, rgba(0,0,0,0) 10px, black 40px)');
+        } else {
+            setMaskImage('linear-gradient(to right, transparent, rgba(0,0,0,0) 10px, black 40px, black calc(100% - 40px), rgba(0,0,0,0) calc(100% - 10px), transparent)');
+        }
+    }, []);
+
+    useLayoutEffect(() => {
+        checkScroll();
+        window.addEventListener('resize', checkScroll);
+        return () => window.removeEventListener('resize', checkScroll);
+    }, [requests.length, checkScroll]);
 
     if (requests.length === 0) return null;
 
@@ -79,7 +104,12 @@ export function ActiveRequests({ requests }: { requests: ActiveRelayRequest[] })
                     {requests.length}
                 </span>
             </div>
-            <div className="flex gap-2 overflow-x-auto pb-1">
+            <div
+                ref={scrollRef}
+                onScroll={checkScroll}
+                className="flex gap-2 overflow-x-auto pb-1"
+                style={{ maskImage, WebkitMaskImage: maskImage }}
+            >
                 <AnimatePresence initial={false}>
                     {requests.map((request) => (
                         <motion.div
