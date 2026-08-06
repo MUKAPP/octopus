@@ -13,7 +13,7 @@
 
 ## 环境与命令
 
-- `go.mod` 声明 Go `1.26.0`，并将 `github.com/looplj/axonhub/llm` 替换为相邻目录 `../axonhub/llm`。运行 Go 命令前确认该本地模块可用；不要删除或改为远程依赖以绕过此约束。
+- `go.mod` 声明 Go `1.26.0`，通过远程模块依赖 `github.com/looplj/axonhub/llm`；CI 构建前执行 `go get github.com/looplj/axonhub/llm@unstable` 以跟随上游最新代码。
 - 前端使用 pnpm，锁文件为 `web/pnpm-lock.yaml`。在 `web/` 中执行：
   - `pnpm install`：安装依赖。
   - `pnpm dev`：启动 Vite 开发服务器；可用 `VITE_PROXY_TARGET` 改写后端代理目标。

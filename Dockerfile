@@ -1,8 +1,6 @@
 # syntax=docker/dockerfile:1.7
 
-# Build context must include sibling axonhub for go.mod replace:
-#   docker compose build context = /www/wwwroot/octopus.mukapp.top
-# with octopus sources under ./src and axonhub under ./axonhub
+# AxonHub is resolved as a Go module from go.mod.
 
 ARG NODE_VERSION=22
 ARG GO_VERSION=1.26
@@ -25,7 +23,6 @@ ENV CGO_ENABLED=0 \
     GOOS=linux \
     GOFLAGS=-mod=mod
 COPY src/go.mod src/go.sum ./octopus/
-COPY axonhub ./axonhub
 WORKDIR /workspace/octopus
 RUN --mount=type=cache,target=/go/pkg/mod \
     go mod download

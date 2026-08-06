@@ -32,20 +32,21 @@ jobs:
     timeout-minutes: 90
 
     steps:
-      # 根 Dockerfile 以当前仓库和 axonhub 的父目录作为构建上下文。
+      # Dockerfile builds from the octopus checkout under ./src.
       - name: Checkout octopus
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
         with:
           persist-credentials: false
           path: src
-
-      - name: Checkout axonhub
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+      - name: Set up Go for latest AxonHub module
+        uses: actions/setup-go@v6
         with:
-          repository: looplj/axonhub
-          ref: 213b8c888ae6f7d297ff59126798914d34152b98
-          persist-credentials: false
-          path: axonhub
+          go-version-file: src/go.mod
+          cache: false
+
+      - name: Resolve latest AxonHub module
+        working-directory: src
+        run: go get github.com/looplj/axonhub/llm@unstable
 
       - name: Set image build information
         id: build-info
