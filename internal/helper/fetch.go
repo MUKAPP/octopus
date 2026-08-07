@@ -28,7 +28,7 @@ func FetchRateMultiplier(ctx context.Context, request model.Channel) (float64, e
 	if err != nil {
 		return 0, err
 	}
-	baseURL := transformer.NormalizeBaseURL(request.GetBaseUrl(), "v1")
+	baseURL := transformer.NormalizeBaseURL(NormalizeLegacyBaseURL(request.GetBaseUrl()), "v1")
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, baseURL+"/sub2api/billing", nil)
 	if err != nil {
 		return 0, err
@@ -102,9 +102,9 @@ func FetchModels(ctx context.Context, request model.Channel) ([]string, error) {
 
 // refer: https://platform.openai.com/docs/api-reference/models/list
 func fetchOpenAIModels(client *http.Client, ctx context.Context, request model.Channel) ([]string, error) {
-	baseURL := transformer.NormalizeBaseURL(request.GetBaseUrl(), "v1")
+	baseURL := transformer.NormalizeBaseURL(NormalizeLegacyBaseURL(request.GetBaseUrl()), "v1")
 	if request.Type == model.ChannelTypeDoubao {
-		baseURL = transformer.NormalizeBaseURL(request.GetBaseUrl(), "v3")
+		baseURL = transformer.NormalizeBaseURL(NormalizeLegacyBaseURL(request.GetBaseUrl()), "v3")
 	}
 	req, _ := http.NewRequestWithContext(
 		ctx,
@@ -141,10 +141,10 @@ func fetchOpenAIModels(client *http.Client, ctx context.Context, request model.C
 func fetchGeminiModels(client *http.Client, ctx context.Context, request model.Channel) ([]string, error) {
 	var allModels []string
 	pageToken := ""
-	baseURL := transformer.NormalizeBaseURL(request.GetBaseUrl(), "v1beta")
+	baseURL := transformer.NormalizeBaseURL(NormalizeLegacyBaseURL(request.GetBaseUrl()), "v1beta")
 	// Gemini transformer 会保留用户显式填写的 /v1；这里同样处理，避免把 /v1 拼成 /v1/v1beta。
 	if strings.HasSuffix(strings.TrimRight(request.GetBaseUrl(), "/"), "/v1") {
-		baseURL = transformer.NormalizeBaseURL(request.GetBaseUrl(), "")
+		baseURL = transformer.NormalizeBaseURL(NormalizeLegacyBaseURL(request.GetBaseUrl()), "")
 	}
 
 	for {
@@ -198,7 +198,7 @@ func fetchAnthropicModels(client *http.Client, ctx context.Context, request mode
 
 	var allModels []string
 	var afterID string
-	baseURL := transformer.NormalizeBaseURL(request.GetBaseUrl(), "v1")
+	baseURL := transformer.NormalizeBaseURL(NormalizeLegacyBaseURL(request.GetBaseUrl()), "v1")
 	for {
 
 		req, _ := http.NewRequestWithContext(

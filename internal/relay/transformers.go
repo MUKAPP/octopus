@@ -3,6 +3,7 @@ package relay
 import (
 	"fmt"
 
+	"github.com/bestruirui/octopus/internal/helper"
 	dbmodel "github.com/bestruirui/octopus/internal/model"
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/transformer"
@@ -38,6 +39,11 @@ func newOutbound(channelType llm.APIFormat, request *llm.Request, baseURL, key s
 	requestType := llm.RequestTypeChat
 	if request != nil && request.RequestType != "" {
 		requestType = request.RequestType
+	}
+
+	// Gemini 不经过 NormalizeBaseURL，URL 原样拼接，不能带 "#" 标记。
+	if channelType != llm.APIFormatGeminiContents {
+		baseURL = helper.NormalizeLegacyBaseURL(baseURL)
 	}
 
 	// 将请求类型兼容性收敛到出站适配器选择处，避免 Handler 先创建适配器再用本地规则二次拦截，
