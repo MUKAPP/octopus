@@ -32,7 +32,7 @@ export function Analytics() {
     const analyticsQuery = useAnalytics(filters);
 
     return (
-        <PageWrapper className="h-full min-h-0 overflow-y-auto overscroll-contain space-y-6 pb-24 md:pb-4 rounded-t-3xl">
+        <PageWrapper className="h-full min-h-0 overflow-y-auto overscroll-contain space-y-4 pb-24 md:pb-4 rounded-t-3xl">
             <FilterBar query={analyticsQuery} />
             <SummaryCards query={analyticsQuery} />
             <TrendChart query={analyticsQuery} />

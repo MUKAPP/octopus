@@ -188,9 +188,9 @@ export function FilterBar({ query }: FilterBarProps) {
 
     return (
         <div className="rounded-3xl bg-card border-card-border border p-4 text-card-foreground custom-shadow">
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:flex lg:flex-row lg:flex-wrap lg:items-end">
+            <div className="flex flex-wrap items-end gap-4">
                 {/* 日期 */}
-                <div className="flex flex-col gap-1.5 sm:col-span-2">
+                <div className="flex flex-col gap-1.5">
                     <span className="text-xs text-muted-foreground">{t('filter.date')}</span>
                     <div className="flex flex-wrap items-center gap-2">
                         {presetButtons.map((preset) => (
@@ -237,7 +237,7 @@ export function FilterBar({ query }: FilterBarProps) {
                 </div>
 
                 {/* 请求模型 */}
-                <div className="flex flex-col gap-1.5">
+                <div className="flex grow flex-col gap-1.5 sm:grow-0">
                     <span className="text-xs text-muted-foreground">{t('filter.requestModel')}</span>
                     <Select
                         value={model === null ? ALL_VALUE : model === '' ? UNKNOWN_VALUE : model}
@@ -248,13 +248,13 @@ export function FilterBar({ query }: FilterBarProps) {
                         }}
                         disabled={dimensionsFailed}
                     >
-                        <SelectTrigger aria-label={t('filter.requestModel')} className="min-w-40 rounded-xl">
+                        <SelectTrigger aria-label={t('filter.requestModel')} className="min-w-40 w-full rounded-xl">
                             <SelectValue />
                         </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value={ALL_VALUE}>{t('filter.all')}</SelectItem>
+                        <SelectContent className="rounded-xl">
+                            <SelectItem className="rounded-xl" value={ALL_VALUE}>{t('filter.all')}</SelectItem>
                             {modelOptions.map((name) => (
-                                <SelectItem key={name || UNKNOWN_VALUE} value={name === '' ? UNKNOWN_VALUE : name}>
+                                <SelectItem className="rounded-xl" key={name || UNKNOWN_VALUE} value={name === '' ? UNKNOWN_VALUE : name}>
                                     {name === '' ? t('filter.unknown') : name}
                                 </SelectItem>
                             ))}
@@ -263,7 +263,7 @@ export function FilterBar({ query }: FilterBarProps) {
                 </div>
 
                 {/* 实际上游模型 */}
-                <div className="flex flex-col gap-1.5">
+                <div className="flex grow flex-col gap-1.5 sm:grow-0">
                     <span className="text-xs text-muted-foreground">{t('filter.actualModel')}</span>
                     <Select
                         value={actualModel === null ? ALL_VALUE : actualModel === '' ? UNKNOWN_VALUE : actualModel}
@@ -274,13 +274,13 @@ export function FilterBar({ query }: FilterBarProps) {
                         }}
                         disabled={dimensionsFailed}
                     >
-                        <SelectTrigger aria-label={t('filter.actualModel')} className="min-w-40 rounded-xl">
+                        <SelectTrigger aria-label={t('filter.actualModel')} className="min-w-40 w-full rounded-xl">
                             <SelectValue />
                         </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value={ALL_VALUE}>{t('filter.all')}</SelectItem>
+                        <SelectContent className="rounded-xl">
+                            <SelectItem className="rounded-xl" value={ALL_VALUE}>{t('filter.all')}</SelectItem>
                             {actualModelOptions.map((name) => (
-                                <SelectItem key={name || UNKNOWN_VALUE} value={name === '' ? UNKNOWN_VALUE : name}>
+                                <SelectItem className="rounded-xl" key={name || UNKNOWN_VALUE} value={name === '' ? UNKNOWN_VALUE : name}>
                                     {name === '' ? t('filter.unknown') : name}
                                 </SelectItem>
                             ))}
@@ -289,7 +289,7 @@ export function FilterBar({ query }: FilterBarProps) {
                 </div>
 
                 {/* API Key */}
-                <div className="flex flex-col gap-1.5">
+                <div className="flex grow flex-col gap-1.5 sm:grow-0">
                     <span className="text-xs text-muted-foreground">{t('filter.apiKey')}</span>
                     <Select
                         value={apiKey === null ? ALL_VALUE : String(apiKey.id)}
@@ -303,13 +303,13 @@ export function FilterBar({ query }: FilterBarProps) {
                         }}
                         disabled={dimensionsFailed}
                     >
-                        <SelectTrigger aria-label={t('filter.apiKey')} className="min-w-40 rounded-xl">
+                        <SelectTrigger aria-label={t('filter.apiKey')} className="min-w-40 w-full rounded-xl">
                             <SelectValue />
                         </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value={ALL_VALUE}>{t('filter.all')}</SelectItem>
+                        <SelectContent className="rounded-xl">
+                            <SelectItem className="rounded-xl" value={ALL_VALUE}>{t('filter.all')}</SelectItem>
                             {apiKeyOptions.map((item) => (
-                                <SelectItem key={item.id} value={String(item.id)}>
+                                <SelectItem className="rounded-xl" key={item.id} value={String(item.id)}>
                                     {item.name || t('filter.unassigned')}
                                 </SelectItem>
                             ))}
@@ -318,7 +318,7 @@ export function FilterBar({ query }: FilterBarProps) {
                 </div>
 
                 {/* 渠道 */}
-                <div className="flex flex-col gap-1.5">
+                <div className="flex grow flex-col gap-1.5 sm:grow-0">
                     <span className="text-xs text-muted-foreground">{t('filter.channel')}</span>
                     <Select
                         value={channel === null ? ALL_VALUE : String(channel.id)}
@@ -332,13 +332,13 @@ export function FilterBar({ query }: FilterBarProps) {
                         }}
                         disabled={dimensionsFailed}
                     >
-                        <SelectTrigger aria-label={t('filter.channel')} className="min-w-40 rounded-xl">
+                        <SelectTrigger aria-label={t('filter.channel')} className="min-w-40 w-full rounded-xl">
                             <SelectValue />
                         </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value={ALL_VALUE}>{t('filter.all')}</SelectItem>
+                        <SelectContent className="rounded-xl">
+                            <SelectItem className="rounded-xl" value={ALL_VALUE}>{t('filter.all')}</SelectItem>
                             {channelOptions.map((item) => (
-                                <SelectItem key={item.id} value={String(item.id)}>
+                                <SelectItem className="rounded-xl" key={item.id} value={String(item.id)}>
                                     {item.name || t('filter.unassigned')}
                                 </SelectItem>
                             ))}
@@ -347,16 +347,16 @@ export function FilterBar({ query }: FilterBarProps) {
                 </div>
 
                 {/* 状态 */}
-                <div className="flex flex-col gap-1.5">
+                <div className="flex grow flex-col gap-1.5 sm:grow-0">
                     <span className="text-xs text-muted-foreground">{t('filter.status')}</span>
                     <Select value={status} onValueChange={(value) => setStatus(value as typeof status)}>
-                        <SelectTrigger aria-label={t('filter.status')} className="min-w-40 rounded-xl">
+                        <SelectTrigger aria-label={t('filter.status')} className="min-w-40 w-full rounded-xl">
                             <SelectValue />
                         </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="all">{t('filter.statusOption.all')}</SelectItem>
-                            <SelectItem value="success">{t('filter.statusOption.success')}</SelectItem>
-                            <SelectItem value="failed">{t('filter.statusOption.failed')}</SelectItem>
+                        <SelectContent className="rounded-xl">
+                            <SelectItem className="rounded-xl" value="all">{t('filter.statusOption.all')}</SelectItem>
+                            <SelectItem className="rounded-xl" value="success">{t('filter.statusOption.success')}</SelectItem>
+                            <SelectItem className="rounded-xl" value="failed">{t('filter.statusOption.failed')}</SelectItem>
                         </SelectContent>
                     </Select>
                 </div>
@@ -375,35 +375,25 @@ export function FilterBar({ query }: FilterBarProps) {
                 </div>
             )}
 
-            {(chips.length > 0 || query.isFetching) && (
+            {chips.length > 0 && (
                 <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border/50 pt-3">
-                    {chips.length > 0 && (
-                        <div role="group" aria-label={t('filter.activeFilters')} className="flex flex-wrap items-center gap-2">
-                            {chips.map((chip) => (
-                                <span
-                                    key={chip.key}
-                                    className="rounded-full border border-border bg-muted/20 px-3 py-1 text-xs text-muted-foreground"
-                                >
-                                    {chip.label}
-                                </span>
-                            ))}
-                            <button
-                                type="button"
-                                onClick={clearFilters}
-                                className="rounded-full border border-border bg-muted/20 px-3 py-1 text-xs text-foreground transition-colors hover:bg-muted/40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                    <div role="group" aria-label={t('filter.activeFilters')} className="flex flex-wrap items-center gap-2">
+                        {chips.map((chip) => (
+                            <span
+                                key={chip.key}
+                                className="rounded-full border border-border bg-muted/20 px-3 py-1 text-xs text-muted-foreground"
                             >
-                                {t('feedback.clearFilters')}
-                            </button>
-                        </div>
-                    )}
-                    <button
-                        type="button"
-                        onClick={() => void query.refetch()}
-                        aria-label={t('feedback.refresh')}
-                        className="ml-auto rounded-xl border border-border p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-                    >
-                        <RefreshCw className={cn('size-4', query.isFetching && 'animate-spin')} />
-                    </button>
+                                {chip.label}
+                            </span>
+                        ))}
+                        <button
+                            type="button"
+                            onClick={clearFilters}
+                            className="rounded-full border border-border bg-muted/20 px-3 py-1 text-xs text-foreground transition-colors hover:bg-muted/40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                        >
+                            {t('feedback.clearFilters')}
+                        </button>
+                    </div>
                 </div>
             )}
             {hasMetadata && (
@@ -419,6 +409,14 @@ export function FilterBar({ query }: FilterBarProps) {
                             })}
                         </span>
                     )}
+                    <button
+                        type="button"
+                        onClick={() => void query.refetch()}
+                        aria-label={t('feedback.refresh')}
+                        className="ml-auto rounded-xl border border-border p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                    >
+                        <RefreshCw className={cn('size-4', query.isFetching && 'animate-spin')} />
+                    </button>
                 </div>
             )}
         </div>

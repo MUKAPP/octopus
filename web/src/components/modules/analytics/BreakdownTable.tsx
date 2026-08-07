@@ -231,20 +231,20 @@ export function BreakdownTable({ query }: BreakdownTableProps) {
     return (
         <div className="rounded-3xl bg-card text-card-foreground border-card-border border p-4">
             <Tabs value={breakdownTab} onValueChange={(value) => setBreakdownTab(value as AnalyticsBreakdownTab)}>
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex flex-wrap items-center justify-between gap-3">
                     <TabsList>
                         {(Object.keys(tabLabels) as AnalyticsBreakdownTab[]).map((tab) => (
                             <TabsTrigger key={tab} value={tab}>{tabLabels[tab]}</TabsTrigger>
                         ))}
                     </TabsList>
-                    <div className="flex items-center gap-2">
+                    <div className="ml-auto flex items-center gap-2">
                         <Select value={sortMetric} onValueChange={(value) => setSortMetric(value as AnalyticsSortMetric)}>
                             <SelectTrigger aria-label={sortOptions.find((option) => option.value === sortMetric)?.label} size="sm" className="min-w-36 rounded-xl">
                                 <SelectValue />
                             </SelectTrigger>
-                            <SelectContent>
+                            <SelectContent className="rounded-xl">
                                 {sortOptions.map((option) => (
-                                    <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                                    <SelectItem className="rounded-xl" key={option.value} value={option.value}>{option.label}</SelectItem>
                                 ))}
                             </SelectContent>
                         </Select>
