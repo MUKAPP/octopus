@@ -2,12 +2,14 @@ name: Build Binaries
 
 on:
   push:
+    branches:
+      - dev
     tags:
       - "v*"
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: binaries-${{ github.ref }}
@@ -138,3 +140,34 @@ jobs:
           name: octopus-darwin-x86_64
           path: build/archives/octopus-darwin-x86_64.zip
           if-no-files-found: error
+
+      - name: Publish to GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          RELEASE_TAG="octopus-binaries"
+          if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
+            VERSION="${GITHUB_REF_NAME}"
+          else
+            VERSION="dev-${GITHUB_SHA::7}"
+          fi
+          NOTES="Version: ${VERSION}
+          Commit: ${GITHUB_SHA}
+          Build time: $(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+
+          if gh release view "${RELEASE_TAG}" --json tagName >/dev/null 2>&1; then
+            echo "Release ${RELEASE_TAG} exists, updating"
+            # Move tag to current commit and refresh all assets
+            git push origin "${GITHUB_SHA}:refs/tags/${RELEASE_TAG}" --force
+            gh release view "${RELEASE_TAG}" --json assets --jq '.assets[].name' | while read -r asset; do
+              gh release delete-asset "${RELEASE_TAG}" "${asset}" --yes >/dev/null
+            done
+            gh release upload "${RELEASE_TAG}" build/archives/*.zip build/bin/md5.txt --clobber
+            gh release edit "${RELEASE_TAG}" --title "Octopus ${VERSION}" --notes "${NOTES}"
+          else
+            echo "Release ${RELEASE_TAG} not found, creating"
+            gh release create "${RELEASE_TAG}" build/archives/*.zip build/bin/md5.txt \
+              --title "Octopus ${VERSION}" --notes "${NOTES}" \
+              --target "${GITHUB_SHA}"
+          fi
