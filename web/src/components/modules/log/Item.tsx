@@ -68,7 +68,7 @@ function RetryBadgeWithTooltip({ channelName, brandColor, rateMultiplier, attemp
                     className="shrink-0 text-xs px-1.5 py-0 cursor-help"
                     style={{ backgroundColor: `${brandColor}15`, color: brandColor }}
                 >
-                    <RotateCw className="size-3 mr-1 opacity-80" />
+                    <RotateCw className="size-3 mr-1 translate-y-px opacity-80" />
                     {channelName}
                     {formatRateMultiplier(rateMultiplier) && (
                         <span className="ml-1 opacity-80">x{formatRateMultiplier(rateMultiplier)}</span>
@@ -255,7 +255,7 @@ export function LogCard({ log }: { log: RelayLog }) {
                                     <Pin className="size-3.5 shrink-0 text-amber-500" />
                                 )}
                             </div>
-                            <div className="grid grid-cols-2 gap-x-5 gap-y-2 text-xs tabular-nums text-muted-foreground sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+                            <div className="grid grid-cols-2 gap-x-5 gap-y-2 text-xs tabular-nums text-muted-foreground [&_svg]:translate-y-px sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
                                 <div className="flex shrink-0 items-center gap-1.5 whitespace-nowrap">
                                     <Clock className="size-3.5 shrink-0" style={{ color: brandColor }} />
                                     <span>{formatTime(log.time)}</span>
@@ -495,7 +495,7 @@ export function LogCard({ log }: { log: RelayLog }) {
                             </div>
                         </MorphingDialogDescription>
 
-                        <div className="flex flex-wrap items-center gap-3 md:gap-4 pt-4 mt-auto text-xs text-muted-foreground shrink-0">
+                        <div className="flex flex-wrap items-center gap-3 md:gap-4 pt-4 mt-auto text-xs text-muted-foreground [&_svg]:translate-y-px shrink-0">
                             <div className="flex items-center gap-1.5">
                                 <Clock className="size-3.5" style={{ color: brandColor }} />
                                 <span className="tabular-nums">{formatTime(log.time)}</span>

@@ -49,19 +49,19 @@ function ActiveRequestCard({ request }: { request: ActiveRelayRequest }) {
                         </>
                     )}
                 </div>
-                <div className="flex items-center gap-2 text-xs leading-none tabular-nums text-muted-foreground">
-                    <Loader2 className="size-3 shrink-0 animate-spin" aria-hidden="true" />
+                <div className="flex items-center gap-2 text-xs tabular-nums text-muted-foreground">
+                    <Loader2 className="size-3 shrink-0 animate-spin translate-y-px" aria-hidden="true" />
                     <span className="truncate">{request.actual_model_name || request.request_model_name}</span>
                     {requestAPIKeyName && (
                         <>
-                            <KeyRound className="size-3 shrink-0 text-orange-500" aria-hidden="true" />
+                            <KeyRound className="size-3 shrink-0 translate-y-px text-orange-500" aria-hidden="true" />
                             <span className="max-w-24 truncate" title={requestAPIKeyName}>
                                 {requestAPIKeyName}
                             </span>
                         </>
                     )}
                     <span className="ml-auto flex shrink-0 items-center gap-1">
-                        <Clock className="size-3" aria-hidden="true" />
+                        <Clock className="size-3 translate-y-px" aria-hidden="true" />
                         <ElapsedTime startTime={request.time} />
                     </span>
                 </div>
