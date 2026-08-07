@@ -6,6 +6,18 @@ on:
       - dev
     tags:
       - "v*"
+    # 与 dockerhub.yml 的 paths 完全一致，保证镜像与二进制构建源同步。
+    paths:
+      - "**/*.go"
+      - "go.mod"
+      - "go.sum"
+      - "web/**"
+      - "static/**"
+      - "Dockerfile"
+      - "Dockerfile.dockerignore"
+      - "scripts/dockerfiles/entrypoint.sh"
+      - ".github/workflows/dockerhub.yml"
+      - ".github/workflows/binaries.yml"
   workflow_dispatch:
 
 permissions:

@@ -16,8 +16,11 @@ import (
 const (
 	dockerHubLatestTagURL = "https://hub.docker.com/v2/repositories/mukmiuikong/octopus/tags/latest"
 	dockerHubTagsURL      = "https://hub.docker.com/v2/repositories/mukmiuikong/octopus/tags?page_size=100&ordering=last_updated"
-	devVersionPrefix      = "dev-"
-	shaTagPrefix          = "sha-"
+	// githubReleasesURL 是固定槽位 Release，由 binaries 工作流在每次构建时更新，承载二进制版本检查。
+	githubReleasesURL       = "https://api.github.com/repos/MUKAPP/octopus/releases/tags/octopus-binaries"
+	githubReleaseNamePrefix = "Octopus "
+	devVersionPrefix        = "dev-"
+	shaTagPrefix            = "sha-"
 )
 
 type LatestInfo struct {
@@ -37,6 +40,12 @@ type dockerHubTag struct {
 
 type dockerHubTagsResponse struct {
 	Results []dockerHubTag `json:"results"`
+}
+
+type githubRelease struct {
+	Name        string `json:"name"`
+	PublishedAt string `json:"published_at"`
+	UpdatedAt   string `json:"updated_at"`
 }
 
 type requestFunc func(string) ([]byte, error)
@@ -81,9 +90,73 @@ func doRequest(url string, useProxy bool) ([]byte, error) {
 	return data, nil
 }
 
-// GetLatestInfo 返回 Docker Hub latest 镜像对应的开发版本。
-func GetLatestInfo() (*LatestInfo, error) {
-	return getLatestInfo(doRequestWithFallback, dockerHubLatestTagURL, dockerHubTagsURL)
+// GetLatestInfo 返回与当前部署对应的最新版本：容器部署（dev-*）检查 Docker Hub
+// latest 镜像，二进制部署（v* 发布版）检查 GitHub Releases 槽位；未知形态取较新者。
+// 不能全局按时间取较新：两个源并非总是同步更新（v* 发布不更新 Docker latest）。
+func GetLatestInfo(current string) (*LatestInfo, error) {
+	return getLatestInfoFor(current, doRequestWithFallback, dockerHubLatestTagURL, dockerHubTagsURL, githubReleasesURL)
+}
+
+func getLatestInfoFor(current string, fetch requestFunc, latestTagURL, tagsURL, releaseURL string) (*LatestInfo, error) {
+	dockerInfo, dockerErr := getLatestInfo(fetch, latestTagURL, tagsURL)
+	releaseInfo, releaseErr := getLatestReleaseInfo(fetch, releaseURL)
+	if dockerErr != nil && releaseErr != nil {
+		return nil, fmt.Errorf("Docker Hub：%v；GitHub Releases：%v", dockerErr, releaseErr)
+	}
+	if dockerErr != nil {
+		return releaseInfo, nil
+	}
+	if releaseErr != nil {
+		return dockerInfo, nil
+	}
+	switch {
+	case strings.HasPrefix(current, "v"):
+		return releaseInfo, nil
+	case strings.HasPrefix(current, devVersionPrefix):
+		return dockerInfo, nil
+	}
+	if publishedAtLater(releaseInfo.PublishedAt, dockerInfo.PublishedAt) {
+		return releaseInfo, nil
+	}
+	return dockerInfo, nil
+}
+
+// getLatestReleaseInfo 读取固定槽位 Release 的标题（形如 "Octopus dev-xxxxxxx"）得到版本。
+// 槽位 Release 被反复复用覆盖，published_at 固定为首次发布时间，只有 updated_at 反映每次更新。
+func getLatestReleaseInfo(fetch requestFunc, releaseURL string) (*LatestInfo, error) {
+	body, err := fetch(releaseURL)
+	if err != nil {
+		return nil, fmt.Errorf("获取 GitHub Releases 信息：%w", err)
+	}
+
+	var release githubRelease
+	if err := json.Unmarshal(body, &release); err != nil {
+		return nil, fmt.Errorf("解析 GitHub Releases 信息：%w", err)
+	}
+
+	version, ok := releaseVersion(release.Name)
+	if !ok {
+		return nil, fmt.Errorf("GitHub Release 标题缺少版本标识：%q", release.Name)
+	}
+	return &LatestInfo{TagName: version, PublishedAt: release.UpdatedAt}, nil
+}
+
+func releaseVersion(name string) (string, bool) {
+	if !strings.HasPrefix(name, githubReleaseNamePrefix) {
+		return "", false
+	}
+	version := strings.TrimPrefix(name, githubReleaseNamePrefix)
+	return version, version != ""
+}
+
+// publishedAtLater 比较两个 RFC3339 时间；解析失败时视为不晚于对方。
+func publishedAtLater(a, b string) bool {
+	ta, errA := time.Parse(time.RFC3339, a)
+	tb, errB := time.Parse(time.RFC3339, b)
+	if errA != nil || errB != nil {
+		return false
+	}
+	return ta.After(tb)
 }
 
 func getLatestInfo(fetch requestFunc, latestTagURL, tagsURL string) (*LatestInfo, error) {

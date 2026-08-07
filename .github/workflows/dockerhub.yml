@@ -16,6 +16,7 @@ on:
       - "Dockerfile.dockerignore"
       - "scripts/dockerfiles/entrypoint.sh"
       - ".github/workflows/dockerhub.yml"
+      - ".github/workflows/binaries.yml"
   workflow_dispatch:
 
 permissions:

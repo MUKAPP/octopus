@@ -1,21 +1,21 @@
 import { useTranslations } from 'use-intl';
 import { Info, Tag, Github, AlertTriangle, Download, Loader2 } from 'lucide-react';
-import { APP_VERSION, GITHUB_REPO } from '@/lib/info';
+import { APP_VERSION, GITHUB_REPO, BINARIES_RELEASE_TAG } from '@/lib/info';
 import { useLatestInfo, useNowVersion } from '@/api/endpoints/update';
 import { Button } from '@/components/ui/button';
 import { isOctopusCacheName, isFontCacheName, SW_MESSAGE_TYPE } from '@/lib/sw';
 
 export function SettingInfo() {
     const t = useTranslations('setting');
-    const latestInfoQuery = useLatestInfo();
     const nowVersionQuery = useNowVersion();
+    const latestInfoQuery = useLatestInfo(nowVersionQuery.data);
 
     const backendNowVersion = nowVersionQuery.data || '';
     const latestVersion = latestInfoQuery.data?.tag_name || '';
 
     // 前端版本与后端当前版本不一致 → 浏览器缓存问题
     const isCacheMismatch = !!backendNowVersion && backendNowVersion !== APP_VERSION;
-    // 仅容器构建的版本参与镜像更新提示，源码运行不会收到 Docker 更新提示。
+    // 构建版本（dev-<sha7>，容器与二进制部署一致）参与更新提示；源码运行（dev）不会收到更新提示。
     const hasNewVersion = /^dev-[0-9a-f]{7}$/i.test(backendNowVersion)
         && !!latestVersion
         && latestVersion !== backendNowVersion;
@@ -144,6 +144,14 @@ export function SettingInfo() {
                             <code className="block rounded-lg bg-muted px-2 py-1 text-xs text-muted-foreground">
                                 {t('info.dockerPullCommand')}
                             </code>
+                            <a
+                                href={`${GITHUB_REPO}/releases/tag/${BINARIES_RELEASE_TAG}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-block text-xs text-primary hover:underline"
+                            >
+                                {t('info.binaryDownload')}
+                            </a>
                         </div>
                     </div>
                 </div>

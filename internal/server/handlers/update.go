@@ -25,7 +25,7 @@ func init() {
 }
 
 func latest(c *gin.Context) {
-	latestInfo, err := update.GetLatestInfo()
+	latestInfo, err := update.GetLatestInfo(c.Query("current"))
 	if err != nil {
 		resp.Error(c, http.StatusInternalServerError, err.Error())
 		return

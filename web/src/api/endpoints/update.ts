@@ -1,19 +1,25 @@
 import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '../client';
 
-/** Docker Hub 中已发布的最新开发镜像版本。 */
+/** 最新可用版本：Docker Hub latest 镜像与 GitHub Releases 二进制槽位中较新者。 */
 export interface LatestInfo {
     tag_name: string;
     published_at: string;
 }
 
-/** 获取与当前 dev 分支提交对应、且已发布到 Docker Hub 的镜像版本。 */
-export function useLatestInfo() {
+/** 获取与当前部署匹配的最新版本（后端按版本形态选择 Docker Hub 或 GitHub Releases 源）。 */
+export function useLatestInfo(current?: string) {
     return useQuery({
-        queryKey: ['update', 'latest'],
-        queryFn: async () => apiClient.get<LatestInfo>('/api/v1/update'),
+        queryKey: ['update', 'latest', current ?? ''],
+        queryFn: async () => {
+            const params: Record<string, string | number | boolean> | undefined = current
+                ? { current }
+                : undefined;
+            return apiClient.get<LatestInfo>('/api/v1/update', params);
+        },
         refetchInterval: 3600000,
         refetchOnMount: 'always',
+        enabled: !!current,
     });
 }
 
