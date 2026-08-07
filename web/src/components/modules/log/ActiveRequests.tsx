@@ -103,6 +103,30 @@ export function ActiveRequests({ requests }: { requests: ActiveRelayRequest[] })
         return () => window.removeEventListener('resize', checkScroll);
     }, [requests.length, checkScroll]);
 
+    // 桌面端鼠标滚轮横向滚动：仅在该方向仍有滚动余量时接管，边界处交还页面纵向滚动。
+    // React 的 onWheel 为 passive 监听无法 preventDefault，这里用原生非 passive 监听。
+    useEffect(() => {
+        const el = scrollRef.current;
+        if (!el) return;
+        const handleWheel = (e: WheelEvent) => {
+            // 触控板横向手势（deltaX 主导）交给浏览器原生横向滚动
+            if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
+            let step = e.deltaY;
+            if (e.deltaMode === WheelEvent.DOM_DELTA_LINE) {
+                step *= 16;
+            } else if (e.deltaMode === WheelEvent.DOM_DELTA_PAGE) {
+                step *= el.clientHeight;
+            }
+            const canForward = step > 0 && el.scrollLeft < el.scrollWidth - el.clientWidth - 1;
+            const canBackward = step < 0 && el.scrollLeft > 1;
+            if (!canForward && !canBackward) return;
+            e.preventDefault();
+            el.scrollLeft += step;
+        };
+        el.addEventListener('wheel', handleWheel, { passive: false });
+        return () => el.removeEventListener('wheel', handleWheel);
+    }, [requests.length]);
+
     if (requests.length === 0) return null;
 
     return (
