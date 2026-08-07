@@ -1,0 +1,85 @@
+name: Build Binaries
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: binaries-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build and upload binaries
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Setup Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+
+      - name: Resolve latest AxonHub module
+        run: go get github.com/looplj/axonhub/llm@unstable
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: "latest"
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "latest"
+          cache: "pnpm"
+          cache-dependency-path: web/pnpm-lock.yaml
+
+      - name: Build binaries
+        run: bash scripts/build.sh release
+
+      - name: Verify all platform archives
+        run: |
+          expected=(
+            "build/archives/octopus-linux-x86_64.zip"
+            "build/archives/octopus-linux-arm64.zip"
+            "build/archives/octopus-linux-armv7.zip"
+            "build/archives/octopus-linux-x86.zip"
+            "build/archives/octopus-windows-x86_64.zip"
+            "build/archives/octopus-windows-x86.zip"
+            "build/archives/octopus-darwin-arm64.zip"
+            "build/archives/octopus-darwin-x86_64.zip"
+          )
+          for f in "${expected[@]}"; do
+            if [[ ! -f "$f" ]]; then
+              echo "::error::Missing build artifact: $f"
+              exit 1
+            fi
+          done
+          if [[ ! -f "build/bin/md5.txt" ]]; then
+            echo "::error::Missing checksum file: build/bin/md5.txt"
+            exit 1
+          fi
+          echo "All ${#expected[@]} platform archives and checksums present"
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: octopus-binaries
+          path: |
+            build/archives/*
+            build/bin/md5.txt
