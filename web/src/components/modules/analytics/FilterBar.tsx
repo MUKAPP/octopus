@@ -42,6 +42,17 @@ interface FilterBarProps {
 }
 
 export function FilterBar({ query }: FilterBarProps) {
+    const data = query.data;
+
+    const showResolvedRange = Boolean(data?.resolved_start_date && data.resolved_end_date);
+
+    const formatDisplayDate = (value: string) => {
+        if (value.length !== 8) return value;
+        return `${value.slice(0, 4)}-${value.slice(4, 6)}-${value.slice(6, 8)}`;
+    };
+
+    const hasMetadata = Boolean(data?.available_from || showResolvedRange);
+
     const t = useTranslations('analytics');
     const [customOpen, setCustomOpen] = useState(false);
 
@@ -177,9 +188,9 @@ export function FilterBar({ query }: FilterBarProps) {
 
     return (
         <div className="rounded-3xl bg-card border-card-border border p-4 text-card-foreground custom-shadow">
-            <div className="flex flex-col gap-4 md:flex-row md:flex-wrap md:items-end">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:flex lg:flex-row lg:flex-wrap lg:items-end">
                 {/* 日期 */}
-                <div className="flex flex-col gap-1.5">
+                <div className="flex flex-col gap-1.5 sm:col-span-2">
                     <span className="text-xs text-muted-foreground">{t('filter.date')}</span>
                     <div className="flex flex-wrap items-center gap-2">
                         {presetButtons.map((preset) => (
@@ -237,7 +248,7 @@ export function FilterBar({ query }: FilterBarProps) {
                         }}
                         disabled={dimensionsFailed}
                     >
-                        <SelectTrigger aria-label={t('filter.requestModel')} className="min-w-40">
+                        <SelectTrigger aria-label={t('filter.requestModel')} className="min-w-40 rounded-xl">
                             <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -263,7 +274,7 @@ export function FilterBar({ query }: FilterBarProps) {
                         }}
                         disabled={dimensionsFailed}
                     >
-                        <SelectTrigger aria-label={t('filter.actualModel')} className="min-w-40">
+                        <SelectTrigger aria-label={t('filter.actualModel')} className="min-w-40 rounded-xl">
                             <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -292,7 +303,7 @@ export function FilterBar({ query }: FilterBarProps) {
                         }}
                         disabled={dimensionsFailed}
                     >
-                        <SelectTrigger aria-label={t('filter.apiKey')} className="min-w-40">
+                        <SelectTrigger aria-label={t('filter.apiKey')} className="min-w-40 rounded-xl">
                             <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -321,7 +332,7 @@ export function FilterBar({ query }: FilterBarProps) {
                         }}
                         disabled={dimensionsFailed}
                     >
-                        <SelectTrigger aria-label={t('filter.channel')} className="min-w-40">
+                        <SelectTrigger aria-label={t('filter.channel')} className="min-w-40 rounded-xl">
                             <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -339,7 +350,7 @@ export function FilterBar({ query }: FilterBarProps) {
                 <div className="flex flex-col gap-1.5">
                     <span className="text-xs text-muted-foreground">{t('filter.status')}</span>
                     <Select value={status} onValueChange={(value) => setStatus(value as typeof status)}>
-                        <SelectTrigger aria-label={t('filter.status')} className="min-w-40">
+                        <SelectTrigger aria-label={t('filter.status')} className="min-w-40 rounded-xl">
                             <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -393,6 +404,21 @@ export function FilterBar({ query }: FilterBarProps) {
                     >
                         <RefreshCw className={cn('size-4', query.isFetching && 'animate-spin')} />
                     </button>
+                </div>
+            )}
+            {hasMetadata && (
+                <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-border/50 pt-3 text-xs text-muted-foreground">
+                    {data?.available_from && (
+                        <span>{t('availableFrom', { date: formatDisplayDate(data.available_from) })}</span>
+                    )}
+                    {showResolvedRange && data && (
+                        <span>
+                            {t('resolvedRange', {
+                                start: formatDisplayDate(data.resolved_start_date),
+                                end: formatDisplayDate(data.resolved_end_date),
+                            })}
+                        </span>
+                    )}
                 </div>
             )}
         </div>
