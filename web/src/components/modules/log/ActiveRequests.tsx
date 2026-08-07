@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
-import { ArrowRight, Clock, Loader2 } from 'lucide-react';
+import { ArrowRight, Clock, KeyRound, Loader2 } from 'lucide-react';
 import { useTranslations } from 'use-intl';
 import { type ActiveRelayRequest } from '@/api/endpoints/log';
 import { getModelIcon } from '@/lib/model-icons';
@@ -26,6 +26,7 @@ function ActiveRequestCard({ request }: { request: ActiveRelayRequest }) {
         () => getModelIcon(request.request_model_name),
         [request.request_model_name]
     );
+    const requestAPIKeyName = useMemo(() => request.request_api_key_name?.trim() ?? '', [request.request_api_key_name]);
 
     return (
         <div className="flex w-[320px] shrink-0 items-center gap-3 rounded-2xl border border-border bg-card px-4 py-3">
@@ -48,9 +49,17 @@ function ActiveRequestCard({ request }: { request: ActiveRelayRequest }) {
                         </>
                     )}
                 </div>
-                <div className="flex items-center gap-2 text-xs tabular-nums text-muted-foreground">
+                <div className="flex items-center gap-2 text-xs leading-none tabular-nums text-muted-foreground">
                     <Loader2 className="size-3 shrink-0 animate-spin" aria-hidden="true" />
                     <span className="truncate">{request.actual_model_name || request.request_model_name}</span>
+                    {requestAPIKeyName && (
+                        <>
+                            <KeyRound className="size-3 shrink-0 text-orange-500" aria-hidden="true" />
+                            <span className="max-w-24 truncate" title={requestAPIKeyName}>
+                                {requestAPIKeyName}
+                            </span>
+                        </>
+                    )}
                     <span className="ml-auto flex shrink-0 items-center gap-1">
                         <Clock className="size-3" aria-hidden="true" />
                         <ElapsedTime startTime={request.time} />
