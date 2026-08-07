@@ -18,6 +18,80 @@
             "submit": "Login"
         }
     },
+    "analytics": {
+        "availableFrom": "Data collected since {date}",
+        "resolvedRange": "{start} – {end}",
+        "feedback": {
+            "loading": "Loading data",
+            "loadFailed": "Failed to load data. Please try again.",
+            "retry": "Retry",
+            "refresh": "Refresh",
+            "clearFilters": "Clear filters"
+        },
+        "filter": {
+            "date": "Date",
+            "datePreset": {
+                "today": "Today",
+                "last7Days": "7 days",
+                "last30Days": "30 days",
+                "all": "All",
+                "custom": "Custom"
+            },
+            "custom": {
+                "invalidRange": "Start date must not be later than end date",
+                "incompleteRange": "Select both start and end dates"
+            },
+            "requestModel": "Request Model",
+            "actualModel": "Actual Model",
+            "apiKey": "API Key",
+            "channel": "Channel",
+            "status": "Status",
+            "statusOption": {
+                "all": "All",
+                "success": "Success",
+                "failed": "Failed"
+            },
+            "all": "All",
+            "unknown": "Unknown",
+            "unassigned": "Unassigned",
+            "activeFilters": "Active filters",
+            "dimensionLoadFailed": "Failed to load filter options",
+            "dimensionRetry": "Retry options"
+        },
+        "summary": {
+            "requests": "Requests",
+            "totalTokens": "Total Tokens",
+            "totalCost": "Total Cost",
+            "successRate": "Success Rate"
+        },
+        "chart": {
+            "title": "Trend",
+            "metricType": {
+                "cost": "Cost",
+                "count": "Count",
+                "tokens": "Tokens"
+            },
+            "empty": "No data in the selected range"
+        },
+        "breakdown": {
+            "tab": {
+                "model": "Request Model",
+                "actualModel": "Actual Model",
+                "apiKey": "API Key",
+                "channel": "Channel"
+            },
+            "name": "Name",
+            "requests": "Requests",
+            "successRate": "Success Rate",
+            "totalTokens": "Total Tokens",
+            "cachedTokens": "Cached Tokens",
+            "totalCost": "Total Cost",
+            "avgWaitTime": "Avg Wait Time",
+            "empty": "No matching data",
+            "unassigned": "Unassigned",
+            "unknown": "Unknown"
+        }
+    },
     "apiKeyDashboard": {
         "error": "Failed to load data",
         "logout": "Logout",
@@ -49,6 +123,7 @@
     "navbar": {
         "ariaLabel": "Primary navigation",
         "home": "Home",
+        "analytics": "Analytics",
         "channel": "Channel",
         "group": "Group",
         "key": "Key",

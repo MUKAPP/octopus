@@ -18,6 +18,80 @@
             "submit": "登入"
         }
     },
+    "analytics": {
+        "availableFrom": "資料自 {date} 起統計",
+        "resolvedRange": "{start} – {end}",
+        "feedback": {
+            "loading": "正在載入資料",
+            "loadFailed": "資料載入失敗，請重試。",
+            "retry": "重試",
+            "refresh": "重新整理",
+            "clearFilters": "清除篩選"
+        },
+        "filter": {
+            "date": "日期",
+            "datePreset": {
+                "today": "今天",
+                "last7Days": "近 7 天",
+                "last30Days": "近 30 天",
+                "all": "全部",
+                "custom": "自訂"
+            },
+            "custom": {
+                "invalidRange": "開始日期不能晚於結束日期",
+                "incompleteRange": "請選擇完整的開始與結束日期"
+            },
+            "requestModel": "請求模型",
+            "actualModel": "實際上遊模型",
+            "apiKey": "API Key",
+            "channel": "供應源",
+            "status": "狀態",
+            "statusOption": {
+                "all": "全部",
+                "success": "成功",
+                "failed": "失敗"
+            },
+            "all": "全部",
+            "unknown": "未知",
+            "unassigned": "未分配",
+            "activeFilters": "目前篩選",
+            "dimensionLoadFailed": "篩選選項載入失敗",
+            "dimensionRetry": "重試選項"
+        },
+        "summary": {
+            "requests": "請求數",
+            "totalTokens": "總 Token",
+            "totalCost": "總成本",
+            "successRate": "成功率"
+        },
+        "chart": {
+            "title": "趨勢",
+            "metricType": {
+                "cost": "成本",
+                "count": "次數",
+                "tokens": "Token"
+            },
+            "empty": "所選範圍內暫無資料"
+        },
+        "breakdown": {
+            "tab": {
+                "model": "請求模型",
+                "actualModel": "實際上遊模型",
+                "apiKey": "API Key",
+                "channel": "供應源"
+            },
+            "name": "名稱",
+            "requests": "請求數",
+            "successRate": "成功率",
+            "totalTokens": "總 Token",
+            "cachedTokens": "快取 Token",
+            "totalCost": "總成本",
+            "avgWaitTime": "平均耗時",
+            "empty": "暫無符合資料",
+            "unassigned": "未分配",
+            "unknown": "未知"
+        }
+    },
     "apiKeyDashboard": {
         "error": "載入資料失敗",
         "logout": "登出",
@@ -49,6 +123,7 @@
     "navbar": {
         "ariaLabel": "主導覽",
         "home": "主頁",
+        "analytics": "數據分析",
         "channel": "供應源",
         "group": "分組",
         "key": "金鑰",

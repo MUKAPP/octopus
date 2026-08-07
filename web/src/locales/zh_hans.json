@@ -18,6 +18,80 @@
             "submit": "登录"
         }
     },
+    "analytics": {
+        "availableFrom": "数据自 {date} 起统计",
+        "resolvedRange": "{start} – {end}",
+        "feedback": {
+            "loading": "正在加载数据",
+            "loadFailed": "数据加载失败，请重试。",
+            "retry": "重试",
+            "refresh": "刷新",
+            "clearFilters": "清除筛选"
+        },
+        "filter": {
+            "date": "日期",
+            "datePreset": {
+                "today": "今天",
+                "last7Days": "近 7 天",
+                "last30Days": "近 30 天",
+                "all": "全部",
+                "custom": "自定义"
+            },
+            "custom": {
+                "invalidRange": "开始日期不能晚于结束日期",
+                "incompleteRange": "请选择完整的开始和结束日期"
+            },
+            "requestModel": "请求模型",
+            "actualModel": "实际上游模型",
+            "apiKey": "API Key",
+            "channel": "渠道",
+            "status": "状态",
+            "statusOption": {
+                "all": "全部",
+                "success": "成功",
+                "failed": "失败"
+            },
+            "all": "全部",
+            "unknown": "未知",
+            "unassigned": "未分配",
+            "activeFilters": "当前筛选",
+            "dimensionLoadFailed": "筛选选项加载失败",
+            "dimensionRetry": "重试选项"
+        },
+        "summary": {
+            "requests": "请求数",
+            "totalTokens": "总 Token",
+            "totalCost": "总成本",
+            "successRate": "成功率"
+        },
+        "chart": {
+            "title": "趋势",
+            "metricType": {
+                "cost": "成本",
+                "count": "次数",
+                "tokens": "Token"
+            },
+            "empty": "所选范围内暂无数据"
+        },
+        "breakdown": {
+            "tab": {
+                "model": "请求模型",
+                "actualModel": "实际上游模型",
+                "apiKey": "API Key",
+                "channel": "渠道"
+            },
+            "name": "名称",
+            "requests": "请求数",
+            "successRate": "成功率",
+            "totalTokens": "总 Token",
+            "cachedTokens": "缓存 Token",
+            "totalCost": "总成本",
+            "avgWaitTime": "平均耗时",
+            "empty": "暂无匹配数据",
+            "unassigned": "未分配",
+            "unknown": "未知"
+        }
+    },
     "apiKeyDashboard": {
         "error": "加载数据失败",
         "logout": "退出",
@@ -49,6 +123,7 @@
     "navbar": {
         "ariaLabel": "主导航",
         "home": "主页",
+        "analytics": "数据分析",
         "channel": "渠道",
         "group": "分组",
         "key": "密钥",

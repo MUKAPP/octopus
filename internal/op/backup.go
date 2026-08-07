@@ -46,6 +46,16 @@ func DBExportAll(ctx context.Context, includeLogs, includeStats bool) (*model.DB
 	}
 
 	if includeStats {
+		// 先持写锁并锁内 flush，保证导出包含未落库的 usage 增量，
+		// 且导出期间不会有新增量写入。
+		statsUsageDeltaCacheLock.Lock()
+		defer statsUsageDeltaCacheLock.Unlock()
+		if err := persistStatsUsageLocked(ctx); err != nil {
+			return nil, fmt.Errorf("flush stats_usage: %w", err)
+		}
+		if err := conn.Find(&d.StatsUsage).Error; err != nil {
+			return nil, fmt.Errorf("export stats_usage: %w", err)
+		}
 		if err := conn.Find(&d.StatsTotal).Error; err != nil {
 			return nil, fmt.Errorf("export stats_total: %w", err)
 		}
@@ -86,6 +96,24 @@ func DBImportIncremental(ctx context.Context, dump *model.DBDump) (*model.DBImpo
 
 	conn := db.GetDB().WithContext(ctx)
 	res := &model.DBImportResult{RowsAffected: map[string]int64{}}
+
+	// 导入前先持写锁并锁内 flush，避免把本实例未落库的增量重复叠加进导入结果。
+	statsUsageDeltaCacheLock.Lock()
+	defer statsUsageDeltaCacheLock.Unlock()
+	if err := persistStatsUsageLocked(ctx); err != nil {
+		return nil, fmt.Errorf("flush stats_usage before import: %w", err)
+	}
+	// 逐行重算并校验 key_hash，防止损坏或手工篡改的备份污染目标库。
+	for i := range dump.StatsUsage {
+		row := &dump.StatsUsage[i]
+		hash, err := row.Key().Hash()
+		if err != nil {
+			return nil, fmt.Errorf("validate stats_usage row %d: %w", i, err)
+		}
+		if hash != row.KeyHash {
+			return nil, fmt.Errorf("validate stats_usage row %d: key_hash mismatch", i)
+		}
+	}
 
 	err := conn.Transaction(func(tx *gorm.DB) error {
 		// base tables
@@ -155,6 +183,12 @@ func DBImportIncremental(ctx context.Context, dump *model.DBDump) (*model.DBImpo
 				return fmt.Errorf("import stats_api_key: %w", err)
 			} else {
 				res.RowsAffected["stats_api_key"] = n
+			}
+			// 冲突时保留目标库现值（DoNothing），重复导入幂等，不把两个累计快照相加。
+			if n, err := createDoNothing(tx, dump.StatsUsage); err != nil {
+				return fmt.Errorf("import stats_usage: %w", err)
+			} else {
+				res.RowsAffected["stats_usage"] = n
 			}
 		}
 

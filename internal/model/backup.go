@@ -24,6 +24,7 @@ type DBDump struct {
 	StatsModel   []StatsModel   `json:"stats_model,omitempty"`
 	StatsChannel []StatsChannel `json:"stats_channel,omitempty"`
 	StatsAPIKey  []StatsAPIKey  `json:"stats_api_key,omitempty"`
+	StatsUsage   []StatsUsage   `json:"stats_usage,omitempty"`
 
 	RelayLogs []RelayLog `json:"relay_logs,omitempty"`
 }

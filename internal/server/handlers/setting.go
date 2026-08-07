@@ -166,7 +166,8 @@ func decodeDBDump(body []byte, dump *model.DBDump) error {
 		len(dump.StatsTotal) == 0 &&
 		len(dump.StatsChannel) == 0 &&
 		len(dump.StatsModel) == 0 &&
-		len(dump.StatsAPIKey) == 0 {
+		len(dump.StatsAPIKey) == 0 &&
+		len(dump.StatsUsage) == 0 {
 		var wrapper struct {
 			Code    int             `json:"code"`
 			Message string          `json:"message"`

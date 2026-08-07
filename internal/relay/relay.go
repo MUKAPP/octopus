@@ -100,7 +100,6 @@ func newRelayRun(c *gin.Context, inboundType llm.APIFormat, inAdapter transforme
 		metrics: &RelayMetrics{
 			APIKeyID:        apiKeyID,
 			RequestModel:    internalRequest.Model,
-			ActualModel:     internalRequest.Model,
 			StartTime:       time.Now(),
 			InternalRequest: internalRequest,
 		},

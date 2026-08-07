@@ -12,6 +12,14 @@ const messages: Record<Locale, typeof zh_hansMessages> = { // 各语言对应的
     en: enMessages,
 };
 
+// use-intl 需要合法的 BCP-47 locale tag（zh_hans 不是合法 tag，
+// 会导致含 ICU 占位符的消息在 IntlMessageFormat 编译时抛错并回退为 key 文本）。
+const intlLocales: Record<Locale, string> = {
+    zh_hans: 'zh-Hans',
+    zh_hant: 'zh-Hant',
+    en: 'en',
+};
+
 export function LocaleProvider({ children }: { children: ReactNode }) {
     const { locale } = useSettingStore();
     const [currentLocale, setCurrentLocale] = useState<Locale>('zh_hans');
@@ -22,7 +30,7 @@ export function LocaleProvider({ children }: { children: ReactNode }) {
 
     return (
         <IntlProvider
-            locale={currentLocale}
+            locale={intlLocales[currentLocale]}
             messages={messages[currentLocale]}
             timeZone="Asia/Shanghai"
         >

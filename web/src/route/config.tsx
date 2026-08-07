@@ -1,7 +1,7 @@
 import { lazyWithPreload } from './lazy-with-preload';
 import type { ComponentType, LazyExoticComponent } from 'react';
 import type { LucideIcon } from 'lucide-react';
-import { Home, Radio, Sparkles, FolderTree, Settings, Logs } from 'lucide-react';
+import { Home, Radio, Sparkles, FolderTree, Settings, Logs, ChartColumnBig } from 'lucide-react';
 
 export type LazyComponent = LazyExoticComponent<ComponentType<Record<string, never>>> & {
     preload: () => Promise<{ default: ComponentType<Record<string, never>> }>;
@@ -16,6 +16,7 @@ export interface RouteConfig {
 }
 
 const Home_Module = lazyWithPreload(() => import('@/components/modules/home').then(m => ({ default: m.Home })));
+const Analytics_Module = lazyWithPreload(() => import('@/components/modules/analytics').then(m => ({ default: m.Analytics })));
 const Channel_Module = lazyWithPreload(() => import('@/components/modules/channel').then(m => ({ default: m.Channel })));
 const Model_Module = lazyWithPreload(() => import('@/components/modules/model').then(m => ({ default: m.Model })));
 const Group_Module = lazyWithPreload(() => import('@/components/modules/group').then(m => ({ default: m.Group })));
@@ -24,6 +25,7 @@ const Setting_Module = lazyWithPreload(() => import('@/components/modules/settin
 
 export const ROUTES: RouteConfig[] = [
     { id: 'home', label: 'Home', icon: Home, component: Home_Module },
+    { id: 'analytics', label: 'Analytics', icon: ChartColumnBig, component: Analytics_Module },
     { id: 'channel', label: 'Channel', icon: Radio, component: Channel_Module },
     { id: 'group', label: 'Group', icon: FolderTree, component: Group_Module },
     { id: 'model', label: 'Model', icon: Sparkles, component: Model_Module },

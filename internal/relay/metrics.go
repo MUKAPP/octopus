@@ -87,6 +87,15 @@ func (m *RelayMetrics) Save(ctx context.Context, success bool, err error, attemp
 	}
 
 	channelID, channelName, rateMultiplier := finalChannel(attempts)
+
+	// 客户端断开或请求上下文取消后仍要保存最终审计日志与统计，因此持久化阶段主动脱离请求取消信号。
+	persistenceCtx := context.WithoutCancel(ctx)
+
+	var apiKeyName string
+	if apiKey, getErr := op.APIKeyGet(m.APIKeyID, persistenceCtx); getErr == nil {
+		apiKeyName = apiKey.Name
+	}
+
 	op.StatsTotalUpdate(globalStats)
 	op.StatsHourlyUpdate(globalStats)
 	op.StatsDailyUpdate(context.Background(), globalStats)
@@ -101,14 +110,31 @@ func (m *RelayMetrics) Save(ctx context.Context, success bool, err error, attemp
 		})
 	}
 
+	// 多维日聚合：请求模型、实际上游模型、API Key、最终渠道与成功状态组合。
+	// 没有最终渠道或实际上游模型的失败请求照常保存（空身份），不能丢弃失败量。
+	usage := model.StatsUsage{
+		Date:             m.StartTime.In(time.Local).Format("20060102"),
+		RequestModelName: m.RequestModel,
+		ActualModelName:  m.ActualModel,
+		APIKeyID:         m.APIKeyID,
+		APIKeyName:       apiKeyName,
+		ChannelID:        channelID,
+		ChannelName:      channelName,
+		Success:          success,
+		CachedToken:      m.CachedTokens,
+		StatsMetrics:     globalStats,
+	}
+	if err := op.StatsUsageUpdate(usage); err != nil {
+		log.Warnf("failed to update usage stats: %v", err)
+	}
+
 	log.Infof("relay complete: model=%s, channel=%d(%s), success=%t, duration=%dms, input_token=%d, output_token=%d, input_cost=%f, output_cost=%f, total_cost=%f, attempts=%d",
 		m.RequestModel, channelID, channelName, success, duration.Milliseconds(),
 		m.Stats.InputToken, m.Stats.OutputToken,
 		m.Stats.InputCost, m.Stats.OutputCost, m.Stats.InputCost+m.Stats.OutputCost,
 		len(attempts))
 
-	// 客户端断开或请求上下文取消后仍要保存最终审计日志，因此持久化阶段主动脱离请求取消信号。
-	m.saveLog(context.WithoutCancel(ctx), err, duration, attempts, channelID, channelName, rateMultiplier)
+	m.saveLog(persistenceCtx, err, duration, attempts, channelID, channelName, rateMultiplier, apiKeyName)
 }
 
 func finalChannel(attempts []model.ChannelAttempt) (int, string, float64) {
@@ -129,7 +155,7 @@ func finalChannel(attempts []model.ChannelAttempt) (int, string, float64) {
 	return lastID, lastName, lastRate
 }
 
-func (m *RelayMetrics) saveLog(ctx context.Context, err error, duration time.Duration, attempts []model.ChannelAttempt, channelID int, channelName string, rateMultiplier float64) {
+func (m *RelayMetrics) saveLog(ctx context.Context, err error, duration time.Duration, attempts []model.ChannelAttempt, channelID int, channelName string, rateMultiplier float64, apiKeyName string) {
 	cachedTokens := int(m.CachedTokens)
 	relayLog := model.RelayLog{
 		ID:               m.ID,
@@ -145,8 +171,8 @@ func (m *RelayMetrics) saveLog(ctx context.Context, err error, duration time.Dur
 		TotalAttempts:    len(attempts),
 	}
 
-	if apiKey, getErr := op.APIKeyGet(m.APIKeyID, ctx); getErr == nil {
-		relayLog.RequestAPIKeyName = apiKey.Name
+	if apiKeyName != "" {
+		relayLog.RequestAPIKeyName = apiKeyName
 	}
 
 	// 首字时间
