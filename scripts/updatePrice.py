@@ -151,8 +151,19 @@ def main():
     raw_price = fetch_price_data()
     
     entries = []
+    emitted_model_ids = set()
     model_count = 0
     
+    def append_entry(model_id: str, cost: dict) -> bool:
+        normalized_model_id = model_id.lower()
+        if normalized_model_id in emitted_model_ids:
+            print(f"    Duplicate model ID '{normalized_model_id}', skipping...")
+            return False
+
+        entries.append(generate_entry(normalized_model_id, cost))
+        emitted_model_ids.add(normalized_model_id)
+        return True
+
     for provider in PROVIDERS:
         if provider not in raw_price:
             print(f"  Provider '{provider}' not found, skipping...")
@@ -164,13 +175,13 @@ def main():
         for model_data in models.values():
             model_id = model_data.get("id", "").lower()
             cost = model_data.get("cost", {})
-            
+
             if not model_id:
                 continue
-            
+
             # 添加原始模型
-            entries.append(generate_entry(model_id, cost))
-            provider_count += 1
+            if append_entry(model_id, cost):
+                provider_count += 1
             
             # 收集所有别名
             aliases = []
@@ -183,9 +194,9 @@ def main():
                 aliases.extend(MODEL_ALIASES[model_id])
             
             # 添加别名 (去重)
-            for alias in set(aliases):
-                entries.append(generate_entry(alias.lower(), cost))
-                provider_count += 1
+            for alias in dict.fromkeys(aliases):
+                if append_entry(alias, cost):
+                    provider_count += 1
             
         print(f"  {provider}: {provider_count} models")
         model_count += provider_count
