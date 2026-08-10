@@ -702,6 +702,16 @@ func (m *relayPipelineMiddleware) OnOutboundRawRequest(ctx context.Context, requ
 		request.Headers = make(http.Header)
 	}
 	m.attempt.applyChannelRequestOptions(request)
+	if m.attempt.channel != nil && m.attempt.internalRequest != nil {
+		thinkingEnabled := m.attempt.internalRequest.ReasoningEffort != "none"
+		if _, err := ensureDeepSeekChatReasoningContent(
+			request,
+			m.attempt.channel.Type,
+			thinkingEnabled,
+		); err != nil {
+			log.Warnf("failed to preserve DeepSeek reasoning_content: %v", err)
+		}
+	}
 	return request, nil
 }
 
