@@ -88,12 +88,14 @@ func InitDB(dbType, dsn string, debug bool) error {
 // initSQLite 使用指定文件路径初始化 SQLite，并为每个连接应用运行参数。
 func initSQLite(path string, config *gorm.Config) (*gorm.DB, error) {
 	params := url.Values{}
+	// auto_vacuum 必须先于 journal_mode(WAL)：对全新文件，先切 WAL 会使 auto_vacuum 变为 no-op
+	// （实测保持 0），而先设 auto_vacuum 会让新建库从创建表前即进入模式 2。
+	params.Add("_pragma", "auto_vacuum(INCREMENTAL)")
 	params.Add("_pragma", "journal_mode(WAL)")
 	params.Add("_pragma", "synchronous(NORMAL)")
 	params.Add("_pragma", "cache_size(10000)")
 	params.Add("_pragma", "busy_timeout(5000)")
 	params.Add("_pragma", "foreign_keys(ON)")
-	params.Add("_pragma", "auto_vacuum(INCREMENTAL)")
 	params.Add("_pragma", "mmap_size(268435456)")
 	params.Add("_pragma", "locking_mode(NORMAL)")
 	return gorm.Open(sqlite.Open(path+"?"+params.Encode()), config)

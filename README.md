@@ -161,6 +161,17 @@ Three database types are supported:
 
 > 💡 **Tip**: MySQL and PostgreSQL require manual database creation. The application will automatically create the table structure.
 
+**SQLite Storage Notes:**
+
+- Relay request/response log content is configured in the admin panel under **Log Settings**, not in `config.json`. Each side (request and response) is limited to 256 KiB by default; saving can be disabled entirely or the limit adjusted between 1 KiB and 10 MiB.
+- A plain `DELETE` only produces reusable free pages — the database file does not shrink. Background maintenance incrementally reclaims at most 2048 pages per 10-minute cycle, but reclaiming the file space of a large existing database requires an offline compaction.
+- To compact an existing SQLite database:
+  1. Stop the service, then back up `data.db`, `data.db-wal` and `data.db-shm` together.
+  2. Ensure roughly twice the current database size in free disk space for the VACUUM temporary files.
+  3. Run `octopus database compact --config <path-to-config>`.
+  4. Only after it succeeds, start the new version and wait for the migration to finish.
+- Never run `database compact` against a bind-mounted volume while the container is still running.
+
 ### 🌐 Environment Variables
 
 All configuration options can be overridden via environment variables using the format `OCTOPUS_` + configuration path (joined with `_`):

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"maps"
 	"time"
+	"unicode/utf8"
 
 	"github.com/bestruirui/octopus/internal/model"
 	"github.com/bestruirui/octopus/internal/op"
@@ -187,10 +188,7 @@ func (m *RelayMetrics) saveLog(ctx context.Context, err error, duration time.Dur
 		relayLog.Cost = m.Stats.InputCost + m.Stats.OutputCost
 	}
 
-	relayLog.RequestContent = m.requestContent()
-	if len(m.InternalResponse) > 0 {
-		relayLog.ResponseContent = string(m.InternalResponse)
-	}
+	relayLog.RequestContent, relayLog.RequestContentTruncated, relayLog.ResponseContent, relayLog.ResponseContentTruncated = m.logContent()
 	if err != nil {
 		relayLog.Error = err.Error()
 	}
@@ -200,45 +198,93 @@ func (m *RelayMetrics) saveLog(ctx context.Context, err error, duration time.Dur
 	}
 }
 
-func (m *RelayMetrics) requestContent() string {
+// logContent 按正文保存开关构造请求/响应正文字段。
+// 开关关闭时不执行请求 marshal、不复制响应正文，两个字段都为空且不标截断；
+// 开关开启时在构造阶段完成截断，使内存列表、SSE、数据库和导出看到完全一致的前缀。
+func (m *RelayMetrics) logContent() (request string, requestTruncated bool, response string, responseTruncated bool) {
+	enabled, err := op.SettingGetBool(model.SettingKeyRelayLogContentEnabled)
+	if err != nil {
+		enabled = true
+	}
+	maxBytes, err := op.SettingGetInt(model.SettingKeyRelayLogContentMaxBytes)
+	if err != nil || maxBytes < model.RelayLogContentMinBytes {
+		maxBytes = 262144
+	}
+	if !enabled {
+		return "", false, "", false
+	}
+	if reqBytes := m.requestContent(); reqBytes != nil {
+		request, requestTruncated = truncateLogContent(reqBytes, maxBytes)
+	}
+	if len(m.InternalResponse) > 0 {
+		response, responseTruncated = truncateLogContent(m.InternalResponse, maxBytes)
+	}
+	return request, requestTruncated, response, responseTruncated
+}
+
+// truncateLogContent 按 UTF-8 字节计数保留 content 前缀，结果绝不超过 maxBytes 且不切断码点。
+// 仅当原始内容超限或遇到无效 UTF-8 时返回 truncated=true；无效序列只保留其前面的有效前缀。
+func truncateLogContent(content []byte, maxBytes int) (string, bool) {
+	if maxBytes <= 0 {
+		return "", len(content) > 0
+	}
+	if len(content) <= maxBytes && utf8.Valid(content) {
+		return string(content), false
+	}
+	offset := 0
+	for offset < len(content) && offset < maxBytes {
+		r, size := utf8.DecodeRune(content[offset:])
+		if r == utf8.RuneError && size == 1 {
+			// 无效 UTF-8 或末尾截断的多字节序列，只保留其前的有效前缀
+			break
+		}
+		if offset+size > maxBytes {
+			break
+		}
+		offset += size
+	}
+	return string(content[:offset]), true
+}
+
+func (m *RelayMetrics) requestContent() []byte {
 	if m.InternalRequest == nil {
-		return ""
+		return nil
 	}
 
 	reqJSON, err := json.Marshal(filterRequestForLog(m.InternalRequest))
 	if err != nil {
-		return ""
+		return nil
 	}
 	if m.ParamOverride == "" && m.ParamAppend == "" {
-		return string(reqJSON)
+		return reqJSON
 	}
 
 	var reqMap map[string]any
 	if err := json.Unmarshal(reqJSON, &reqMap); err != nil {
-		return string(reqJSON)
+		return reqJSON
 	}
 
 	// 日志里的请求体要反映本次实际发给上游的参数覆盖与追加，但失败解析时保留原始可审计内容。
 	if m.ParamOverride != "" {
 		var override map[string]any
 		if err := json.Unmarshal([]byte(m.ParamOverride), &override); err != nil {
-			return string(reqJSON)
+			return reqJSON
 		}
 		maps.Copy(reqMap, override)
 	}
 	if m.ParamAppend != "" {
 		var appendParams map[string]any
 		if err := json.Unmarshal([]byte(m.ParamAppend), &appendParams); err != nil {
-			return string(reqJSON)
+			return reqJSON
 		}
 		mergeParamAppend(reqMap, appendParams)
 	}
 
 	finalJSON, err := json.Marshal(reqMap)
 	if err != nil {
-		return string(reqJSON)
+		return reqJSON
 	}
-	return string(finalJSON)
+	return finalJSON
 }
 
 // filterRequestForLog 去掉 RawRequest 和图片二进制字段，避免 multipart 原始 body 或图片内容落库。

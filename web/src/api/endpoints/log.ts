@@ -45,6 +45,8 @@ export interface RelayLog {
     cost: number;                // 消耗费用
     request_content: string;     // 请求内容
     response_content: string;    // 响应内容
+    request_content_truncated: boolean;  // 请求内容是否被截断
+    response_content_truncated: boolean; // 响应内容是否被截断
     error: string;               // 错误信息
     attempts?: ChannelAttempt[]; // 所有尝试记录
     total_attempts?: number;     // 总尝试次数

@@ -470,6 +470,11 @@ export function LogCard({ log }: { log: RelayLog }) {
                                             <div className="flex items-center gap-2 px-3 md:px-4 py-2.5 md:py-3 border-b border-border bg-muted/50 shrink-0">
                                                 <Send className="size-4 text-green-500" />
                                                 <span className="text-sm font-medium text-card-foreground">{t('requestContent')}</span>
+                                                {log.request_content_truncated && (
+                                                    <Badge variant="outline" className="text-xs text-amber-600 dark:text-amber-400 border-amber-500/40">
+                                                        {t('truncated')}
+                                                    </Badge>
+                                                )}
                                                 <Badge variant="secondary" className="ml-auto text-xs">
                                                     {log.input_tokens.toLocaleString()} {t('tokens')}
                                                 </Badge>
@@ -482,6 +487,11 @@ export function LogCard({ log }: { log: RelayLog }) {
                                             <div className="flex items-center gap-2 px-3 md:px-4 py-2.5 md:py-3 border-b border-border bg-muted/50 shrink-0">
                                                 <MessageSquare className="size-4 text-purple-500" />
                                                 <span className="text-sm font-medium text-card-foreground">{t('responseContent')}</span>
+                                                {log.response_content_truncated && (
+                                                    <Badge variant="outline" className="text-xs text-amber-600 dark:text-amber-400 border-amber-500/40">
+                                                        {t('truncated')}
+                                                    </Badge>
+                                                )}
                                                 <Badge variant="secondary" className="ml-auto text-xs">
                                                     {log.output_tokens.toLocaleString()} {t('tokens')}
                                                 </Badge>

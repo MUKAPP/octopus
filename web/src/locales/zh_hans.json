@@ -420,13 +420,23 @@
                 "label": "日志保存天数",
                 "placeholder": "请输入天数"
             },
+            "contentEnabled": {
+                "label": "保存请求和响应正文"
+            },
+            "contentMaxBytes": {
+                "label": "每侧正文上限（KiB）",
+                "placeholder": "1-10240",
+                "unit": "KiB",
+                "invalid": "请输入 1 到 10240 之间的数值"
+            },
             "clear": {
                 "label": "清空历史日志",
                 "button": "清空",
                 "clearing": "清空中..."
             },
             "clearSuccess": "日志已清空",
-            "clearFailed": "清空失败"
+            "clearFailed": "清空失败",
+            "saveFailed": "保存设置失败"
         }
     },
     "group": {
@@ -536,6 +546,7 @@
             "cost": "费用",
             "requestContent": "请求内容",
             "responseContent": "响应内容",
+            "truncated": "内容已截断",
             "noRequestContent": "(无请求内容)",
             "noResponseContent": "(无响应内容)",
             "firstTokenTime": "首字时间",

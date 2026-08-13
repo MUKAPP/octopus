@@ -114,6 +114,12 @@ func DBImportIncremental(ctx context.Context, dump *model.DBDump) (*model.DBImpo
 			return nil, fmt.Errorf("validate stats_usage row %d: key_hash mismatch", i)
 		}
 	}
+	// 导入前逐项校验 setting，任何无效值在事务写入前整体拒绝，避免导入绕过 handler 校验。
+	for i := range dump.Settings {
+		if err := dump.Settings[i].Validate(); err != nil {
+			return nil, fmt.Errorf("validate setting %q: %w", dump.Settings[i].Key, err)
+		}
+	}
 
 	err := conn.Transaction(func(tx *gorm.DB) error {
 		// base tables

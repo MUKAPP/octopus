@@ -420,13 +420,23 @@
                 "label": "Log Retention (days)",
                 "placeholder": "Enter days"
             },
+            "contentEnabled": {
+                "label": "Save Request & Response Content"
+            },
+            "contentMaxBytes": {
+                "label": "Max Content Per Side (KiB)",
+                "placeholder": "1-10240",
+                "unit": "KiB",
+                "invalid": "Enter a value between 1 and 10240"
+            },
             "clear": {
                 "label": "Clear History Logs",
                 "button": "Clear",
                 "clearing": "Clearing..."
             },
             "clearSuccess": "Logs cleared",
-            "clearFailed": "Failed to clear logs"
+            "clearFailed": "Failed to clear logs",
+            "saveFailed": "Failed to save setting"
         }
     },
     "group": {
@@ -536,6 +546,7 @@
             "cost": "Cost",
             "requestContent": "Request Content",
             "responseContent": "Response Content",
+            "truncated": "Content Truncated",
             "noRequestContent": "(No request content)",
             "noResponseContent": "(No response content)",
             "firstTokenTime": "First Token Time",

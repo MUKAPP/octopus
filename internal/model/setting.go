@@ -8,6 +8,12 @@ import (
 
 type SettingKey string
 
+// 日志正文每侧保存上限的允许范围（字节）。
+const (
+	RelayLogContentMinBytes      = 1024     // 1 KiB
+	RelayLogContentMaxBytesLimit = 10485760 // 10 MiB
+)
+
 const (
 	SettingKeyProxyURL                  SettingKey = "proxy_url"
 	SettingKeyStatsSaveInterval         SettingKey = "stats_save_interval"          // 将统计信息写入数据库的周期(分钟)
@@ -15,6 +21,8 @@ const (
 	SettingKeySyncLLMInterval           SettingKey = "sync_llm_interval"            // LLM 同步间隔(小时)
 	SettingKeyRelayLogKeepPeriod        SettingKey = "relay_log_keep_period"        // 日志保存时间范围(天)
 	SettingKeyRelayLogKeepEnabled       SettingKey = "relay_log_keep_enabled"       // 是否保留历史日志
+	SettingKeyRelayLogContentEnabled    SettingKey = "relay_log_content_enabled"    // 是否保存请求/响应正文
+	SettingKeyRelayLogContentMaxBytes   SettingKey = "relay_log_content_max_bytes"  // 每侧正文保存上限(字节)
 	SettingKeyCORSAllowOrigins          SettingKey = "cors_allow_origins"           // 跨域白名单(逗号分隔, 如 "example.com,example2.com"). 为空不允许跨域, "*"允许所有
 	SettingKeyCircuitBreakerThreshold   SettingKey = "circuit_breaker_threshold"    // 熔断触发阈值（连续失败次数）
 	SettingKeyCircuitBreakerCooldown    SettingKey = "circuit_breaker_cooldown"     // 熔断基础冷却时间（秒）
@@ -29,15 +37,17 @@ type Setting struct {
 func DefaultSettings() []Setting {
 	return []Setting{
 		{Key: SettingKeyProxyURL, Value: ""},
-		{Key: SettingKeyStatsSaveInterval, Value: "10"},          // 默认10分钟保存一次统计信息
-		{Key: SettingKeyCORSAllowOrigins, Value: ""},             // CORS 默认不允许跨域，设置为 "*" 才允许所有来源
-		{Key: SettingKeyModelInfoUpdateInterval, Value: "24"},    // 默认24小时更新一次模型信息
-		{Key: SettingKeySyncLLMInterval, Value: "24"},            // 默认24小时同步一次LLM
-		{Key: SettingKeyRelayLogKeepPeriod, Value: "7"},          // 默认日志保存7天
-		{Key: SettingKeyRelayLogKeepEnabled, Value: "true"},      // 默认保留历史日志
-		{Key: SettingKeyCircuitBreakerThreshold, Value: "5"},     // 默认连续失败5次触发熔断
-		{Key: SettingKeyCircuitBreakerCooldown, Value: "60"},     // 默认基础冷却60秒
-		{Key: SettingKeyCircuitBreakerMaxCooldown, Value: "600"}, // 默认最大冷却600秒（10分钟）
+		{Key: SettingKeyStatsSaveInterval, Value: "10"},           // 默认10分钟保存一次统计信息
+		{Key: SettingKeyCORSAllowOrigins, Value: ""},              // CORS 默认不允许跨域，设置为 "*" 才允许所有来源
+		{Key: SettingKeyModelInfoUpdateInterval, Value: "24"},     // 默认24小时更新一次模型信息
+		{Key: SettingKeySyncLLMInterval, Value: "24"},             // 默认24小时同步一次LLM
+		{Key: SettingKeyRelayLogKeepPeriod, Value: "7"},           // 默认日志保存7天
+		{Key: SettingKeyRelayLogKeepEnabled, Value: "true"},       // 默认保留历史日志
+		{Key: SettingKeyRelayLogContentEnabled, Value: "true"},    // 默认保存请求/响应正文
+		{Key: SettingKeyRelayLogContentMaxBytes, Value: "262144"}, // 默认每侧正文上限 256 KiB
+		{Key: SettingKeyCircuitBreakerThreshold, Value: "5"},      // 默认连续失败5次触发熔断
+		{Key: SettingKeyCircuitBreakerCooldown, Value: "60"},      // 默认基础冷却60秒
+		{Key: SettingKeyCircuitBreakerMaxCooldown, Value: "600"},  // 默认最大冷却600秒（10分钟）
 	}
 }
 
@@ -50,9 +60,15 @@ func (s *Setting) Validate() error {
 			return fmt.Errorf("model info update interval must be an integer")
 		}
 		return nil
-	case SettingKeyRelayLogKeepEnabled:
+	case SettingKeyRelayLogKeepEnabled, SettingKeyRelayLogContentEnabled:
 		if s.Value != "true" && s.Value != "false" {
 			return fmt.Errorf("relay log keep enabled must be true or false")
+		}
+		return nil
+	case SettingKeyRelayLogContentMaxBytes:
+		maxBytes, err := strconv.Atoi(s.Value)
+		if err != nil || maxBytes < RelayLogContentMinBytes || maxBytes > RelayLogContentMaxBytesLimit {
+			return fmt.Errorf("relay log content max bytes must be an integer between %d and %d", RelayLogContentMinBytes, RelayLogContentMaxBytesLimit)
 		}
 		return nil
 	case SettingKeyProxyURL:
