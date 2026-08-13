@@ -149,7 +149,9 @@ export function useLogs(options: { pageSize?: number } = {}) {
             return allPages.length + 1;
         },
         staleTime: Infinity,
-        refetchOnMount: 'always',
+        // 切回日志页时不重新加载所有历史分页；由初始查询完成后的最新日志补拉同步增量，
+        // 避免分页 refetch 的旧响应覆盖 SSE/补拉刚写入的最新日志。
+        refetchOnMount: false,
     });
 
     const logs = useMemo(() => {
@@ -168,6 +170,7 @@ export function useLogs(options: { pageSize?: number } = {}) {
         merged.sort((a, b) => b.time - a.time);
         return merged;
     }, [logsQuery.data]);
+
 
     const loadMore = useCallback(async () => {
         if (!logsQuery.hasNextPage) return;
@@ -271,6 +274,12 @@ export function useLogs(options: { pageSize?: number } = {}) {
             catchUpInFlightRef.current = false;
         }
     }, [pageSize, prependLogs]);
+
+    useEffect(() => {
+        if (logsQuery.isFetched) {
+            void catchUpLatestLogs();
+        }
+    }, [logsQuery.isFetched, catchUpLatestLogs]);
 
     useEffect(() => {
         let cancelled = false;
