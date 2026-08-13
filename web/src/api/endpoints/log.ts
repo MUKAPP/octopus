@@ -124,6 +124,8 @@ export function useLogs(options: { pageSize?: number } = {}) {
     const reconnectAttemptRef = useRef(0);
     const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const connectGenerationRef = useRef(0);
+    const activeEventVersionRef = useRef(0);
+    const activeFetchInFlightRef = useRef(false);
     // 后台期间 JS 定时器会被冻结/节流，用标记 + 隐藏时长判断是否必须强制重建连接
     const needsReconnectRef = useRef(false);
     const hiddenAtRef = useRef<number | null>(null);
@@ -212,6 +214,7 @@ export function useLogs(options: { pageSize?: number } = {}) {
     }, [pageSize, queryClient]);
 
     const applyActiveEvent = useCallback((event: { type: 'start' | 'update' | 'end'; request?: ActiveRelayRequest; id?: number }) => {
+        activeEventVersionRef.current += 1;
         setActiveRequests((prev) => {
             switch (event.type) {
                 case 'start':
@@ -234,11 +237,18 @@ export function useLogs(options: { pageSize?: number } = {}) {
     }, []);
 
     const fetchActive = useCallback(async () => {
+        if (activeFetchInFlightRef.current) return;
+        activeFetchInFlightRef.current = true;
+        const eventVersion = activeEventVersionRef.current;
         try {
             const result = await apiClient.get<ActiveRelayRequest[] | null>('/api/v1/log/active');
-            setActiveRequests(result ?? []);
+            if (eventVersion === activeEventVersionRef.current) {
+                setActiveRequests(result ?? []);
+            }
         } catch (e) {
             logger.error('获取进行中请求失败:', e);
+        } finally {
+            activeFetchInFlightRef.current = false;
         }
     }, []);
 
@@ -357,6 +367,7 @@ export function useLogs(options: { pageSize?: number } = {}) {
                         const log: RelayLog = JSON.parse(event.data);
                         prependLogs([log]);
                         // 请求结束的日志到达时同步移除进行中条目（active_end 事件丢失时的兜底）
+                        activeEventVersionRef.current += 1;
                         setActiveRequests((prev) => prev.filter((r) => r.id !== log.id));
                     } catch (e) {
                         logger.error('解析日志数据失败:', e);
@@ -460,6 +471,9 @@ export function useLogs(options: { pageSize?: number } = {}) {
         };
 
         void connect();
+        const activeSyncTimer = setInterval(() => {
+            void fetchActive();
+        }, 10_000);
 
         if (typeof document !== 'undefined') {
             if (document.visibilityState === 'hidden') {
@@ -489,6 +503,7 @@ export function useLogs(options: { pageSize?: number } = {}) {
                 window.removeEventListener('focus', handleFocusOrOnline);
                 window.removeEventListener('pageshow', handleFocusOrOnline);
             }
+            clearInterval(activeSyncTimer);
         };
     }, [applyActiveEvent, catchUpLatestLogs, fetchActive, pageSize, prependLogs]);
 

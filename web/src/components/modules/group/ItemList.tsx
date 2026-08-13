@@ -320,6 +320,7 @@ export function MemberList({
                                 isRemoving={false}
                                 index={rubric.source.index}
                                 showWeight={showWeight}
+                                showRate={showRate}
                                 showConfirmDelete={showConfirmDelete}
                                 layoutScope={layoutScope}
                                 dnd={{

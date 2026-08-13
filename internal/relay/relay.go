@@ -111,13 +111,13 @@ func newRelayRun(c *gin.Context, inboundType llm.APIFormat, inAdapter transforme
 func (r *relayRun) run() {
 	ctx := r.c.Request.Context()
 	r.registerActive()
-	defer r.removeActive()
 	var lastErr error
 
 	for r.iter.Next() {
 		select {
 		case <-ctx.Done():
 			log.Infof("request context canceled, stopping retry")
+			r.removeActive()
 			r.metrics.Save(ctx, false, context.Canceled, r.iter.Attempts())
 			return
 		default:
@@ -134,10 +134,12 @@ func (r *relayRun) run() {
 
 		responseFinalized, err := attempt.run()
 		if err == nil {
+			r.removeActive()
 			r.metrics.Save(ctx, true, nil, r.iter.Attempts())
 			return
 		}
 		if responseFinalized {
+			r.removeActive()
 			r.metrics.Save(ctx, false, err, r.iter.Attempts())
 			return
 		}
@@ -147,6 +149,7 @@ func (r *relayRun) run() {
 	if lastErr == nil {
 		lastErr = errors.New("all channels failed")
 	}
+	r.removeActive()
 	r.metrics.Save(ctx, false, lastErr, r.iter.Attempts())
 	r.writeFinalError(ctx, lastErr)
 }

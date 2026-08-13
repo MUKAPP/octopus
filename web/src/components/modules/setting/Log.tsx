@@ -97,7 +97,7 @@ export function SettingLog() {
                 onError: () => {
                     // mutation 失败时恢复最近一次服务器值
                     setContentEnabled(initialContentEnabled.current);
-                    toast.error(t('saveFailed'));
+                    toast.error(t('log.saveFailed'));
                 }
             }
         );
@@ -107,7 +107,7 @@ export function SettingLog() {
         const parsed = Number(contentMaxKiB);
         if (!Number.isInteger(parsed) || parsed < CONTENT_MAX_KIB_MIN || parsed > CONTENT_MAX_KIB_MAX) {
             setContentMaxKiB(initialContentMaxKiB.current);
-            toast.error(t('contentMaxBytes.invalid'));
+            toast.error(t('log.contentMaxBytes.invalid'));
             return;
         }
         if (contentMaxKiB === initialContentMaxKiB.current) return;
@@ -122,7 +122,7 @@ export function SettingLog() {
                 },
                 onError: () => {
                     setContentMaxKiB(initialContentMaxKiB.current);
-                    toast.error(t('saveFailed'));
+                    toast.error(t('log.saveFailed'));
                 }
             }
         );

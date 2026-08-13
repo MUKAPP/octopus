@@ -374,8 +374,8 @@ func StatsChannelUpdate(channelID int, metrics model.StatsMetrics) error {
 	channelStats.StatsMetrics.Add(metrics)
 	statsChannelCache.Set(channelID, channelStats)
 	statsChannelCacheNeedUpdateLock.Lock()
-
 	statsChannelCacheNeedUpdate[channelID] = struct{}{}
+	statsChannelCacheNeedUpdateLock.Unlock()
 	return nil
 }
 
