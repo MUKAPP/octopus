@@ -182,9 +182,31 @@ func StatsSaveDB(ctx context.Context) error {
 	statsAPIKeyCacheNeedUpdateLock.Unlock()
 
 	if err := persistStatsSnapshots(ctx, totalSnap, dailySnap, hourlyAll, channelIDs, modelIDs, apiKeyIDs); err != nil {
+		restoreStatsDirty(channelIDs, modelIDs, apiKeyIDs)
 		return err
 	}
 	return persistStatsUsage(ctx)
+}
+
+// restoreStatsDirty 在统计持久化失败后恢复本批待写标记。
+func restoreStatsDirty(channelIDs, modelIDs, apiKeyIDs []int) {
+	statsChannelCacheNeedUpdateLock.Lock()
+	for _, id := range channelIDs {
+		statsChannelCacheNeedUpdate[id] = struct{}{}
+	}
+	statsChannelCacheNeedUpdateLock.Unlock()
+
+	statsModelCacheNeedUpdateLock.Lock()
+	for _, id := range modelIDs {
+		statsModelCacheNeedUpdate[id] = struct{}{}
+	}
+	statsModelCacheNeedUpdateLock.Unlock()
+
+	statsAPIKeyCacheNeedUpdateLock.Lock()
+	for _, id := range apiKeyIDs {
+		statsAPIKeyCacheNeedUpdate[id] = struct{}{}
+	}
+	statsAPIKeyCacheNeedUpdateLock.Unlock()
 }
 
 func persistStatsSnapshots(
@@ -296,9 +318,12 @@ func statsSaveDBWithDailyOverride(ctx context.Context, dailyOverride model.Stats
 	statsAPIKeyCacheNeedUpdateLock.Unlock()
 
 	if err := persistStatsSnapshots(ctx, totalSnap, dailyOverride, hourlyAll, channelIDs, modelIDs, apiKeyIDs); err != nil {
+
+		restoreStatsDirty(channelIDs, modelIDs, apiKeyIDs)
 		return err
 	}
-	return persistStatsUsage(ctx)
+	return nil
+
 }
 
 func StatsDailyUpdate(ctx context.Context, metrics model.StatsMetrics) error {
@@ -330,6 +355,7 @@ func StatsTotalUpdate(metrics model.StatsMetrics) error {
 }
 
 func StatsChannelUpdate(channelID int, metrics model.StatsMetrics) error {
+
 	if _, ok := channelCache.Get(channelID); !ok {
 		return nil
 	}
@@ -338,16 +364,18 @@ func StatsChannelUpdate(channelID int, metrics model.StatsMetrics) error {
 	defer statsChannelCacheLock.Unlock()
 
 	channelStats, ok := statsChannelCache.Get(channelID)
+
 	if !ok {
 		channelStats = model.StatsChannel{
 			ChannelID: channelID,
 		}
 	}
+
 	channelStats.StatsMetrics.Add(metrics)
 	statsChannelCache.Set(channelID, channelStats)
 	statsChannelCacheNeedUpdateLock.Lock()
+
 	statsChannelCacheNeedUpdate[channelID] = struct{}{}
-	statsChannelCacheNeedUpdateLock.Unlock()
 	return nil
 }
 
@@ -371,6 +399,8 @@ func StatsHourlyUpdate(metrics model.StatsMetrics) error {
 }
 
 func StatsModelUpdate(stats model.StatsModel) error {
+	statsModelCacheNeedUpdateLock.Lock()
+	defer statsModelCacheNeedUpdateLock.Unlock()
 	modelCache, ok := statsModelCache.Get(stats.ID)
 	if !ok {
 		modelCache = model.StatsModel{
@@ -379,13 +409,13 @@ func StatsModelUpdate(stats model.StatsModel) error {
 	}
 	modelCache.StatsMetrics.Add(stats.StatsMetrics)
 	statsModelCache.Set(stats.ID, modelCache)
-	statsModelCacheNeedUpdateLock.Lock()
 	statsModelCacheNeedUpdate[stats.ID] = struct{}{}
-	statsModelCacheNeedUpdateLock.Unlock()
 	return nil
 }
 
 func StatsAPIKeyUpdate(apiKeyID int, metrics model.StatsMetrics) error {
+	statsAPIKeyCacheNeedUpdateLock.Lock()
+	defer statsAPIKeyCacheNeedUpdateLock.Unlock()
 	apiKeyCache, ok := statsAPIKeyCache.Get(apiKeyID)
 	if !ok {
 		apiKeyCache = model.StatsAPIKey{
@@ -394,9 +424,7 @@ func StatsAPIKeyUpdate(apiKeyID int, metrics model.StatsMetrics) error {
 	}
 	apiKeyCache.StatsMetrics.Add(metrics)
 	statsAPIKeyCache.Set(apiKeyID, apiKeyCache)
-	statsAPIKeyCacheNeedUpdateLock.Lock()
 	statsAPIKeyCacheNeedUpdate[apiKeyID] = struct{}{}
-	statsAPIKeyCacheNeedUpdateLock.Unlock()
 	return nil
 }
 
@@ -422,11 +450,12 @@ func StatsChannelDel(id int) error {
 }
 
 func StatsAPIKeyDel(id int) error {
+	statsAPIKeyCacheNeedUpdateLock.Lock()
 	if _, ok := statsAPIKeyCache.Get(id); !ok {
+		statsAPIKeyCacheNeedUpdateLock.Unlock()
 		return nil
 	}
 	statsAPIKeyCache.Del(id)
-	statsAPIKeyCacheNeedUpdateLock.Lock()
 	delete(statsAPIKeyCacheNeedUpdate, id)
 	statsAPIKeyCacheNeedUpdateLock.Unlock()
 	return db.GetDB().Delete(&model.StatsAPIKey{}, id).Error
@@ -445,6 +474,7 @@ func StatsTodayGet() model.StatsDaily {
 }
 
 func StatsChannelGet(id int) model.StatsChannel {
+
 	statsChannelCacheLock.Lock()
 	defer statsChannelCacheLock.Unlock()
 
@@ -454,24 +484,25 @@ func StatsChannelGet(id int) model.StatsChannel {
 			ChannelID: id,
 		}
 		statsChannelCache.Set(id, tmp)
-		statsChannelCacheNeedUpdateLock.Lock()
 		statsChannelCacheNeedUpdate[id] = struct{}{}
-		statsChannelCacheNeedUpdateLock.Unlock()
 		return tmp
 	}
 	return stats
 }
 
 func StatsAPIKeyGet(id int) model.StatsAPIKey {
+	if stats, ok := statsAPIKeyCache.Get(id); ok {
+		return stats
+	}
+	statsAPIKeyCacheNeedUpdateLock.Lock()
+	defer statsAPIKeyCacheNeedUpdateLock.Unlock()
 	stats, ok := statsAPIKeyCache.Get(id)
 	if !ok {
 		tmp := model.StatsAPIKey{
 			APIKeyID: id,
 		}
 		statsAPIKeyCache.Set(id, tmp)
-		statsAPIKeyCacheNeedUpdateLock.Lock()
 		statsAPIKeyCacheNeedUpdate[id] = struct{}{}
-		statsAPIKeyCacheNeedUpdateLock.Unlock()
 		return tmp
 	}
 	return stats
@@ -645,15 +676,15 @@ type StatsAnalyticsEntityRow struct {
 // StatsAnalyticsResponse 是分析接口的固定响应形状；resolved 日期由 handler
 // 按实际采用的服务器日历范围填充，all-time 时为空字符串。
 type StatsAnalyticsResponse struct {
-	AvailableFrom     string                        `json:"available_from"`
-	ResolvedStartDate string                        `json:"resolved_start_date"`
-	ResolvedEndDate   string                        `json:"resolved_end_date"`
-	Summary           StatsAnalyticsMetrics         `json:"summary"`
-	Trend             []StatsAnalyticsTrendPoint    `json:"trend"`
-	ByModel           []StatsAnalyticsModelRow      `json:"by_model"`
-	ByActualModel     []StatsAnalyticsModelRow      `json:"by_actual_model"`
-	ByAPIKey          []StatsAnalyticsEntityRow     `json:"by_api_key"`
-	ByChannel         []StatsAnalyticsEntityRow     `json:"by_channel"`
+	AvailableFrom     string                     `json:"available_from"`
+	ResolvedStartDate string                     `json:"resolved_start_date"`
+	ResolvedEndDate   string                     `json:"resolved_end_date"`
+	Summary           StatsAnalyticsMetrics      `json:"summary"`
+	Trend             []StatsAnalyticsTrendPoint `json:"trend"`
+	ByModel           []StatsAnalyticsModelRow   `json:"by_model"`
+	ByActualModel     []StatsAnalyticsModelRow   `json:"by_actual_model"`
+	ByAPIKey          []StatsAnalyticsEntityRow  `json:"by_api_key"`
+	ByChannel         []StatsAnalyticsEntityRow  `json:"by_channel"`
 }
 
 type StatsAnalyticsEntityRef struct {
@@ -665,8 +696,8 @@ type StatsAnalyticsEntityRef struct {
 // 因而已删除或重命名实体的历史数据仍可筛选；空名称保留为可选择的
 // “未知/未分配”项。
 type StatsAnalyticsDimensions struct {
-	Models       []string                 `json:"models"`
-	ActualModels []string                 `json:"actual_models"`
+	Models       []string                  `json:"models"`
+	ActualModels []string                  `json:"actual_models"`
 	APIKeys      []StatsAnalyticsEntityRef `json:"api_keys"`
 	Channels     []StatsAnalyticsEntityRef `json:"channels"`
 }

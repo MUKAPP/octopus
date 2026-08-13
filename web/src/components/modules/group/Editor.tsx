@@ -348,7 +348,7 @@ export function GroupEditor({
 
     return (
         <form onSubmit={handleSubmit} className="flex h-full min-h-0 min-w-0 w-full flex-col">
-            <div className="min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain pr-1">
+            <div className="min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain px-1">
                 <FieldGroup className="gap-4 flex min-h-0 h-full min-w-0 w-full flex-col">
                     <div className="grid min-w-0 grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                         <Field>
