@@ -118,4 +118,4 @@ require (
 
 replace github.com/gin-contrib/sse => github.com/looplj/sse v0.0.0-20260223020440-b463add2d52f
 
-replace github.com/tmaxmax/go-sse => github.com/looplj/go-sse v0.0.0-20250909130008-e74a1155bc3b
+replace github.com/tmaxmax/go-sse => ./third_party/go-sse
