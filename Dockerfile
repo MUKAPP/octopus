@@ -23,6 +23,7 @@ ENV CGO_ENABLED=0 \
     GOOS=linux \
     GOFLAGS=-mod=mod
 COPY src/go.mod src/go.sum ./octopus/
+COPY src/third_party ./octopus/third_party
 WORKDIR /workspace/octopus
 RUN --mount=type=cache,target=/go/pkg/mod \
     go mod download
