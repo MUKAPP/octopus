@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"slices"
 	"strings"
 	"time"
 
@@ -17,17 +18,19 @@ import (
 
 const llmPriceUrl = "https://models.dev/api.json"
 
-var Provider = []string{
-	"openai",     // GPT 系列
-	"anthropic",  // Claude 系列
-	"google",     // Gemini 系列
-	"deepseek",   // DeepSeek 系列
-	"xai",        // Grok 系列
-	"alibaba",    // Qwen 系列
-	"zhipuai",    // GLM 系列
-	"minimax",    // MiniMax 系列
-	"moonshotai", // Kimi/Moonshot
-	"v0",         // v0 系列
+// developerFamilies 定义研发商及其自研模型系列前缀。
+var developerFamilies = map[string][]string{
+	"openai":     {"gpt", "o"},
+	"anthropic":  {"claude"},
+	"google":     {"gemini", "gemma", "lyria", "veo"},
+	"deepseek":   {"deepseek"},
+	"xai":        {"grok"},
+	"alibaba":    {"qwen", "qvq"},
+	"zhipuai":    {"glm"},
+	"minimax":    {"minimax"},
+	"moonshotai": {"kimi"},
+	"v0":         {"v0"},
+	"xiaomi":     {"mimo"},
 }
 
 var lastUpdateTime time.Time
@@ -38,41 +41,93 @@ func UpdateLLMPrice(ctx context.Context) error {
 	defer func() {
 		log.Debugf("update LLM price task finished, update time: %s", time.Since(startTime))
 	}()
-	client, err := client.GetHTTPClientSystemProxy(false)
+
+	var body []byte
+	httpClient, err := client.GetHTTPClientSystemProxy(false)
+	if err == nil {
+		req, requestErr := http.NewRequestWithContext(ctx, http.MethodGet, llmPriceUrl, nil)
+		if requestErr != nil {
+			return requestErr
+		}
+		req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36")
+		resp, requestErr := httpClient.Do(req)
+		if requestErr != nil {
+			err = requestErr
+		} else {
+			if resp.StatusCode != http.StatusOK {
+				err = fmt.Errorf("failed to fetch LLM info: %s", resp.Status)
+			} else {
+				body, err = io.ReadAll(resp.Body)
+				if err != nil {
+					err = fmt.Errorf("failed to read response body: %w", err)
+				}
+			}
+			resp.Body.Close()
+		}
+	}
 	if err != nil {
-		return err
+		log.Warnf("direct request failed, trying with proxy: %v", err)
+		httpClient, err = client.GetHTTPClientSystemProxy(true)
+		if err != nil {
+			return err
+		}
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, llmPriceUrl, nil)
+		if err != nil {
+			return err
+		}
+		req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36")
+		resp, err := httpClient.Do(req)
+		if err != nil {
+			return err
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode != http.StatusOK {
+			return fmt.Errorf("failed to fetch LLM info: %s", resp.Status)
+		}
+		body, err = io.ReadAll(resp.Body)
+		if err != nil {
+			return fmt.Errorf("failed to read response body: %w", err)
+		}
 	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, llmPriceUrl, nil)
-	if err != nil {
-		return err
-	}
-	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36")
-	resp, err := client.Do(req)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("failed to fetch LLM info: %s", resp.Status)
-	}
+
 	var rawPrice map[string]struct {
 		Models map[string]struct {
-			ID   string         `json:"id"`
+			ID         string `json:"id"`
+			Family     string `json:"family"`
+			Modalities struct {
+				Output []string `json:"output"`
+			} `json:"modalities"`
 			Cost model.LLMPrice `json:"cost"`
 		} `json:"models"`
-	}
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return fmt.Errorf("failed to read response body: %w", err)
 	}
 	if err := json.Unmarshal(body, &rawPrice); err != nil {
 		return fmt.Errorf("failed to parse LLM info: %w", err)
 	}
+
 	llmPriceLock.Lock()
-	for _, provider := range Provider {
-		for _, model := range rawPrice[provider].Models {
-			model.ID = strings.ToLower(model.ID)
-			llmPrice[model.ID] = model.Cost
+	for provider, familyPrefixes := range developerFamilies {
+		for _, priceModel := range rawPrice[provider].Models {
+			modelID := strings.ToLower(priceModel.ID)
+			modelFamily := strings.ToLower(priceModel.Family)
+
+			// 仅保留包含文本输出的非嵌入模型。
+			if modelID == "" || !slices.Contains(priceModel.Modalities.Output, "text") || strings.Contains(modelID, "embed") || strings.Contains(modelFamily, "embed") {
+				continue
+			}
+
+			// 云平台可能同时托管第三方模型，仅接受该研发商的自研系列。
+			isDeveloperModel := false
+			for _, familyPrefix := range familyPrefixes {
+				if strings.HasPrefix(modelFamily, familyPrefix) {
+					isDeveloperModel = true
+					break
+				}
+			}
+			if !isDeveloperModel {
+				continue
+			}
+
+			llmPrice[modelID] = priceModel.Cost
 		}
 	}
 	llmPriceLock.Unlock()
