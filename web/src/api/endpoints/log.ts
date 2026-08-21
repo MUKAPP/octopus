@@ -1,13 +1,182 @@
 import type { InfiniteData } from '@tanstack/react-query';
-import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiClient, API_BASE_URL } from '../client';
 import { logger } from '@/lib/logger';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
+/** 日志请求的生命周期状态。 */
+export type RequestState = 'running' | 'committed' | 'success' | 'failed' | 'canceled';
+
+/** 概览流发送的单条日志（正文和尝试详情可能按需补充）。 */
+export interface RelayLogOverview {
+    id: number;
+    state: RequestState;
+    started_at: string;
+    completed_at?: string;
+    duration: number;
+    request_model: string;
+    actual_model: string;
+    client_protocol: string;
+    stream: boolean;
+    final_channel_name: string;
+    final_rate_multiplier?: number;
+    rate_multiplier?: number;
+    input_tokens: number;
+    output_tokens: number;
+    cache_read_tokens: number;
+    cache_write_tokens: number;
+    total_cost: number;
+    error?: string;
+    attempts?: unknown[];
+    history?: unknown[];
+    request_api_key_name?: string;
+    request_content?: string;
+    response_content?: string;
+}
+
+/** 详情流中的一次渠道尝试。 */
+export interface RelayAttemptEvent {
+    attempt_index: number;
+    channel_name: string;
+    model_name: string;
+    error?: string;
+    status?: string;
+    duration?: number;
+    rate_multiplier?: number;
+    sticky?: boolean;
+    channel_id?: number;
+    channel_key_id?: number;
+}
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+    return value && typeof value === 'object' ? value as Record<string, unknown> : null;
+}
+
+function numberValue(value: unknown, fallback = 0): number {
+    const result = typeof value === 'number' ? value : Number(value);
+    return Number.isFinite(result) ? result : fallback;
+}
+
+function stringValue(value: unknown, fallback = ''): string {
+    return typeof value === 'string' ? value : value == null ? fallback : String(value);
+}
+
+function boolValue(value: unknown, fallback = false): boolean {
+    return typeof value === 'boolean' ? value : fallback;
+}
+
+function timestampSeconds(value: unknown, fallback = 0): number {
+    if (typeof value === 'number') {
+        return value > 1e12 ? value / 1000 : value;
+    }
+    if (typeof value === 'string') {
+        const parsed = Date.parse(value);
+        if (Number.isFinite(parsed)) return parsed / 1000;
+        const numeric = Number(value);
+        if (Number.isFinite(numeric)) return numeric > 1e12 ? numeric / 1000 : numeric;
+    }
+    return fallback;
+}
+
+/** Go time.Duration 以纳秒序列化；概览时长统一转换为毫秒。 */
+function durationNanosecondsToMilliseconds(value: unknown): number {
+    const duration = numberValue(value);
+    return duration > 0 ? duration / 1_000_000 : 0;
+}
+
+function normalizeAttempt(value: unknown, index: number, durationIsNanoseconds: boolean): ChannelAttempt {
+    const record = asRecord(value) ?? {};
+    const rawStatus = stringValue(record.status);
+    const status: AttemptStatus = rawStatus === 'running'
+        || rawStatus === 'success'
+        || rawStatus === 'failed'
+        || rawStatus === 'canceled'
+        || rawStatus === 'circuit_break'
+        || rawStatus === 'skipped'
+        ? rawStatus
+        : record.error ? 'failed' : 'success';
+    const duration = durationIsNanoseconds
+        ? durationNanosecondsToMilliseconds(record.duration)
+        : numberValue(record.duration);
+    return {
+        channel_id: numberValue(record.channel_id),
+        channel_key_id: record.channel_key_id == null ? undefined : numberValue(record.channel_key_id),
+        channel_name: stringValue(record.channel_name, '—'),
+        model_name: stringValue(record.model_name),
+        rate_multiplier: numberValue(record.rate_multiplier),
+        attempt_num: numberValue(record.attempt_num, numberValue(record.attempt_index, index + 1)),
+        attempt_index: numberValue(record.attempt_index, numberValue(record.attempt_num, index + 1)),
+        status,
+        duration,
+        sticky: record.sticky == null ? undefined : boolValue(record.sticky),
+        msg: stringValue(record.msg ?? record.error),
+    };
+}
+
+/** 将新概览或旧列表记录统一为当前日志卡片使用的结构。 */
+export function normalizeRelayLog(value: RelayLog | RelayLogOverview | unknown): RelayLog {
+    const record = asRecord(value) ?? {};
+    if ('request_model' in record || 'started_at' in record || 'state' in record) {
+        const hasHistory = Array.isArray(record.history);
+        const rawAttempts = hasHistory
+            ? record.history as unknown[]
+            : Array.isArray(record.attempts) ? record.attempts : [];
+        const startedAt = timestampSeconds(record.started_at ?? record.time);
+        const state = stringValue(record.state, 'success') as RequestState;
+        const requestModel = stringValue(record.request_model ?? record.request_model_name);
+        const actualModel = stringValue(record.actual_model ?? record.actual_model_name, requestModel);
+        const cacheRead = numberValue(record.cache_read_tokens ?? record.cached_tokens);
+        const duration = durationNanosecondsToMilliseconds(record.duration);
+        const attempts = rawAttempts.map((attempt, index) => normalizeAttempt(attempt, index, false));
+        const finalAttempt = attempts[attempts.length - 1];
+        const finalChannel = stringValue(record.final_channel_name ?? record.channel_name, finalAttempt?.channel_name ?? '—');
+        const finalRate = numberValue(record.final_rate_multiplier ?? record.rate_multiplier ?? finalAttempt?.rate_multiplier);
+        return {
+            id: numberValue(record.id),
+            time: startedAt,
+            request_model_name: requestModel,
+            request_api_key_name: stringValue(record.request_api_key_name ?? record.api_key_name) || undefined,
+            channel: numberValue(record.channel ?? finalAttempt?.channel_id),
+            channel_name: finalChannel,
+            rate_multiplier: finalRate,
+            actual_model_name: actualModel,
+            input_tokens: numberValue(record.input_tokens),
+            output_tokens: numberValue(record.output_tokens),
+            cached_tokens: cacheRead,
+            cache_read_tokens: cacheRead,
+            cache_write_tokens: numberValue(record.cache_write_tokens),
+            ftut: numberValue(record.ftut ?? record.first_token_time),
+            use_time: duration,
+            cost: numberValue(record.total_cost ?? record.cost),
+            request_content: stringValue(record.request_content ?? record.request_body),
+            response_content: stringValue(record.response_content ?? record.response_body),
+            request_content_truncated: boolValue(record.request_content_truncated),
+            response_content_truncated: boolValue(record.response_content_truncated),
+            error: stringValue(record.error),
+            attempts,
+            total_attempts: numberValue(record.total_attempts, attempts.length),
+            state,
+            started_at: stringValue(record.started_at),
+            completed_at: stringValue(record.completed_at),
+            client_protocol: stringValue(record.client_protocol),
+            stream: boolValue(record.stream),
+            final_channel_name: finalChannel,
+            final_rate_multiplier: finalRate,
+            is_overview: true,
+        };
+    }
+
+    const old = record as unknown as RelayLog;
+    const attempts = Array.isArray(old.attempts)
+        ? old.attempts.map((attempt, index) => normalizeAttempt(attempt, index, false))
+        : undefined;
+    return { ...old, attempts };
+}
+
 /**
  * 尝试状态
  */
-export type AttemptStatus = 'success' | 'failed' | 'circuit_break' | 'skipped';
+export type AttemptStatus = 'running' | 'success' | 'failed' | 'canceled' | 'circuit_break' | 'skipped';
 
 /**
  * 单次渠道尝试信息
@@ -19,6 +188,7 @@ export interface ChannelAttempt {
     model_name: string;
     rate_multiplier: number; // 当时使用的渠道倍率
     attempt_num: number;    // 第几次尝试
+    attempt_index?: number; // 新详情流使用的尝试序号
     status: AttemptStatus;
     duration: number;       // 耗时(毫秒)
     sticky?: boolean;
@@ -40,6 +210,8 @@ export interface RelayLog {
     input_tokens: number;        // 输入Token
     output_tokens: number;       // 输出Token
     cached_tokens?: number;      // 缓存读取 Token；历史日志可能未采集
+    cache_read_tokens?: number;
+    cache_write_tokens?: number;
     ftut: number;                // 首字时间(毫秒)
     use_time: number;            // 总用时(毫秒)
     cost: number;                // 消耗费用
@@ -50,6 +222,14 @@ export interface RelayLog {
     error: string;               // 错误信息
     attempts?: ChannelAttempt[]; // 所有尝试记录
     total_attempts?: number;     // 总尝试次数
+    state?: RequestState;
+    started_at?: string;
+    completed_at?: string;
+    client_protocol?: string;
+    stream?: boolean;
+    final_channel_name?: string;
+    final_rate_multiplier?: number;
+    is_overview?: boolean;
 }
 
 /**
@@ -99,6 +279,233 @@ export function useClearLogs() {
     });
 }
 
+/** 中止指定请求当前正在执行的渠道尝试。 */
+export function useStopAttempt() {
+    return useMutation({
+        mutationFn: ({ requestId, attemptIndex }: { requestId: number; attemptIndex: number }) =>
+            apiClient.post<null>(`/api/v1/log/${requestId}/${attemptIndex}/stop`),
+    });
+}
+
+export interface RelayLogBody {
+    content?: string;
+    truncated?: boolean;
+}
+
+function normalizeLogBody(value: unknown): RelayLogBody {
+    if (typeof value === 'string') return { content: value };
+    const record = asRecord(value) ?? {};
+    const content = record.content ?? record.body;
+    return {
+        content: content == null ? undefined : String(content),
+        truncated: record.truncated === true,
+    };
+}
+
+/** 在打开详情时按需获取请求正文。 */
+export function useLogRequestBody(id: number, startedAt: string | undefined, enabled: boolean) {
+    return useQuery({
+        queryKey: ['logs', id, startedAt ?? '', 'request-body'],
+        queryFn: async () => normalizeLogBody(await apiClient.get<unknown>(`/api/v1/log/${id}/request-body`)),
+        enabled,
+        staleTime: Infinity,
+    });
+}
+
+/** 在打开详情时按需获取最终响应正文。 */
+export function useLogResponseBody(id: number, startedAt: string | undefined, enabled: boolean) {
+    return useQuery({
+        queryKey: ['logs', id, startedAt ?? '', 'response-body'],
+        queryFn: async () => normalizeLogBody(await apiClient.get<unknown>(`/api/v1/log/${id}/response-body`)),
+        enabled,
+        staleTime: Infinity,
+    });
+}
+
+function attemptFromDetail(value: unknown, index = 0): ChannelAttempt {
+    const envelope = asRecord(value) ?? {};
+    const record = asRecord(envelope.attempt) ?? envelope;
+    return normalizeAttempt({
+        ...record,
+        attempt_num: record.attempt_num ?? record.attempt_index,
+    }, index, false);
+}
+
+function detailAttemptsFromPayload(value: unknown): ChannelAttempt[] {
+    const record = asRecord(value);
+    const candidates = record && (Array.isArray(record.history) ? record.history : record.attempts);
+    if (!Array.isArray(candidates)) return [];
+    return candidates.map((attempt, index) => attemptFromDetail(attempt, index));
+}
+
+function detailPayload(value: unknown): Record<string, unknown> {
+    const record = asRecord(value);
+    const nested = record?.data;
+    return asRecord(nested) ?? record ?? {};
+}
+
+/** 为日志详情弹窗订阅尝试历史，兼容运行中和已完成记录。 */
+export function useLogDetailStream(id: number, state: RequestState | undefined, enabled: boolean) {
+    const [attempts, setAttempts] = useState<ChannelAttempt[]>([]);
+    const [runningAttempt, setRunningAttempt] = useState<ChannelAttempt | null>(null);
+    const [isCommitted, setIsCommitted] = useState(state === 'committed' || state === 'success');
+    const [isConnected, setIsConnected] = useState(false);
+    const [error, setError] = useState<Error | null>(null);
+
+    useEffect(() => {
+        let cancelled = false;
+        let source: EventSource | null = null;
+        let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+        let reconnectAttempt = 0;
+        let connect: () => Promise<void>;
+
+        setAttempts([]);
+        setRunningAttempt(null);
+        setIsCommitted(state === 'committed' || state === 'success');
+        setIsConnected(false);
+        setError(null);
+
+        const terminal = state === 'success' || state === 'failed' || state === 'canceled';
+        if (!enabled || terminal) {
+            return () => {
+                cancelled = true;
+            };
+        }
+
+        const closeSource = () => {
+            if (!source) return;
+            source.onopen = null;
+            source.onerror = null;
+            source.onmessage = null;
+            source.close();
+            source = null;
+        };
+
+        const scheduleReconnect = () => {
+            if (cancelled || reconnectTimer !== null) return;
+            const delay = Math.min(1000 * 2 ** reconnectAttempt, 30_000);
+            reconnectAttempt += 1;
+            reconnectTimer = setTimeout(() => {
+                reconnectTimer = null;
+                void connect();
+            }, delay);
+        };
+
+        const applyAttempt = (value: unknown, eventType: 'started' | 'finished') => {
+            const parsed = attemptFromDetail(value);
+            const next: ChannelAttempt = eventType === 'started' ? { ...parsed, status: 'running' } : parsed;
+            setAttempts((current) => {
+                const index = current.findIndex((attempt) => (
+                    (attempt.attempt_index ?? attempt.attempt_num) === (next.attempt_index ?? next.attempt_num)
+                ));
+                if (index < 0) return [...current, next].sort((a, b) => (a.attempt_index ?? a.attempt_num) - (b.attempt_index ?? b.attempt_num));
+                const updated = [...current];
+                updated[index] = { ...updated[index], ...next };
+                return updated;
+            });
+            if (eventType === 'started' || next.status === 'running') {
+                setRunningAttempt(next);
+            } else {
+                setRunningAttempt((current) => (
+                    current && (current.attempt_index ?? current.attempt_num) === (next.attempt_index ?? next.attempt_num)
+                        ? null
+                        : current
+                ));
+            }
+        };
+
+        const applySnapshot = (value: unknown) => {
+            const payload = detailPayload(value);
+            const history = detailAttemptsFromPayload(payload);
+            if (history.length) setAttempts(history);
+            const currentAttempt = payload.current_attempt;
+            const currentIndex = numberValue(payload.current_attempt_index, -1);
+            if (currentAttempt) {
+                setRunningAttempt(attemptFromDetail(currentAttempt));
+            } else if (currentIndex >= 0) {
+                setRunningAttempt(history.find((attempt) => (attempt.attempt_index ?? attempt.attempt_num) === currentIndex) ?? null);
+            }
+            if (payload.state === 'committed' || payload.state === 'success') setIsCommitted(true);
+        };
+
+        connect = async () => {
+            if (cancelled || !enabled) return;
+            try {
+                const streamToken = await apiClient.get<{ token: string }>('/api/v1/log/stream-token');
+                if (cancelled) return;
+                const token = encodeURIComponent(streamToken.token);
+                source = new EventSource(`${API_BASE_URL}/api/v1/log/${id}/stream?token=${token}`, { withCredentials: true });
+                source.onopen = () => {
+                    if (cancelled) return;
+                    reconnectAttempt = 0;
+                    setIsConnected(true);
+                    setError(null);
+                };
+                source.onmessage = (event) => {
+                    try {
+                        applySnapshot(JSON.parse(event.data));
+                    } catch (cause) {
+                        logger.error('解析日志详情快照失败:', cause);
+                    }
+                };
+                source.addEventListener('log', (event) => {
+                    try {
+                        applySnapshot(JSON.parse((event as MessageEvent<string>).data));
+                    } catch (cause) {
+                        logger.error('解析日志详情快照失败:', cause);
+                    }
+                });
+                source.addEventListener('attempt.started', (event) => {
+                    try {
+                        applyAttempt(JSON.parse((event as MessageEvent<string>).data), 'started');
+                    } catch (cause) {
+                        logger.error('解析日志尝试失败:', cause);
+                    }
+                });
+                source.addEventListener('attempt.finished', (event) => {
+                    try {
+                        applyAttempt(JSON.parse((event as MessageEvent<string>).data), 'finished');
+                    } catch (cause) {
+                        logger.error('解析日志尝试失败:', cause);
+                    }
+                });
+                source.addEventListener('response.committed', (event) => {
+                    setRunningAttempt(null);
+                    setIsCommitted(true);
+                    if ((event as MessageEvent<string>).data) {
+                        try {
+                            applySnapshot(JSON.parse((event as MessageEvent<string>).data));
+                        } catch {
+                            // response.committed 可能没有 data。
+                        }
+                    }
+                });
+                source.onerror = () => {
+                    if (cancelled) return;
+                    setIsConnected(false);
+                    setError(new Error('日志详情流已断开'));
+                    closeSource();
+                    scheduleReconnect();
+                };
+            } catch (cause) {
+                if (cancelled) return;
+                setIsConnected(false);
+                setError(cause instanceof Error ? cause : new Error('获取日志详情流令牌失败'));
+                scheduleReconnect();
+            }
+        };
+
+        if (enabled) void connect();
+        return () => {
+            cancelled = true;
+            if (reconnectTimer !== null) clearTimeout(reconnectTimer);
+            closeSource();
+        };
+    }, [enabled, id, state]);
+
+    return { attempts, runningAttempt, isCommitted, isConnected, error };
+}
+
 const logsInfiniteQueryKey = (pageSize: number) => ['logs', 'infinite', pageSize] as const;
 
 /**
@@ -120,6 +527,9 @@ export function useLogs(options: { pageSize?: number } = {}) {
     const [isConnected, setIsConnected] = useState(false);
     const [error, setError] = useState<Error | null>(null);
     const [activeRequests, setActiveRequests] = useState<ActiveRelayRequest[]>([]);
+    const [overviewLogs, setOverviewLogs] = useState<RelayLog[]>([]);
+    const [overviewUsable, setOverviewUsable] = useState(false);
+    const overviewUsableRef = useRef(false);
     const eventSourceRef = useRef<EventSource | null>(null);
     const reconnectAttemptRef = useRef(0);
     const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -131,6 +541,7 @@ export function useLogs(options: { pageSize?: number } = {}) {
     const hiddenAtRef = useRef<number | null>(null);
     const connectingRef = useRef(false);
     const catchUpInFlightRef = useRef(false);
+    const overviewSourceRef = useRef<EventSource | null>(null);
 
     const queryClient = useQueryClient();
 
@@ -141,8 +552,8 @@ export function useLogs(options: { pageSize?: number } = {}) {
             const params = new URLSearchParams();
             params.set('page', String(pageParam));
             params.set('page_size', String(pageSize));
-            const result = await apiClient.get<RelayLog[] | null>(`/api/v1/log/list?${params.toString()}`);
-            return result ?? [];
+            const result = await apiClient.get<unknown[] | null>(`/api/v1/log/list?${params.toString()}`);
+            return (result ?? []).map(normalizeRelayLog);
         },
         getNextPageParam: (lastPage, allPages) => {
             if (!lastPage || lastPage.length < pageSize) return undefined;
@@ -154,7 +565,7 @@ export function useLogs(options: { pageSize?: number } = {}) {
         refetchOnMount: false,
     });
 
-    const logs = useMemo(() => {
+    const fallbackLogs = useMemo(() => {
         const pages = logsQuery.data?.pages ?? [];
         const seen = new Set<number>();
         const merged: RelayLog[] = [];
@@ -170,8 +581,121 @@ export function useLogs(options: { pageSize?: number } = {}) {
         merged.sort((a, b) => b.time - a.time);
         return merged;
     }, [logsQuery.data]);
+    const mergedLogs = useMemo(() => {
+        if (!overviewUsable) return fallbackLogs;
+        const byID = new Map<number, RelayLog>();
+        for (const log of fallbackLogs) byID.set(log.id, log);
+        for (const log of overviewLogs) byID.set(log.id, log);
+        return Array.from(byID.values()).sort((a, b) => b.time - a.time || b.id - a.id);
+    }, [fallbackLogs, overviewLogs, overviewUsable]);
+
+    // 新日志流提供完整的进程内快照和运行中请求更新；连接不可用时继续使用旧分页/日志流。
+    useEffect(() => {
+        let cancelled = false;
+        let source: EventSource | null = null;
+        let retryTimer: ReturnType<typeof setTimeout> | null = null;
+        let retryAttempt = 0;
+        let opened = false;
+
+        const closeSource = () => {
+            if (!source) return;
+            source.onopen = null;
+            source.onerror = null;
+            source.onmessage = null;
+            source.close();
+            if (overviewSourceRef.current === source) overviewSourceRef.current = null;
+            source = null;
+        };
+
+        const applyOverview = (event: MessageEvent<string>) => {
+            try {
+                const parsed = JSON.parse(event.data) as unknown;
+                const next = normalizeRelayLog(parsed);
+                if (!next.id) return;
+                setOverviewLogs((current) => {
+                    const merged = [...current.filter((log) => log.id !== next.id), next];
+                    merged.sort((a, b) => b.time - a.time || b.id - a.id);
+                    return merged;
+                });
+            } catch (cause) {
+                logger.error('解析日志概览失败:', cause);
+            }
+        };
+
+        const scheduleReconnect = () => {
+            if (cancelled || retryTimer !== null) return;
+            // 新路由不存在时让旧 /list + /stream 继续工作，不在后台无限制造请求。
+            if (!opened && retryAttempt >= 3) return;
+            const delay = Math.min(1000 * 2 ** retryAttempt, 30_000);
+            retryAttempt += 1;
+            retryTimer = setTimeout(() => {
+                retryTimer = null;
+                void connect();
+            }, delay);
+        };
+
+        const connect = async () => {
+            if (cancelled) return;
+            try {
+                const streamToken = await apiClient.get<{ token: string }>('/api/v1/log/stream-token');
+                if (cancelled) return;
+                const token = encodeURIComponent(streamToken.token);
+                source = new EventSource(`${API_BASE_URL}/api/v1/log/overview/stream?token=${token}`, { withCredentials: true });
+                overviewSourceRef.current = source;
+                source.onopen = () => {
+                    if (cancelled) return;
+                    opened = true;
+                    retryAttempt = 0;
+                    overviewUsableRef.current = true;
+                    setOverviewUsable(true);
+                    setIsConnected(true);
+                    setError(null);
+                };
+                source.onmessage = applyOverview;
+                source.addEventListener('log', applyOverview);
+                source.onerror = () => {
+                    if (cancelled) return;
+                    closeSource();
+                    if (opened) {
+                        setIsConnected(false);
+                        setError(new Error('日志概览流已断开'));
+                    }
+                    scheduleReconnect();
+                };
+            } catch (cause) {
+                if (cancelled) return;
+                if (opened) setError(cause instanceof Error ? cause : new Error('获取日志概览流令牌失败'));
+                scheduleReconnect();
+            }
+        };
+
+        void connect();
+        return () => {
+            cancelled = true;
+            if (retryTimer !== null) clearTimeout(retryTimer);
+            closeSource();
+        };
+    }, []);
 
 
+    const overviewActiveRequests = useMemo<ActiveRelayRequest[]>(() => {
+        return overviewLogs
+            .filter((log) => log.state === 'running' || log.state === 'committed')
+            .map((log) => {
+                const currentAttempt = log.attempts?.find((attempt) => attempt.status === 'running') ?? log.attempts?.[log.attempts.length - 1];
+                return {
+                    id: log.id,
+                    time: log.time,
+                    request_model_name: log.request_model_name,
+                    request_api_key_name: log.request_api_key_name,
+                    channel_name: currentAttempt?.channel_name ?? log.channel_name,
+                    actual_model_name: currentAttempt?.model_name ?? log.actual_model_name,
+                };
+            });
+    }, [overviewLogs]);
+
+    const logs = mergedLogs;
+    const visibleActiveRequests = overviewUsable ? overviewActiveRequests : activeRequests;
     const loadMore = useCallback(async () => {
         if (!logsQuery.hasNextPage) return;
         if (logsQuery.isFetchingNextPage) return;
@@ -264,9 +788,9 @@ export function useLogs(options: { pageSize?: number } = {}) {
             const params = new URLSearchParams();
             params.set('page', '1');
             params.set('page_size', String(catchUpPageSize));
-            const result = await apiClient.get<RelayLog[] | null>(`/api/v1/log/list?${params.toString()}`);
+            const result = await apiClient.get<unknown[] | null>(`/api/v1/log/list?${params.toString()}`);
             if (result?.length) {
-                prependLogs(result);
+                prependLogs(result.map(normalizeRelayLog));
             }
         } catch (e) {
             logger.error('补拉最新日志失败:', e);
@@ -373,10 +897,9 @@ export function useLogs(options: { pageSize?: number } = {}) {
 
                 eventSource.onmessage = (event) => {
                     try {
-                        const log: RelayLog = JSON.parse(event.data);
+                        const log = normalizeRelayLog(JSON.parse(event.data));
                         prependLogs([log]);
                         // 请求结束的日志到达时同步移除进行中条目（active_end 事件丢失时的兜底）
-                        activeEventVersionRef.current += 1;
                         setActiveRequests((prev) => prev.filter((r) => r.id !== log.id));
                     } catch (e) {
                         logger.error('解析日志数据失败:', e);
@@ -522,8 +1045,9 @@ export function useLogs(options: { pageSize?: number } = {}) {
 
     return {
         logs,
-        activeRequests,
+        activeRequests: visibleActiveRequests,
         isConnected,
+        isOverview: overviewUsable,
         error,
         listError: logsQuery.error,
         isError: logsQuery.isError,

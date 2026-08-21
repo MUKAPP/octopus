@@ -15,9 +15,9 @@ import { ListRequestError } from '@/components/common/ListRequestError';
  */
 export function Log() {
     const t = useTranslations('log');
-    const { logs, activeRequests, hasMore, isLoading, isLoadingMore, isError, listError, isFetching, loadMore, refetch } = useLogs({ pageSize: 10 });
+    const { logs, activeRequests, isOverview, hasMore, isLoading, isLoadingMore, isError, listError, isFetching, loadMore, refetch } = useLogs({ pageSize: 10 });
     const commonT = useTranslations('common');
-    const hasListError = isError || Boolean(listError);
+    const hasListError = !isOverview && (isError || Boolean(listError));
 
     const canLoadMore = hasMore && !isLoading && !isLoadingMore && logs.length > 0;
     const handleReachEnd = useCallback(() => {
@@ -48,7 +48,7 @@ export function Log() {
             <div className="relative min-h-0 flex-1">
                 <VirtualizedGrid
                     items={logs}
-                    isLoading={isLoading}
+                    isLoading={isLoading && logs.length === 0}
                     layout="list"
                     columns={{ default: 1 }}
                     estimateItemHeight={80}

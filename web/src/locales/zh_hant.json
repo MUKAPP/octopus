@@ -536,6 +536,15 @@
         "active": {
             "title": "進行中的請求"
         },
+        "status": {
+            "running": "進行中",
+            "committed": "響應輸出中",
+            "success": "成功",
+            "failed": "失敗",
+            "canceled": "已取消",
+            "circuitBreak": "熔斷",
+            "skipped": "已跳過"
+        },
         "card": {
             "error": "錯誤",
             "errorInfo": "錯誤訊息",
@@ -558,7 +567,13 @@
             "attempts": "次嘗試",
             "success": "成功",
             "failed": "失敗",
-            "rateMultiplier": "倍率"
+            "rateMultiplier": "倍率",
+            "stopAttempt": "停止嘗試",
+            "stopFailed": "無法停止嘗試",
+            "waitingResponse": "等待上游響應…",
+            "responseStreaming": "響應仍在輸出…",
+            "detailUnavailable": "詳細資訊不可用",
+            "cacheWriteTokens": "快取寫入"
         }
     },
     "channel": {

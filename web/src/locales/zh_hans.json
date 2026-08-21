@@ -536,6 +536,15 @@
         "active": {
             "title": "进行中的请求"
         },
+        "status": {
+            "running": "进行中",
+            "committed": "响应输出中",
+            "success": "成功",
+            "failed": "失败",
+            "canceled": "已取消",
+            "circuitBreak": "熔断",
+            "skipped": "已跳过"
+        },
         "card": {
             "error": "错误",
             "errorInfo": "错误信息",
@@ -558,7 +567,13 @@
             "attempts": "次尝试",
             "success": "成功",
             "failed": "失败",
-            "rateMultiplier": "倍率"
+            "rateMultiplier": "倍率",
+            "stopAttempt": "停止尝试",
+            "stopFailed": "无法停止尝试",
+            "waitingResponse": "等待上游响应…",
+            "responseStreaming": "响应仍在输出…",
+            "detailUnavailable": "详细信息不可用",
+            "cacheWriteTokens": "缓存写入"
         }
     },
     "channel": {

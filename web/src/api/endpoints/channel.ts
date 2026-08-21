@@ -253,7 +253,9 @@ export function useUpdateChannel() {
 		onSuccess: (data) => {
 			logger.log("渠道更新成功:", data);
 			queryClient.invalidateQueries({ queryKey: ["channels", "list"] });
+			queryClient.invalidateQueries({ queryKey: ["models", "list"] });
 			queryClient.invalidateQueries({ queryKey: ["models", "channel"] });
+			queryClient.invalidateQueries({ queryKey: ["groups", "list"] });
 		},
 		onError: (error) => {
 			logger.error("渠道更新失败:", error);
@@ -276,15 +278,17 @@ export function useDeleteChannel() {
 		mutationFn: async (id: number) => {
 			return apiClient.delete<null>(`/api/v1/channel/delete/${id}`);
 		},
-		onSuccess: () => {
-			logger.log("渠道删除成功");
-			queryClient.invalidateQueries({ queryKey: ["channels", "list"] });
-			queryClient.invalidateQueries({ queryKey: ["models", "channel"] });
-		},
-		onError: (error) => {
-			logger.error("渠道删除失败:", error);
-		},
-	});
+        onSuccess: () => {
+            logger.log("渠道删除成功");
+            queryClient.invalidateQueries({ queryKey: ["channels", "list"] });
+            queryClient.invalidateQueries({ queryKey: ["models", "list"] });
+            queryClient.invalidateQueries({ queryKey: ["models", "channel"] });
+            queryClient.invalidateQueries({ queryKey: ["groups", "list"] });
+        },
+        onError: (error) => {
+            logger.error("渠道删除失败:", error);
+        },
+    });
 }
 
 /**
@@ -293,24 +297,26 @@ export function useDeleteChannel() {
  * @example
  * const enableChannel = useEnableChannel();
  *
- * enableChannel.mutate({ id: 1, enabled: true }); // 启用 ID 为 1 的渠道
- * enableChannel.mutate({ id: 1, enabled: false }); // 禁用 ID 为 1 的渠道
+ * enableChannel.mutate({ id: 1, enabled: true }); // 启用或禁用 ID 为 1 的渠道
  */
 export function useEnableChannel() {
-	const queryClient = useQueryClient();
+    const queryClient = useQueryClient();
 
-	return useMutation({
-		mutationFn: async (data: { id: number; enabled: boolean }) => {
-			return apiClient.post<null>("/api/v1/channel/enable", data);
-		},
-		onSuccess: () => {
-			logger.log("渠道状态更新成功");
-			queryClient.invalidateQueries({ queryKey: ["channels", "list"] });
-		},
-		onError: (error) => {
-			logger.error("渠道状态更新失败:", error);
-		},
-	});
+    return useMutation({
+        mutationFn: async (data: { id: number; enabled: boolean }) => {
+            return apiClient.post<null>("/api/v1/channel/enable", data);
+        },
+        onSuccess: () => {
+            logger.log("渠道状态更新成功");
+            queryClient.invalidateQueries({ queryKey: ["channels", "list"] });
+            queryClient.invalidateQueries({ queryKey: ["models", "list"] });
+            queryClient.invalidateQueries({ queryKey: ["models", "channel"] });
+            queryClient.invalidateQueries({ queryKey: ["groups", "list"] });
+        },
+        onError: (error) => {
+            logger.error("渠道状态更新失败:", error);
+        },
+    });
 }
 
 /**
@@ -376,12 +382,16 @@ export function useSyncChannel() {
 		mutationFn: async () => {
 			return apiClient.post<null>("/api/v1/channel/sync");
 		},
-		onSuccess: () => {
-			logger.log("渠道同步成功");
-			queryClient.invalidateQueries({
-				queryKey: ["channels", "last-sync-time"],
-			});
-		},
+        onSuccess: () => {
+            logger.log("渠道同步成功");
+            queryClient.invalidateQueries({
+                queryKey: ["channels", "last-sync-time"],
+            });
+            queryClient.invalidateQueries({ queryKey: ["channels", "list"] });
+            queryClient.invalidateQueries({ queryKey: ["models", "list"] });
+            queryClient.invalidateQueries({ queryKey: ["models", "channel"] });
+            queryClient.invalidateQueries({ queryKey: ["groups", "list"] });
+        },
 		onError: (error) => {
 			logger.error("渠道同步失败:", error);
 		},

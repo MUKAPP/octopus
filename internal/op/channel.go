@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"slices"
+	"strings"
 	"sync"
 
 	"github.com/bestruirui/octopus/internal/db"
@@ -131,12 +132,15 @@ func ChannelKeySaveDB(ctx context.Context) error {
 }
 
 func ChannelUpdate(req *model.ChannelUpdateRequest, ctx context.Context) (*model.Channel, error) {
-	_, ok := channelCache.Get(req.ID)
+	oldChannel, ok := channelCache.Get(req.ID)
 	if !ok {
 		return nil, fmt.Errorf("channel not found")
 	}
 
 	tx := db.GetDB().WithContext(ctx).Begin()
+	if tx.Error != nil {
+		return nil, tx.Error
+	}
 	defer func() {
 		if r := recover(); r != nil {
 			tx.Rollback()
@@ -145,6 +149,9 @@ func ChannelUpdate(req *model.ChannelUpdateRequest, ctx context.Context) (*model
 
 	var selectFields []string
 	updates := model.Channel{ID: req.ID}
+	var modelNames []string
+	var affectedGroupIDs []int
+	var affectedGroupItemIDs []int
 
 	if req.Name != nil {
 		selectFields = append(selectFields, "name")
@@ -162,13 +169,36 @@ func ChannelUpdate(req *model.ChannelUpdateRequest, ctx context.Context) (*model
 		selectFields = append(selectFields, "base_urls")
 		updates.BaseUrls = *req.BaseUrls
 	}
-	if req.Model != nil {
+	if req.Model != nil || req.CustomModel != nil {
+		autoModels := oldChannel.Model
+		customModels := oldChannel.CustomModel
+		if req.Model != nil {
+			autoModels = *req.Model
+		}
+		if req.CustomModel != nil {
+			customModels = *req.CustomModel
+		}
+
+		customModelNames := normalizeChannelModelNames(customModels)
+		customModelSet := make(map[string]struct{}, len(customModelNames))
+		for _, modelName := range customModelNames {
+			customModelSet[modelName] = struct{}{}
+		}
+		autoModelNames := normalizeChannelModelNames(autoModels)
+		filteredAutoModels := make([]string, 0, len(autoModelNames))
+		for _, modelName := range autoModelNames {
+			if _, custom := customModelSet[modelName]; !custom {
+				filteredAutoModels = append(filteredAutoModels, modelName)
+			}
+		}
+
 		selectFields = append(selectFields, "model")
-		updates.Model = *req.Model
-	}
-	if req.CustomModel != nil {
-		selectFields = append(selectFields, "custom_model")
-		updates.CustomModel = *req.CustomModel
+		updates.Model = strings.Join(filteredAutoModels, ",")
+		modelNames = append(filteredAutoModels, customModelNames...)
+		if req.CustomModel != nil {
+			selectFields = append(selectFields, "custom_model")
+			updates.CustomModel = strings.Join(customModelNames, ",")
+		}
 	}
 	if req.Proxy != nil {
 		selectFields = append(selectFields, "proxy")
@@ -283,12 +313,43 @@ func ChannelUpdate(req *model.ChannelUpdateRequest, ctx context.Context) (*model
 			return nil, fmt.Errorf("failed to create channel keys: %w", err)
 		}
 	}
+	if req.Model != nil || req.CustomModel != nil {
+		staleItems := tx.Model(&model.GroupItem{}).Where("channel_id = ?", req.ID)
+		if len(modelNames) > 0 {
+			staleItems = staleItems.Where("model_name NOT IN ?", modelNames)
+		}
+		if err := staleItems.Distinct("group_id").Pluck("group_id", &affectedGroupIDs).Error; err != nil {
+			tx.Rollback()
+			return nil, fmt.Errorf("failed to find stale group ids: %w", err)
+		}
 
+		staleItems = tx.Model(&model.GroupItem{}).Where("channel_id = ?", req.ID)
+		if len(modelNames) > 0 {
+			staleItems = staleItems.Where("model_name NOT IN ?", modelNames)
+		}
+		if err := staleItems.Pluck("id", &affectedGroupItemIDs).Error; err != nil {
+			tx.Rollback()
+			return nil, fmt.Errorf("failed to find stale group items: %w", err)
+		}
+		if len(affectedGroupItemIDs) > 0 {
+			if err := tx.Where("id IN ? AND channel_id = ?", affectedGroupItemIDs, req.ID).Delete(&model.GroupItem{}).Error; err != nil {
+				tx.Rollback()
+				return nil, fmt.Errorf("failed to delete stale group items: %w", err)
+			}
+		}
+	}
+
+	// key 更新、新增和模型清理都在同一事务中完成，避免缓存暴露半更新状态。
 	if err := tx.Commit().Error; err != nil {
 		return nil, fmt.Errorf("failed to commit transaction: %w", err)
 	}
+	for _, groupID := range affectedGroupIDs {
+		if err := groupRefreshCacheByID(groupID, ctx); err != nil {
+			return nil, fmt.Errorf("failed to refresh group cache for group %d: %w", groupID, err)
+		}
+	}
 
-	// 刷新缓存并返回最新数据
+	// 刷新缓存并返回最新数据。
 	if err := channelRefreshCacheByID(req.ID, ctx); err != nil {
 		return nil, err
 	}
@@ -318,6 +379,9 @@ func ChannelDel(id int, ctx context.Context) error {
 
 	// 开启事务
 	tx := db.GetDB().WithContext(ctx).Begin()
+	if tx.Error != nil {
+		return tx.Error
+	}
 	defer func() {
 		if r := recover(); r != nil {
 			tx.Rollback()
@@ -331,6 +395,19 @@ func ChannelDel(id int, ctx context.Context) error {
 		Pluck("group_id", &affectedGroupIDs).Error; err != nil {
 		tx.Rollback()
 		return fmt.Errorf("failed to get affected groups: %w", err)
+	}
+
+	// StatsModel 使用自身的主键；只按渠道 ID 清理，不能把 GroupItem.ID 当作统计 ID。
+	var affectedStatsModelIDs []int
+	if err := tx.Model(&model.StatsModel{}).
+		Where("channel_id = ?", id).
+		Pluck("id", &affectedStatsModelIDs).Error; err != nil {
+		tx.Rollback()
+		return fmt.Errorf("failed to get affected model stats: %w", err)
+	}
+	if err := tx.Where("channel_id = ?", id).Delete(&model.StatsModel{}).Error; err != nil {
+		tx.Rollback()
+		return fmt.Errorf("failed to delete model stats: %w", err)
 	}
 
 	// 删除所有引用该渠道的 GroupItem
@@ -372,6 +449,12 @@ func ChannelDel(id int, ctx context.Context) error {
 	}
 	channelKeyCacheNeedUpdateLock.Unlock()
 	StatsChannelDel(id)
+	statsModelCacheNeedUpdateLock.Lock()
+	for _, modelID := range affectedStatsModelIDs {
+		statsModelCache.Del(modelID)
+		delete(statsModelCacheNeedUpdate, modelID)
+	}
+	statsModelCacheNeedUpdateLock.Unlock()
 
 	// 刷新受影响的分组缓存
 	for _, groupID := range affectedGroupIDs {
@@ -383,10 +466,28 @@ func ChannelDel(id int, ctx context.Context) error {
 	return nil
 }
 
+// normalizeChannelModelNames trims model IDs, drops empty values, and keeps first occurrence order.
+func normalizeChannelModelNames(values ...string) []string {
+	parts := xstrings.SplitTrimCompact(",", values...)
+	if len(parts) < 2 {
+		return parts
+	}
+	seen := make(map[string]struct{}, len(parts))
+	models := make([]string, 0, len(parts))
+	for _, modelName := range parts {
+		if _, exists := seen[modelName]; exists {
+			continue
+		}
+		seen[modelName] = struct{}{}
+		models = append(models, modelName)
+	}
+	return models
+}
+
 func ChannelLLMList(ctx context.Context) ([]model.LLMChannel, error) {
 	models := []model.LLMChannel{}
 	for _, channel := range channelCache.GetAll() {
-		modelNames := xstrings.SplitTrimCompact(",", channel.Model, channel.CustomModel)
+		modelNames := normalizeChannelModelNames(channel.Model, channel.CustomModel)
 		for _, modelName := range modelNames {
 			if modelName == "" {
 				continue
@@ -430,6 +531,15 @@ func channelRefreshCache(ctx context.Context) error {
 	channelKeyCacheNeedUpdateLock.Lock()
 	channelKeyCacheNeedUpdate = make(map[int]struct{})
 	channelKeyCacheNeedUpdateLock.Unlock()
+	activeChannelIDs := make(map[int]struct{}, len(channels))
+	for _, channel := range channels {
+		activeChannelIDs[channel.ID] = struct{}{}
+	}
+	for id := range channelCache.GetAll() {
+		if _, ok := activeChannelIDs[id]; !ok {
+			channelCache.Del(id)
+		}
+	}
 	for _, channel := range channels {
 		channelCache.Set(channel.ID, channel)
 		for _, k := range channel.Keys {

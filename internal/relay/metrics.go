@@ -3,6 +3,7 @@ package relay
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"maps"
 	"time"
 	"unicode/utf8"
@@ -29,9 +30,10 @@ type RelayMetrics struct {
 	InternalResponse []byte
 
 	// 统计指标
-	ActualModel  string
-	Stats        model.StatsMetrics
-	CachedTokens int64
+	ActualModel      string
+	Stats            model.StatsMetrics
+	CachedTokens     int64
+	CacheWriteTokens int64
 
 	// 参数覆盖 / 参数追加
 	ParamOverride string
@@ -49,8 +51,10 @@ func (m *RelayMetrics) RecordUsage(usage *llm.Usage) {
 
 	tokenDetails := usage.PromptTokensDetails
 	m.CachedTokens = 0
+	m.CacheWriteTokens = 0
 	if tokenDetails != nil {
 		m.CachedTokens = tokenDetails.CachedTokens
+		m.CacheWriteTokens = tokenDetails.WriteCachedTokens
 	}
 
 	modelPrice := price.GetLLMPrice(m.ActualModel)
@@ -156,7 +160,7 @@ func finalChannel(attempts []model.ChannelAttempt) (int, string, float64) {
 	return lastID, lastName, lastRate
 }
 
-func (m *RelayMetrics) saveLog(ctx context.Context, err error, duration time.Duration, attempts []model.ChannelAttempt, channelID int, channelName string, rateMultiplier float64, apiKeyName string) {
+func (m *RelayMetrics) buildRelayLog(err error, duration time.Duration, attempts []model.ChannelAttempt, channelID int, channelName string, rateMultiplier float64, apiKeyName string) model.RelayLog {
 	cachedTokens := int(m.CachedTokens)
 	relayLog := model.RelayLog{
 		ID:               m.ID,
@@ -168,7 +172,7 @@ func (m *RelayMetrics) saveLog(ctx context.Context, err error, duration time.Dur
 		ActualModelName:  m.ActualModel,
 		UseTime:          int(duration.Milliseconds()),
 		CachedTokens:     &cachedTokens,
-		Attempts:         attempts,
+		Attempts:         append([]model.ChannelAttempt(nil), attempts...),
 		TotalAttempts:    len(attempts),
 	}
 
@@ -192,15 +196,24 @@ func (m *RelayMetrics) saveLog(ctx context.Context, err error, duration time.Dur
 	if err != nil {
 		relayLog.Error = err.Error()
 	}
+	return relayLog
+}
 
-	if logErr := op.RelayLogAdd(ctx, relayLog); logErr != nil {
-		log.Warnf("failed to save relay log: %v", logErr)
+func (m *RelayMetrics) saveLog(ctx context.Context, err error, duration time.Duration, attempts []model.ChannelAttempt, channelID int, channelName string, rateMultiplier float64, apiKeyName string) {
+	relayLog := m.buildRelayLog(err, duration, attempts, channelID, channelName, rateMultiplier, apiKeyName)
+	state := op.RelayLogStateFailed
+	if err == nil {
+		state = op.RelayLogStateSuccess
+	} else if errors.Is(err, context.Canceled) {
+		state = op.RelayLogStateCanceled
 	}
+	// 生产日志只进入并发安全的内存 store；旧 SQLite API 仍保留供兼容代码使用。
+	op.RelayLogStoreComplete(m.ID, state, relayLog, err, m.CachedTokens, m.CacheWriteTokens)
 }
 
 // logContent 按正文保存开关构造请求/响应正文字段。
 // 开关关闭时不执行请求 marshal、不复制响应正文，两个字段都为空且不标截断；
-// 开关开启时在构造阶段完成截断，使内存列表、SSE、数据库和导出看到完全一致的前缀。
+// 开关开启时在构造阶段完成截断，使内存列表与 SSE 看到完全一致的前缀。
 func (m *RelayMetrics) logContent() (request string, requestTruncated bool, response string, responseTruncated bool) {
 	enabled, err := op.SettingGetBool(model.SettingKeyRelayLogContentEnabled)
 	if err != nil {

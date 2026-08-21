@@ -114,6 +114,8 @@ export const useAuthStore = create<AuthState>()(
             },
 
             logout: () => {
+                // Cookie 登录与本地 token 并存时，必须通知后端清除 HttpOnly Cookie。
+                void apiClient.post('/api/v1/user/logout', {}).catch(() => undefined);
                 set({
                     isAuthenticated: false,
                     isAPIKeyAuth: false,

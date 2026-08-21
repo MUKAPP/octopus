@@ -536,6 +536,15 @@
         "active": {
             "title": "In-progress Requests"
         },
+        "status": {
+            "running": "Running",
+            "committed": "Response streaming",
+            "success": "Success",
+            "failed": "Failed",
+            "canceled": "Canceled",
+            "circuitBreak": "Circuit breaker",
+            "skipped": "Skipped"
+        },
         "card": {
             "error": "Error",
             "errorInfo": "Error Info",
@@ -558,7 +567,13 @@
             "attempts": "attempts",
             "success": "Success",
             "failed": "Failed",
-            "rateMultiplier": "Rate"
+            "rateMultiplier": "Rate",
+            "stopAttempt": "Stop attempt",
+            "stopFailed": "Unable to stop attempt",
+            "waitingResponse": "Waiting for upstream response...",
+            "responseStreaming": "Response is still streaming...",
+            "detailUnavailable": "Details are unavailable",
+            "cacheWriteTokens": "Cache write"
         }
     },
     "channel": {

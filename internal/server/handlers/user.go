@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"net/http"
+	"strings"
 
 	"github.com/bestruirui/octopus/internal/model"
 	"github.com/bestruirui/octopus/internal/op"
@@ -20,6 +21,11 @@ func init() {
 				Handle(login),
 		)
 	router.NewGroupRouter("/api/v1/user").
+		AddRoute(
+			router.NewRoute("/logout", http.MethodPost).
+				Handle(logout),
+		)
+	router.NewGroupRouter("/api/v1/user").
 		Use(middleware.Auth()).
 		Use(middleware.RequireJSON()).
 		AddRoute(
@@ -34,6 +40,14 @@ func init() {
 			router.NewRoute("/status", http.MethodGet).
 				Handle(status),
 		)
+}
+
+func requestUsesTLS(c *gin.Context) bool {
+	if c.Request.TLS != nil {
+		return true
+	}
+	forwardedProto := strings.TrimSpace(strings.Split(c.GetHeader("X-Forwarded-Proto"), ",")[0])
+	return strings.EqualFold(forwardedProto, "https")
 }
 
 func login(c *gin.Context) {
@@ -51,7 +65,24 @@ func login(c *gin.Context) {
 		resp.Error(c, http.StatusInternalServerError, resp.ErrInternalServer)
 		return
 	}
+
+	// GenerateJWTToken 使用秒级过期契约；Cookie Max-Age 也使用秒。
+	maxAge := 15 * 60
+	switch {
+	case user.Expire > 0:
+		maxAge = user.Expire
+	case user.Expire == -1:
+		maxAge = 30 * 24 * 60 * 60
+	}
+	c.SetSameSite(http.SameSiteLaxMode)
+	c.SetCookie("auth", token, maxAge, "/", "", requestUsesTLS(c), true)
 	resp.Success(c, model.UserLoginResponse{Token: token, ExpireAt: expire})
+}
+
+func logout(c *gin.Context) {
+	c.SetSameSite(http.SameSiteLaxMode)
+	c.SetCookie("auth", "", -1, "/", "", requestUsesTLS(c), true)
+	resp.Success(c, "logout successfully")
 }
 
 func changePassword(c *gin.Context) {

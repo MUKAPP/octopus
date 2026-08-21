@@ -12,20 +12,44 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+func requestUsesTLS(c *gin.Context) bool {
+	if c.Request.TLS != nil {
+		return true
+	}
+	forwardedProto := strings.TrimSpace(strings.Split(c.GetHeader("X-Forwarded-Proto"), ",")[0])
+	return strings.EqualFold(forwardedProto, "https")
+}
+
 func Auth() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		token := c.GetHeader("Authorization")
-		if token == "" {
+		cookieToken, cookieErr := c.Cookie("auth")
+		cookiePresent := cookieErr == nil && cookieToken != ""
+		if cookiePresent && auth.VerifyJWTToken(cookieToken) {
+			c.Next()
+			return
+		}
+
+		authorization := strings.TrimSpace(c.GetHeader("Authorization"))
+		if authorization != "" && auth.VerifyJWTToken(strings.TrimPrefix(authorization, "Bearer ")) {
+			if cookiePresent {
+				c.SetSameSite(http.SameSiteLaxMode)
+				c.SetCookie("auth", "", -1, "/", "", requestUsesTLS(c), true)
+			}
+			c.Next()
+			return
+		}
+
+		if !cookiePresent && authorization == "" {
 			resp.Error(c, http.StatusBadRequest, resp.ErrBadRequest)
 			c.Abort()
 			return
 		}
-		if !auth.VerifyJWTToken(strings.TrimPrefix(token, "Bearer ")) {
-			resp.Error(c, http.StatusUnauthorized, resp.ErrUnauthorized)
-			c.Abort()
-			return
+		if cookiePresent {
+			c.SetSameSite(http.SameSiteLaxMode)
+			c.SetCookie("auth", "", -1, "/", "", requestUsesTLS(c), true)
 		}
-		c.Next()
+		resp.Error(c, http.StatusUnauthorized, resp.ErrUnauthorized)
+		c.Abort()
 	}
 }
 

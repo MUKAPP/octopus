@@ -398,19 +398,26 @@ func StatsHourlyUpdate(metrics model.StatsMetrics) error {
 	return nil
 }
 
+// StatsModelUpdate 累加仍然存在的渠道模型统计并标记为待持久化。
 func StatsModelUpdate(stats model.StatsModel) error {
 	statsModelCacheNeedUpdateLock.Lock()
 	defer statsModelCacheNeedUpdateLock.Unlock()
+	if _, ok := channelCache.Get(stats.ChannelID); !ok {
+		return nil
+	}
 	modelCache, ok := statsModelCache.Get(stats.ID)
 	if !ok {
 		modelCache = model.StatsModel{
-			ID: stats.ID,
+			ID:        stats.ID,
+			Name:      stats.Name,
+			ChannelID: stats.ChannelID,
 		}
 	}
 	modelCache.StatsMetrics.Add(stats.StatsMetrics)
 	statsModelCache.Set(stats.ID, modelCache)
 	statsModelCacheNeedUpdate[stats.ID] = struct{}{}
 	return nil
+
 }
 
 func StatsAPIKeyUpdate(apiKeyID int, metrics model.StatsMetrics) error {

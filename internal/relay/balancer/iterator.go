@@ -168,3 +168,8 @@ func (s *AttemptSpan) End(status model.AttemptStatus, msg string) {
 func (s *AttemptSpan) Duration() time.Duration {
 	return time.Since(s.startTime)
 }
+
+// Attempt returns a copy of the current attempt metadata.
+func (s *AttemptSpan) Attempt() model.ChannelAttempt {
+	return s.attempt
+}

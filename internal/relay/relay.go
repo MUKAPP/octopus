@@ -96,6 +96,7 @@ func newRelayRun(c *gin.Context, inboundType llm.APIFormat, inAdapter transforme
 	return &relayRun{
 		c:               c,
 		inAdapter:       inAdapter,
+		inboundType:     inboundType,
 		internalRequest: internalRequest,
 		metrics: &RelayMetrics{
 			APIKeyID:        apiKeyID,
@@ -154,13 +155,16 @@ func (r *relayRun) run() {
 	r.writeFinalError(ctx, lastErr)
 }
 
-// registerActive 在请求开始时登记为进行中状态；ID 同时用于最终 RelayLog，便于前端关联移除。
+// registerActive 在请求开始时登记为进行中状态；ID 同时用于最终日志，便于前端关联。
 func (r *relayRun) registerActive() {
 	apiKeyName := ""
 	if apiKey, err := op.APIKeyGet(r.metrics.APIKeyID, r.c.Request.Context()); err == nil {
 		apiKeyName = apiKey.Name
 	}
 	r.metrics.ID = snowflake.GenerateID()
+	initialLog := r.metrics.buildRelayLog(nil, 0, nil, 0, "", 0, apiKeyName)
+	stream := r.internalRequest.Stream != nil && *r.internalRequest.Stream
+	op.RelayLogStoreStart(initialLog, r.metrics.StartTime, string(r.inboundType), stream)
 	op.RelayActiveAdd(op.ActiveRelayRequest{
 		ID:                r.metrics.ID,
 		Time:              r.metrics.StartTime.Unix(),
@@ -225,31 +229,50 @@ func (r *relayRun) writeCommittedSSEError(ctx context.Context, err error) {
 	log.Warnf("all channels failed after SSE response started: %v", err)
 }
 
+func (r *relayRun) emitAttemptsSince(start int) {
+	attempts := r.iter.Attempts()
+	if start < 0 || start >= len(attempts) {
+		return
+	}
+	for index := start; index < len(attempts); index++ {
+		op.RelayLogStoreAttemptFinished(r.metrics.ID, index, attempts[index])
+	}
+}
+
 func (r *relayRun) prepareAttempt() (*relayAttempt, error) {
 	item := r.iter.Item()
 	channel, err := op.ChannelGet(item.ChannelID, r.c.Request.Context())
 	if err != nil {
 		log.Warnf("failed to get channel %d: %v", item.ChannelID, err)
+		start := len(r.iter.Attempts())
 		r.iter.Skip(item.ChannelID, 0, fmt.Sprintf("channel_%d", item.ChannelID), fmt.Sprintf("channel not found: %v", err))
+		r.emitAttemptsSince(start)
 		return nil, err
 	}
 	if !channel.Enabled {
+		start := len(r.iter.Attempts())
 		r.iter.Skip(channel.ID, 0, channel.Name, "channel disabled")
+		r.emitAttemptsSince(start)
 		return nil, nil
 	}
 
 	usedKey := channel.GetChannelKey()
 	if usedKey.ChannelKey == "" {
+		start := len(r.iter.Attempts())
 		r.iter.Skip(channel.ID, 0, channel.Name, "no available key")
+		r.emitAttemptsSince(start)
 		return nil, nil
 	}
 	if r.iter.SkipCircuitBreak(channel.ID, usedKey.ID, channel.Name) {
+		r.emitAttemptsSince(len(r.iter.Attempts()) - 1)
 		return nil, nil
 	}
 
 	outAdapter, err := newOutbound(channel.Type, r.internalRequest, channel.GetBaseUrl(), usedKey.ChannelKey)
 	if err != nil {
+		start := len(r.iter.Attempts())
 		r.iter.Skip(channel.ID, usedKey.ID, channel.Name, err.Error())
+		r.emitAttemptsSince(start)
 		return nil, nil
 	}
 
@@ -273,7 +296,16 @@ func (r *relayRun) prepareAttempt() (*relayAttempt, error) {
 
 // run 统一管理一次通道尝试的完整生命周期。
 func (ra *relayAttempt) run() (bool, error) {
+	attemptIndex := len(ra.iter.Attempts())
+	ra.attemptIndex = attemptIndex
+	_, cancel := ra.beginAttemptContext()
+	defer func() {
+		op.RelayLogStoreClearAttemptCancel(ra.metrics.ID, attemptIndex)
+		ra.endAttemptContext()
+	}()
 	span := ra.iter.StartAttempt(ra.channel.ID, ra.usedKey.ID, ra.channel.Name)
+	op.RelayLogStoreAttemptStarted(ra.metrics.ID, attemptIndex, span.Attempt())
+	op.RelayLogStoreRegisterAttemptCancel(ra.metrics.ID, attemptIndex, cancel)
 
 	upstreamStatusCode, fwdErr := ra.forward()
 	if fwdErr == nil && upstreamStatusCode == 0 {
@@ -286,6 +318,7 @@ func (ra *relayAttempt) run() (bool, error) {
 		op.ChannelKeyUpdate(ra.usedKey, ra.metrics.Stats.InputCost+ra.metrics.Stats.OutputCost)
 
 		span.End(dbmodel.AttemptSuccess, "")
+		op.RelayLogStoreAttemptFinished(ra.metrics.ID, attemptIndex, span.Attempt())
 		op.StatsChannelUpdate(ra.channel.ID, dbmodel.StatsMetrics{
 			WaitTime:       span.Duration().Milliseconds(),
 			RequestSuccess: 1,
@@ -297,13 +330,17 @@ func (ra *relayAttempt) run() (bool, error) {
 
 	op.ChannelKeyUpdate(ra.usedKey, 0)
 	span.End(dbmodel.AttemptFailed, fwdErr.Error())
+	op.RelayLogStoreAttemptFinished(ra.metrics.ID, attemptIndex, span.Attempt())
 	op.StatsChannelUpdate(ra.channel.ID, dbmodel.StatsMetrics{
 		WaitTime:      span.Duration().Milliseconds(),
 		RequestFailed: 1,
 	})
 	balancer.RecordFailure(ra.channel.ID, ra.usedKey.ID, ra.internalRequest.Model)
-
-	return ra.responseFinalized(), fmt.Errorf("channel %s failed: %w", ra.channel.Name, fwdErr)
+	finalized := ra.responseFinalized()
+	if errors.Is(fwdErr, context.Canceled) && ra.responseCommitted {
+		finalized = true
+	}
+	return finalized, fmt.Errorf("channel %s failed: %w", ra.channel.Name, fwdErr)
 }
 
 // parseRequest 解析并验证入站请求
@@ -338,7 +375,10 @@ func parseRequest(c *gin.Context, inboundType llm.APIFormat, inAdapter transform
 
 // forward 转发请求到上游服务。流请求在 pipeline 首事件预读期间也保持 SSE 心跳。
 func (ra *relayAttempt) forward() (int, error) {
-	ctx := ra.c.Request.Context()
+	ctx := ra.attemptContext
+	if ctx == nil {
+		ctx = ra.c.Request.Context()
+	}
 	if ra.internalRequest.RawRequest == nil {
 		return 0, fmt.Errorf("missing raw request")
 	}
@@ -405,6 +445,10 @@ func (ra *relayAttempt) forward() (int, error) {
 		}
 	}
 	ra.c.Data(statusCode, contentType, result.Response.Body)
+	ra.responseCommitted = true
+	if ra.metrics != nil && ra.metrics.ID != 0 {
+		op.RelayLogStoreResponseCommitted(ra.metrics.ID)
+	}
 	return statusCode, nil
 }
 
@@ -483,6 +527,10 @@ func (ra *relayAttempt) prepareSSEStreamResponse() error {
 	if err := ra.writeSSEHeartbeat(); err != nil {
 		ra.clientStreamWriteFailed = true
 		return fmt.Errorf("failed to write initial SSE heartbeat: %w", err)
+	}
+	ra.responseCommitted = true
+	if ra.metrics != nil && ra.metrics.ID != 0 {
+		op.RelayLogStoreResponseCommitted(ra.metrics.ID)
 	}
 	return nil
 }
@@ -617,6 +665,9 @@ func (ra *relayAttempt) writeStreamWithHeartbeatTicker(
 		case <-ctx.Done():
 			log.Infof("client disconnected, stopping stream")
 			_ = clientStream.Close()
+			if _, attemptOwned := ctx.Value(relayAttemptContextKey{}).(bool); attemptOwned {
+				return ctx.Err()
+			}
 			return nil
 		case <-heartbeatTicker.Chan():
 			if err := ra.writeSSEHeartbeat(); err != nil {
