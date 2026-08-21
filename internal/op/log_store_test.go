@@ -99,6 +99,53 @@ func TestRelayLogStoreLifecycleAndDetailReplay(t *testing.T) {
 	}
 }
 
+func TestRelayLogStorePrune(t *testing.T) {
+	resetRelayLogStoreForTest()
+	t.Cleanup(resetRelayLogStoreForTest)
+
+	cutoff := time.Unix(1_700_000_000, 0)
+	oldCompletedAt := cutoff.Add(-time.Hour)
+
+	complete := func(id int64, completedAt time.Time) {
+		RelayLogStoreStart(model.RelayLog{ID: id, Time: completedAt.Unix()}, completedAt, "openai", false)
+		RelayLogStoreComplete(id, RelayLogStateFailed, model.RelayLog{ID: id, Time: completedAt.Unix()}, errors.New("failed"), 0, 0)
+		relayLogStore.Lock()
+		relayLogStore.records[id].overview.CompletedAt = &completedAt
+		relayLogStore.Unlock()
+	}
+
+	complete(7201, oldCompletedAt)
+	complete(7202, cutoff.Add(time.Hour))
+	RelayLogStoreStart(model.RelayLog{ID: 7203, Time: oldCompletedAt.Unix()}, oldCompletedAt, "openai", false)
+	RelayLogStoreStart(model.RelayLog{ID: 7204, Time: oldCompletedAt.Unix()}, oldCompletedAt, "openai", false)
+	RelayLogStoreResponseCommitted(7204)
+	complete(7205, oldCompletedAt)
+	detail, ok := RelayLogStoreSubscribeDetail(7205)
+	if !ok {
+		t.Fatal("detail subscription failed")
+	}
+
+	if removed := RelayLogStorePrune(cutoff); removed != 1 {
+		t.Fatalf("pruned records = %d, want 1", removed)
+	}
+	if _, ok := RelayLogStoreGet(7201); ok {
+		t.Fatal("old terminal record was not pruned")
+	}
+	for _, id := range []int64{7202, 7203, 7204, 7205} {
+		if _, ok := RelayLogStoreGet(id); !ok {
+			t.Fatalf("record %d should be retained", id)
+		}
+	}
+
+	RelayLogStoreUnsubscribeDetail(7205, detail)
+	if removed := RelayLogStorePrune(cutoff); removed != 1 {
+		t.Fatalf("pruned subscribed record = %d, want 1", removed)
+	}
+	if _, ok := RelayLogStoreGet(7205); ok {
+		t.Fatal("closed detail record was not pruned")
+	}
+}
+
 func TestRelayLogStoreStopAttempt(t *testing.T) {
 	resetRelayLogStoreForTest()
 	t.Cleanup(resetRelayLogStoreForTest)

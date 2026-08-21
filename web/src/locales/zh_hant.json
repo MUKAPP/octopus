@@ -413,30 +413,13 @@
         },
         "log": {
             "title": "日誌設定",
-            "enabled": {
-                "label": "啟用歷史日誌"
-            },
-            "keepPeriod": {
-                "label": "日誌保存天數",
-                "placeholder": "請輸入天數"
-            },
-            "contentEnabled": {
-                "label": "儲存請求和響應正文"
-            },
-            "contentMaxBytes": {
-                "label": "每側正文上限（KiB）",
-                "placeholder": "1-10240",
-                "unit": "KiB",
-                "invalid": "請輸入 1 到 10240 之間的數值"
-            },
             "clear": {
                 "label": "清空歷史日誌",
                 "button": "清空",
                 "clearing": "清空中..."
             },
             "clearSuccess": "日誌已清空",
-            "clearFailed": "清空失敗",
-            "saveFailed": "儲存設定失敗"
+            "clearFailed": "清空失敗"
         }
     },
     "group": {

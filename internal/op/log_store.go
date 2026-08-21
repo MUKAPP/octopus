@@ -575,9 +575,43 @@ func RelayLogStoreComplete(id int64, state RelayLogState, log model.RelayLog, er
 	committed := record.committed
 	relayLogStore.Unlock()
 	notifyRelayLogOverview(snapshot)
+	notifySubscribers(snapshot.RelayLog)
 	if committed {
 		notifyRelayLogDetail(id, RelayLogDetailEvent{Type: RelayLogEventResponseCommitted, ID: id, Overview: &snapshot})
 	}
+}
+
+// RelayLogStorePrune removes old terminal records while preserving active requests
+// and requests whose detail stream is still open.
+func RelayLogStorePrune(cutoff time.Time) int {
+	relayLogStore.Lock()
+	defer relayLogStore.Unlock()
+
+	removed := 0
+	for id, record := range relayLogStore.records {
+		state := record.overview.State
+		if state == RelayLogStateRunning || state == RelayLogStateCommitted {
+			continue
+		}
+		if len(relayLogStore.detailSubs[id]) > 0 {
+			continue
+		}
+		completedAt := record.overview.CompletedAt
+		if completedAt == nil || !completedAt.Before(cutoff) {
+			continue
+		}
+		delete(relayLogStore.records, id)
+		removed++
+	}
+
+	keptIDs := relayLogStore.completedIDs[:0]
+	for _, id := range relayLogStore.completedIDs {
+		if _, ok := relayLogStore.records[id]; ok {
+			keptIDs = append(keptIDs, id)
+		}
+	}
+	relayLogStore.completedIDs = keptIDs
+	return removed
 }
 
 // RelayLogStoreRegisterAttemptCancel associates a cancel function with the current attempt.

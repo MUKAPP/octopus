@@ -413,30 +413,13 @@
         },
         "log": {
             "title": "日志设置",
-            "enabled": {
-                "label": "启用历史日志"
-            },
-            "keepPeriod": {
-                "label": "日志保存天数",
-                "placeholder": "请输入天数"
-            },
-            "contentEnabled": {
-                "label": "保存请求和响应正文"
-            },
-            "contentMaxBytes": {
-                "label": "每侧正文上限（KiB）",
-                "placeholder": "1-10240",
-                "unit": "KiB",
-                "invalid": "请输入 1 到 10240 之间的数值"
-            },
             "clear": {
                 "label": "清空历史日志",
                 "button": "清空",
                 "clearing": "清空中..."
             },
             "clearSuccess": "日志已清空",
-            "clearFailed": "清空失败",
-            "saveFailed": "保存设置失败"
+            "clearFailed": "清空失败"
         }
     },
     "group": {

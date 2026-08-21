@@ -11,15 +11,17 @@ import (
 )
 
 const (
-	TaskPriceUpdate  = "price_update"
-	TaskStatsSave    = "stats_save"
-	TaskRelayLogSave = "relay_log_save"
-	TaskSyncLLM      = "sync_llm"
-	TaskCleanLLM     = "clean_llm"
-	TaskBaseUrlDelay = "base_url_delay"
+	TaskPriceUpdate     = "price_update"
+	TaskStatsSave       = "stats_save"
+	TaskRelayLogCleanup = "relay_log_cleanup"
+	TaskSyncLLM         = "sync_llm"
+	TaskCleanLLM        = "clean_llm"
+	TaskBaseUrlDelay    = "base_url_delay"
 )
 
 func Init() {
+	// 新日志只保存在内存；启动时和每天定期清理升级前遗留的数据库日志。
+	Register(TaskRelayLogCleanup, 24*time.Hour, true, op.RelayLogCleanupTask)
 	priceUpdateIntervalHours, err := op.SettingGetInt(model.SettingKeyModelInfoUpdateInterval)
 	if err != nil {
 		log.Errorf("failed to get model info update interval: %v", err)

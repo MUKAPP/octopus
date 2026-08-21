@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect, useRef } from 'react';
 import { Clock, Cpu, Zap, ArrowDownToLine, ArrowUpFromLine, DollarSign, ArrowRight, ArrowDown, Send, MessageSquare, Loader2, RotateCw, Pin, KeyRound, Gauge, Square } from 'lucide-react';
 import { useTranslations } from 'use-intl';
 import { motion, AnimatePresence } from 'motion/react';
@@ -262,6 +262,25 @@ function LiveOverviewDetails({ log }: { log: RelayLog }) {
     const responseContent = responseBody.data?.content ?? log.response_content;
     const requestTruncated = requestBody.data?.truncated ?? log.request_content_truncated;
     const responseTruncated = responseBody.data?.truncated ?? log.response_content_truncated;
+    const previousResponseReadyRef = useRef(false);
+    const previousLogStateRef = useRef(log.state);
+    useEffect(() => {
+        const previousState = previousLogStateRef.current;
+        previousLogStateRef.current = log.state;
+        const responseReady = isOpen && canShowFinalResponse;
+        if (!responseReady) {
+            previousResponseReadyRef.current = false;
+            return;
+        }
+        const becameReady = !previousResponseReadyRef.current;
+        const becameTerminal = previousState !== log.state
+            && (log.state === 'success' || log.state === 'failed' || log.state === 'canceled');
+        previousResponseReadyRef.current = true;
+        if (becameReady || becameTerminal) {
+            void responseBody.refetch();
+        }
+    }, [canShowFinalResponse, isOpen, log.state, responseBody.refetch]);
+    const responseLoading = responseBody.isLoading || (responseBody.isFetching && !responseContent);
 
     const handleStop = async () => {
         if (!runningAttempt) return;
@@ -343,7 +362,7 @@ function LiveOverviewDetails({ log }: { log: RelayLog }) {
                         {selectedAttempt ? <div className="flex min-h-full flex-col">
                             <div className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1 border-b border-border/70 px-3 py-3 text-xs md:px-4"><span className="font-mono text-muted-foreground">{t('attemptNumber', { number: getAttemptDisplayNumber(selectedAttempt) })}</span><span className="font-semibold text-foreground">{selectedAttempt.channel_name}</span>{selectedAttempt.model_name && <span className="text-muted-foreground">{selectedAttempt.model_name}</span>}{selectedAttempt.rate_multiplier > 0 && <span className="text-muted-foreground">x{formatRateMultiplier(selectedAttempt.rate_multiplier)}</span>}{selectedAttempt.duration > 0 && <span className="tabular-nums text-muted-foreground">{formatDuration(selectedAttempt.duration)}</span>}{selectedAttempt.sticky && <Pin className="size-3.5 text-amber-500" />}</div>
                             {selectedError && <div className="relative border-b border-destructive/20 bg-destructive/5 p-3"><CopyIconButton text={selectedError} className="absolute right-2 top-2 rounded-md p-1 text-destructive/60 transition-colors hover:bg-destructive/10 hover:text-destructive" copyIconClassName="size-4" checkIconClassName="size-4" /><p className="whitespace-pre-wrap wrap-break-word pr-8 text-sm leading-relaxed text-destructive">{selectedError}</p></div>}
-                            {canShowFinalResponse ? <div className="min-h-0 flex-1">{responseTruncated && <div className="px-3 pt-3"><Badge variant="outline" className="border-amber-500/40 text-xs text-amber-600 dark:text-amber-400">{t('truncated')}</Badge></div>}{responseBody.error && !responseContent && !selectedIsCommitted ? <div className="flex h-full items-center justify-center px-4 text-xs text-destructive">{t('detailUnavailable')}</div> : <DeferredJsonContent content={responseContent} fallbackText={selectedIsCommitted ? t('responseStreaming') : t('noResponseContent')} />}</div> : selectedAttempt.status === 'running' ? <div className="flex min-h-0 flex-1 items-center justify-center gap-2 px-4 text-xs text-muted-foreground"><Loader2 className="size-4 animate-spin" />{t('waitingResponse')}</div> : !selectedError ? <div className="flex min-h-0 flex-1 items-center justify-center px-4 text-xs text-muted-foreground">{t('detailUnavailable')}</div> : null}
+                            {canShowFinalResponse ? <div className="min-h-0 flex-1">{responseTruncated && <div className="px-3 pt-3"><Badge variant="outline" className="border-amber-500/40 text-xs text-amber-600 dark:text-amber-400">{t('truncated')}</Badge></div>}{responseLoading ? <div className="flex h-full items-center justify-center"><Loader2 className="size-5 animate-spin text-muted-foreground" /></div> : responseBody.error && !responseContent && !selectedIsCommitted ? <div className="flex h-full items-center justify-center px-4 text-xs text-destructive">{t('detailUnavailable')}</div> : <DeferredJsonContent content={responseContent} fallbackText={selectedIsCommitted ? t('responseStreaming') : t('noResponseContent')} />}</div> : selectedAttempt.status === 'running' ? <div className="flex min-h-0 flex-1 items-center justify-center gap-2 px-4 text-xs text-muted-foreground"><Loader2 className="size-4 animate-spin" />{t('waitingResponse')}</div> : !selectedError ? <div className="flex min-h-0 flex-1 items-center justify-center px-4 text-xs text-muted-foreground">{t('detailUnavailable')}</div> : null}
                         </div> : <div className="flex min-h-full flex-col">{log.error && <div className="relative border-b border-destructive/20 bg-destructive/5 p-3"><CopyIconButton text={log.error} className="absolute right-2 top-2 rounded-md p-1 text-destructive/60 transition-colors hover:bg-destructive/10 hover:text-destructive" copyIconClassName="size-4" checkIconClassName="size-4" /><p className="whitespace-pre-wrap wrap-break-word pr-8 text-sm leading-relaxed text-destructive">{log.error}</p></div>}<div className="min-h-0 flex-1">{responseBody.error && !responseContent && !isActive ? <div className="flex h-full items-center justify-center px-4 text-xs text-destructive">{t('detailUnavailable')}</div> : <DeferredJsonContent content={responseContent} fallbackText={isActive ? t('responseStreaming') : t('noResponseContent')} />}</div></div>}
                     </div>
                 </section>

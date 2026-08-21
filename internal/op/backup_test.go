@@ -136,28 +136,13 @@ func TestDBImportRejectsInvalidSettings(t *testing.T) {
 	dump := &model.DBDump{
 		Version: dbDumpVersion,
 		Settings: []model.Setting{
-			{Key: model.SettingKeyRelayLogContentEnabled, Value: "maybe"},
+			{Key: model.SettingKeyModelInfoUpdateInterval, Value: "not-an-integer"},
 		},
 	}
 	if _, err := DBImportIncremental(ctx, dump); err == nil {
-		t.Fatalf("非法开关值应整体拒绝导入")
+		t.Fatalf("非法整数设置应整体拒绝导入")
 	}
 
-	dump.Settings = []model.Setting{
-		{Key: model.SettingKeyRelayLogContentMaxBytes, Value: "100"},
-	}
-	if _, err := DBImportIncremental(ctx, dump); err == nil {
-		t.Fatalf("低于下限的正文上限应整体拒绝导入")
-	}
-
-	dump.Settings = []model.Setting{
-		{Key: model.SettingKeyRelayLogContentMaxBytes, Value: "20971520"},
-	}
-	if _, err := DBImportIncremental(ctx, dump); err == nil {
-		t.Fatalf("高于上限的正文上限应整体拒绝导入")
-	}
-
-	// 拒绝后目标库不应写入任何 setting
 	var count int64
 	if err := db.GetDB().Model(&model.Setting{}).Count(&count).Error; err != nil {
 		t.Fatalf("统计失败：%v", err)
@@ -166,10 +151,8 @@ func TestDBImportRejectsInvalidSettings(t *testing.T) {
 		t.Fatalf("非法导入不应写入 setting：got %d 行", count)
 	}
 
-	// 合法值正常导入
 	dump.Settings = []model.Setting{
-		{Key: model.SettingKeyRelayLogContentEnabled, Value: "false"},
-		{Key: model.SettingKeyRelayLogContentMaxBytes, Value: "2048"},
+		{Key: model.SettingKeyModelInfoUpdateInterval, Value: "20"},
 	}
 	if _, err := DBImportIncremental(ctx, dump); err != nil {
 		t.Fatalf("合法 setting 导入失败：%v", err)

@@ -1,14 +1,10 @@
 package relay
 
 import (
-	"path/filepath"
 	"strings"
 	"testing"
 	"unicode/utf8"
 
-	"github.com/bestruirui/octopus/internal/db"
-	"github.com/bestruirui/octopus/internal/model"
-	"github.com/bestruirui/octopus/internal/op"
 	"github.com/looplj/axonhub/llm"
 )
 
@@ -65,24 +61,8 @@ func TestTruncateLogContent(t *testing.T) {
 	}
 }
 
-func TestRelayMetricsLogContentIndependenceAndSwitch(t *testing.T) {
-	if err := db.InitDB("sqlite", filepath.Join(t.TempDir(), "content.db"), false); err != nil {
-		t.Fatalf("init db: %v", err)
-	}
-	t.Cleanup(func() { _ = db.Close() })
-	if err := op.InitCache(); err != nil {
-		t.Fatalf("init cache: %v", err)
-	}
-
-	// 上限设为最小 1 KiB；构造请求、响应两侧都超限的内容
-	if err := op.SettingSetString(model.SettingKeyRelayLogContentMaxBytes, "1024"); err != nil {
-		t.Fatalf("set max bytes: %v", err)
-	}
-	if err := op.SettingSetString(model.SettingKeyRelayLogContentEnabled, "true"); err != nil {
-		t.Fatalf("enable content: %v", err)
-	}
-
-	text := strings.Repeat("中", 400) // 400*3 = 1200 字节 > 1024
+func TestRelayMetricsLogContentPreservesRequest(t *testing.T) {
+	text := strings.Repeat("中", 100000) // 300,000 bytes; exceeds the fixed response limit.
 	metrics := &RelayMetrics{
 		InternalRequest: &llm.Request{
 			Model: "gpt-4o",
@@ -91,23 +71,14 @@ func TestRelayMetricsLogContentIndependenceAndSwitch(t *testing.T) {
 				Content: llm.MessageContent{Content: &text},
 			}},
 		},
-		InternalResponse: []byte(strings.Repeat("r", 2048)),
+		InternalResponse: []byte(strings.Repeat("r", 300000)),
 	}
 
 	req, reqTrunc, resp, respTrunc := metrics.logContent()
-	if !reqTrunc || len(req) > 1024 || !utf8.ValidString(req) {
-		t.Fatalf("request content: truncated=%t len=%d valid=%t", reqTrunc, len(req), utf8.ValidString(req))
+	if reqTrunc || !strings.Contains(req, text) || len(req) <= 262144 || !utf8.ValidString(req) {
+		t.Fatalf("request content was truncated: truncated=%t len=%d valid=%t", reqTrunc, len(req), utf8.ValidString(req))
 	}
-	if !respTrunc || len(resp) > 1024 {
-		t.Fatalf("response content: truncated=%t len=%d", respTrunc, len(resp))
-	}
-
-	// 关闭正文：两个正文字段为空且不标截断
-	if err := op.SettingSetString(model.SettingKeyRelayLogContentEnabled, "false"); err != nil {
-		t.Fatalf("disable content: %v", err)
-	}
-	req, reqTrunc, resp, respTrunc = metrics.logContent()
-	if req != "" || resp != "" || reqTrunc || respTrunc {
-		t.Fatalf("content disabled: req=%q reqTrunc=%t resp=%q respTrunc=%t", req, reqTrunc, resp, respTrunc)
+	if !respTrunc || len(resp) > 262144 {
+		t.Fatalf("response content limit not applied: truncated=%t len=%d", respTrunc, len(resp))
 	}
 }

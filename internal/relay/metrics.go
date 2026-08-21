@@ -207,32 +207,20 @@ func (m *RelayMetrics) saveLog(ctx context.Context, err error, duration time.Dur
 	} else if errors.Is(err, context.Canceled) {
 		state = op.RelayLogStateCanceled
 	}
-	// 生产日志只进入并发安全的内存 store；旧 SQLite API 仍保留供兼容代码使用。
+	// 生产日志只进入并发安全的内存 store，不写入 SQLite。
 	op.RelayLogStoreComplete(m.ID, state, relayLog, err, m.CachedTokens, m.CacheWriteTokens)
 }
 
-// logContent 按正文保存开关构造请求/响应正文字段。
-// 开关关闭时不执行请求 marshal、不复制响应正文，两个字段都为空且不标截断；
-// 开关开启时在构造阶段完成截断，使内存列表与 SSE 看到完全一致的前缀。
+// logContent 构造请求/响应正文字段。请求正文完整保留；响应正文仍使用固定上限，避免单条内存日志无限增长。
 func (m *RelayMetrics) logContent() (request string, requestTruncated bool, response string, responseTruncated bool) {
-	enabled, err := op.SettingGetBool(model.SettingKeyRelayLogContentEnabled)
-	if err != nil {
-		enabled = true
-	}
-	maxBytes, err := op.SettingGetInt(model.SettingKeyRelayLogContentMaxBytes)
-	if err != nil || maxBytes < model.RelayLogContentMinBytes {
-		maxBytes = 262144
-	}
-	if !enabled {
-		return "", false, "", false
-	}
+	const responseMaxBytes = 262144
 	if reqBytes := m.requestContent(); reqBytes != nil {
-		request, requestTruncated = truncateLogContent(reqBytes, maxBytes)
+		request = string(reqBytes)
 	}
 	if len(m.InternalResponse) > 0 {
-		response, responseTruncated = truncateLogContent(m.InternalResponse, maxBytes)
+		response, responseTruncated = truncateLogContent(m.InternalResponse, responseMaxBytes)
 	}
-	return request, requestTruncated, response, responseTruncated
+	return request, false, response, responseTruncated
 }
 
 // truncateLogContent 按 UTF-8 字节计数保留 content 前缀，结果绝不超过 maxBytes 且不切断码点。
