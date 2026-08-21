@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect } from 'react';
-import { Clock, Cpu, Zap, AlertCircle, ArrowDownToLine, ArrowUpFromLine, DollarSign, ArrowRight, ArrowDown, Send, MessageSquare, Loader2, RotateCw, ChevronDown, ChevronUp, Pin, KeyRound, Gauge, Square } from 'lucide-react';
+import { Clock, Cpu, Zap, ArrowDownToLine, ArrowUpFromLine, DollarSign, ArrowRight, ArrowDown, Send, MessageSquare, Loader2, RotateCw, Pin, KeyRound, Gauge, Square } from 'lucide-react';
 import { useTranslations } from 'use-intl';
 import { motion, AnimatePresence } from 'motion/react';
 import JsonView from '@uiw/react-json-view';
@@ -47,6 +47,20 @@ function formatOutputSpeed(outputTokens: number, totalTime: number, firstTokenTi
     const generationTime = totalTime - firstTokenTime;
     if (generationTime <= 0) return '—';
     return `${((outputTokens * 1000) / generationTime).toLocaleString('zh-CN', { maximumFractionDigits: 2 })} tokens/s`;
+}
+function getAttemptOrder(attempt: ChannelAttempt): number {
+    const order = attempt.attempt_index ?? attempt.attempt_num;
+    return Number.isFinite(order) ? order : Number.MAX_SAFE_INTEGER;
+}
+function getAttemptDisplayNumber(attempt: ChannelAttempt): number {
+    return attempt.attempt_index === undefined ? getAttemptOrder(attempt) : getAttemptOrder(attempt) + 1;
+}
+
+function sortAttempts(attempts: ChannelAttempt[]): ChannelAttempt[] {
+    return attempts
+        .map((attempt, index) => ({ attempt, index }))
+        .sort((a, b) => getAttemptOrder(a.attempt) - getAttemptOrder(b.attempt) || a.index - b.index)
+        .map(({ attempt }) => attempt);
 }
 
 interface RetryBadgeWithTooltipProps {
@@ -213,18 +227,22 @@ function LiveOverviewDetails({ log }: { log: RelayLog }) {
     const liveDuration = isActive && Number.isFinite(startedAt)
         ? Math.max(0, now - startedAt)
         : log.use_time;
+
     useEffect(() => {
         if (!isActive) return;
         const timer = window.setInterval(() => setNow(Date.now()), 1000);
         return () => window.clearInterval(timer);
     }, [isActive]);
-    const attempts = detail.attempts.length > 0 ? detail.attempts : (log.attempts ?? []);
+
+    const attempts = useMemo(
+        () => sortAttempts(detail.attempts.length > 0 ? detail.attempts : (log.attempts ?? [])),
+        [detail.attempts, log.attempts],
+    );
     const runningAttempt = detail.runningAttempt ?? attempts.find((attempt) => attempt.status === 'running');
     const requestContent = requestBody.data?.content ?? log.request_content;
     const responseContent = responseBody.data?.content ?? log.response_content;
     const requestTruncated = requestBody.data?.truncated ?? log.request_content_truncated;
     const responseTruncated = responseBody.data?.truncated ?? log.response_content_truncated;
-    const hasDiagnostic = Boolean(log.error) || attempts.length > 0 || Boolean(runningAttempt) || isActive;
 
     const handleStop = async () => {
         if (!runningAttempt) return;
@@ -252,118 +270,120 @@ function LiveOverviewDetails({ log }: { log: RelayLog }) {
 
     return (
         <div className="flex h-full min-h-0 flex-col gap-4">
-            {hasDiagnostic && (
-                <div className={cn(
-                    "flex-initial min-h-0 flex flex-col rounded-2xl border overflow-hidden max-h-[40%]",
-                    log.error ? "bg-destructive/5 border-destructive/20" : "bg-secondary/30 border-border/50",
-                )}>
-                    <div className="flex shrink-0 items-center gap-2 border-b border-border/50 px-3 py-2.5">
-                        {log.error ? <AlertCircle className="size-4 text-destructive" /> : <RotateCw className="size-4 text-muted-foreground" />}
-                        <span className={cn("text-sm font-medium", log.error ? "text-destructive" : "text-secondary-foreground")}>
-                            {log.error ? t('errorInfo') : t('retryDetails')}
-                        </span>
-                        <Badge variant="outline" className="border-0 bg-secondary text-secondary-foreground text-xs">
-                            {attempts.length} {t('attempts')}
-                        </Badge>
-                        {runningAttempt && (
-                            <button
-                                type="button"
-                                onClick={() => void handleStop()}
-                                disabled={stopAttempt.isPending}
-                                className="ml-auto flex items-center gap-1.5 rounded-md px-2 py-1 text-xs text-destructive transition-colors hover:bg-destructive/10 disabled:opacity-50"
-                            >
-                                {stopAttempt.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <Square className="size-3.5" />}
-                                {t('stopAttempt')}
-                            </button>
-                        )}
+            <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 md:grid-cols-2">
+                <div className="flex min-h-0 flex-col overflow-hidden rounded-2xl border border-border bg-muted/30">
+                    <div className="flex shrink-0 items-center gap-2 border-b border-border bg-muted/50 px-3 py-2.5 md:px-4 md:py-3">
+                        <Send className="size-4 text-green-500" />
+                        <span className="text-sm font-medium text-card-foreground">{t('requestContent')}</span>
+                        {requestTruncated && <Badge variant="outline" className="text-xs text-amber-600 dark:text-amber-400 border-amber-500/40">{t('truncated')}</Badge>}
+                        <Badge variant="secondary" className="ml-auto text-xs">{log.input_tokens.toLocaleString()} {t('tokens')}</Badge>
                     </div>
-                    <div className="flex-1 min-h-0 overflow-auto p-2.5 md:p-3">
-                        {log.error && (
-                            <p className="mb-3 whitespace-pre-wrap wrap-break-word text-sm leading-relaxed text-destructive">{log.error}</p>
+                    <div className="min-h-0 flex-1 overflow-auto">
+                        {requestBody.error && !requestContent ? (
+                            <div className="flex h-full items-center justify-center px-4 text-xs text-destructive">{t('detailUnavailable')}</div>
+                        ) : (
+                            <DeferredJsonContent content={requestContent} fallbackText={t('noRequestContent')} />
                         )}
-                        {stopError && <p className="mb-3 text-xs text-destructive">{stopError}</p>}
-                        {attempts.length > 0 ? (
-                            <div className="flex flex-col gap-2">
-                                {attempts.map((attempt, index) => (
-                                    <div
-                                        key={`${attempt.attempt_index ?? attempt.attempt_num}-${index}`}
-                                        className={cn(
-                                            "flex flex-col gap-1.5 rounded-xl border p-2.5 text-xs",
-                                            attempt.status === 'success'
-                                                ? "bg-primary/5 border-primary/20"
-                                                : attempt.status === 'running'
-                                                    ? "bg-secondary/30 border-border/50"
-                                                    : "bg-destructive/5 border-destructive/20",
-                                        )}
-                                    >
-                                        <div className="flex items-center gap-2">
-                                            <Badge
-                                                variant="outline"
-                                                className={cn(
-                                                    "border-0 px-1.5 text-[10px] font-bold uppercase",
-                                                    attempt.status === 'success'
-                                                        ? "bg-primary/15 text-primary"
-                                                        : attempt.status === 'running'
-                                                            ? "bg-secondary text-secondary-foreground"
-                                                            : "bg-destructive/15 text-destructive",
-                                                )}
-                                            >
-                                                {statusLabel(attempt.status)}
-                                            </Badge>
-                                            <span className="font-semibold text-foreground">{attempt.channel_name}</span>
-                                            {attempt.model_name && <span className="truncate text-muted-foreground">({attempt.model_name})</span>}
-                                            {attempt.sticky && <Pin className="size-3.5 text-amber-500" />}
-                                            {attempt.rate_multiplier > 0 && <span className="text-muted-foreground">x{formatRateMultiplier(attempt.rate_multiplier)}</span>}
-                                            {attempt.status === 'running' && <Loader2 className="ml-auto size-3.5 animate-spin text-muted-foreground" />}
-                                            {attempt.duration > 0 && <span className="ml-auto tabular-nums text-muted-foreground">{formatDuration(attempt.duration)}</span>}
-                                        </div>
-                                        {attempt.msg && <div className="whitespace-pre-wrap wrap-break-word border-l-2 border-destructive/30 pl-2 text-[11px] leading-relaxed text-destructive/90">{attempt.msg}</div>}
-                                    </div>
-                                ))}
-                            </div>
-                        ) : isActive ? (
-                            <div className="flex items-center justify-center gap-2 py-3 text-xs text-muted-foreground">
-                                <Loader2 className="size-4 animate-spin" />
-                                {t('waitingResponse')}
-                            </div>
-                        ) : null}
                     </div>
                 </div>
-            )}
 
-            <div className="flex-1 min-h-0 overflow-hidden">
-                <div className="grid h-full min-h-0 grid-cols-1 gap-4 md:grid-cols-2">
-                    <div className="flex min-h-0 flex-col overflow-hidden rounded-2xl border border-border bg-muted/30">
+                <div className="flex min-h-0 flex-col gap-4 overflow-hidden">
+                    <section className="flex min-h-0 flex-[1.1] flex-col overflow-hidden rounded-2xl border border-border bg-muted/30">
                         <div className="flex shrink-0 items-center gap-2 border-b border-border bg-muted/50 px-3 py-2.5 md:px-4 md:py-3">
-                            <Send className="size-4 text-green-500" />
-                            <span className="text-sm font-medium text-card-foreground">{t('requestContent')}</span>
-                            {requestTruncated && <Badge variant="outline" className="text-xs text-amber-600 dark:text-amber-400 border-amber-500/40">{t('truncated')}</Badge>}
-                            <Badge variant="secondary" className="ml-auto text-xs">{log.input_tokens.toLocaleString()} {t('tokens')}</Badge>
-                        </div>
-                        <div className="min-h-0 flex-1 overflow-auto">
-                            {requestBody.error && !requestContent ? (
-                                <div className="flex h-full items-center justify-center px-4 text-xs text-destructive">{t('detailUnavailable')}</div>
-                            ) : (
-                                <DeferredJsonContent content={requestContent} fallbackText={t('noRequestContent')} />
+                            <RotateCw className="size-4 text-muted-foreground" />
+                            <span className="text-sm font-medium text-card-foreground">{t('attemptHistory')}</span>
+                            <Badge variant="secondary" className="text-xs">{attempts.length} {t('attempts')}</Badge>
+                            {runningAttempt && (
+                                <button
+                                    type="button"
+                                    onClick={() => void handleStop()}
+                                    disabled={stopAttempt.isPending}
+                                    className="ml-auto flex items-center gap-1.5 rounded-md px-2 py-1 text-xs text-destructive transition-colors hover:bg-destructive/10 disabled:opacity-50"
+                                >
+                                    {stopAttempt.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <Square className="size-3.5" />}
+                                    {t('stopAttempt')}
+                                </button>
                             )}
                         </div>
-                    </div>
-                    <div className="flex min-h-0 flex-col overflow-hidden rounded-2xl border border-border bg-muted/30">
+                        <div className="min-h-0 flex-1 overflow-auto p-2.5 md:p-3">
+                            {stopError && <p className="mb-3 text-xs text-destructive">{stopError}</p>}
+                            {attempts.length > 0 ? (
+                                <div className="flex flex-col gap-2">
+                                    {attempts.map((attempt, index) => (
+                                        <div
+                                            key={`${getAttemptOrder(attempt)}-${index}`}
+                                            className={cn(
+                                                "flex flex-col gap-1.5 rounded-xl border p-2.5 text-xs",
+                                                attempt.status === 'success'
+                                                    ? "bg-primary/5 border-primary/20"
+                                                    : attempt.status === 'running'
+                                                        ? "bg-secondary/30 border-border/50"
+                                                        : "bg-destructive/5 border-destructive/20",
+                                            )}
+                                        >
+                                            <div className="flex items-center gap-2">
+                                                <span className="shrink-0 font-mono text-[10px] text-muted-foreground">
+                                                    {t('attemptNumber', { number: getAttemptDisplayNumber(attempt) })}
+                                                </span>
+                                                <Badge
+                                                    className={cn(
+                                                        "border-0 px-1.5 text-[10px] font-bold uppercase",
+                                                        attempt.status === 'success'
+                                                            ? "bg-primary/15 text-primary"
+                                                            : attempt.status === 'running'
+                                                                ? "bg-secondary text-secondary-foreground"
+                                                                : "bg-destructive/15 text-destructive",
+                                                    )}
+                                                >
+                                                    {statusLabel(attempt.status)}
+                                                </Badge>
+                                                <span className="font-semibold text-foreground">{attempt.channel_name}</span>
+                                                {attempt.model_name && <span className="truncate text-muted-foreground">({attempt.model_name})</span>}
+                                                {attempt.sticky && <Pin className="size-3.5 text-amber-500" />}
+                                                {attempt.rate_multiplier > 0 && <span className="text-muted-foreground">x{formatRateMultiplier(attempt.rate_multiplier)}</span>}
+                                                {attempt.status === 'running' && <Loader2 className="ml-auto size-3.5 animate-spin text-muted-foreground" />}
+                                                {attempt.duration > 0 && <span className="ml-auto tabular-nums text-muted-foreground">{formatDuration(attempt.duration)}</span>}
+                                            </div>
+                                            {attempt.msg && <div className="whitespace-pre-wrap wrap-break-word border-l-2 border-destructive/30 pl-2 text-[11px] leading-relaxed text-destructive/90">{attempt.msg}</div>}
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : isActive ? (
+                                <div className="flex items-center justify-center gap-2 py-3 text-xs text-muted-foreground">
+                                    <Loader2 className="size-4 animate-spin" />
+                                    {t('waitingResponse')}
+                                </div>
+                            ) : null}
+                        </div>
+                    </section>
+
+                    <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-border bg-muted/30">
                         <div className="flex shrink-0 items-center gap-2 border-b border-border bg-muted/50 px-3 py-2.5 md:px-4 md:py-3">
                             <MessageSquare className="size-4 text-purple-500" />
-                            <span className="text-sm font-medium text-card-foreground">{t('responseContent')}</span>
+                            <span className="text-sm font-medium text-card-foreground">{t('finalResponse')}</span>
                             {responseTruncated && <Badge variant="outline" className="text-xs text-amber-600 dark:text-amber-400 border-amber-500/40">{t('truncated')}</Badge>}
                             {detail.isCommitted && <Badge variant="secondary" className="ml-auto text-xs">{statusT('committed')}</Badge>}
                             {!detail.isCommitted && <Badge variant="secondary" className="ml-auto text-xs">{log.output_tokens.toLocaleString()} {t('tokens')}</Badge>}
                         </div>
                         <div className="min-h-0 flex-1 overflow-auto">
+                            {log.error && (
+                                <div className="relative border-b border-destructive/20 bg-destructive/5 p-3">
+                                    <CopyIconButton
+                                        text={log.error}
+                                        className="absolute right-2 top-2 rounded-md p-1 text-destructive/60 transition-colors hover:bg-destructive/10 hover:text-destructive"
+                                        copyIconClassName="size-4"
+                                        checkIconClassName="size-4"
+                                    />
+                                    <p className="whitespace-pre-wrap wrap-break-word pr-8 text-sm leading-relaxed text-destructive">{log.error}</p>
+                                </div>
+                            )}
                             {responseBody.error && !responseContent && !isActive ? (
                                 <div className="flex h-full items-center justify-center px-4 text-xs text-destructive">{t('detailUnavailable')}</div>
                             ) : (
                                 <DeferredJsonContent content={responseContent} fallbackText={isActive ? t('responseStreaming') : t('noResponseContent')} />
                             )}
                         </div>
-                    </div>
+                    </section>
                 </div>
             </div>
             <div className="grid w-full shrink-0 grid-cols-12 gap-x-4 gap-y-2 pt-4 mt-auto text-xs text-muted-foreground md:grid-cols-7">
@@ -389,8 +409,7 @@ export function LogCard({ log }: { log: RelayLog }) {
 
     const hasError = !!log.error;
     const hasMultipleAttempts = log.attempts && log.attempts.length > 1;
-    const [isDiagnosticExpanded, setIsDiagnosticExpanded] = useState(false);
-
+    const orderedAttempts = useMemo(() => sortAttempts(log.attempts ?? []), [log.attempts]);
     return (
         <TooltipProvider>
             <MorphingDialog>
@@ -413,7 +432,7 @@ export function LogCard({ log }: { log: RelayLog }) {
                                         channelName={log.channel_name}
                                         brandColor={brandColor}
                                         rateMultiplier={log.rate_multiplier}
-                                        attempts={log.attempts!}
+                                        attempts={orderedAttempts}
                                     />
                                 ) : (
                                     <Badge
@@ -508,7 +527,7 @@ export function LogCard({ log }: { log: RelayLog }) {
                                     channelName={log.channel_name}
                                     brandColor={brandColor}
                                     rateMultiplier={log.rate_multiplier}
-                                    attempts={log.attempts!}
+                                    attempts={orderedAttempts}
                                 />
                             ) : (
                                 <Badge
@@ -534,152 +553,103 @@ export function LogCard({ log }: { log: RelayLog }) {
                         </MorphingDialogTitle>
 
                         <MorphingDialogDescription className="flex-1 min-h-0">
-                            <div className="flex flex-col min-h-0 h-full gap-4">
-                                {!log.is_overview && (hasError || hasMultipleAttempts) && (
-                                    <div className={cn(
-                                        "flex-initial min-h-0 flex flex-col rounded-2xl border overflow-hidden max-h-[40%]",
-                                        hasError
-                                            ? "bg-destructive/5 border-destructive/20"
-                                            : "bg-secondary/30 border-border/50"
-                                    )}>
-                                        <button
-                                            type="button"
-                                            className={cn(
-                                                "flex w-full items-center gap-2 border-0 bg-transparent px-3 py-2.5 text-left shrink-0 cursor-pointer select-none hover:bg-muted/50 transition-colors focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ring",
-                                                hasError && "hover:bg-destructive/10"
+                            {log.is_overview ? (
+                                <LiveOverviewDetails log={log} />
+                            ) : (
+                                <div className="grid h-full min-h-0 grid-cols-1 gap-4 md:grid-cols-2">
+                                    <div className="flex min-h-0 flex-col overflow-hidden rounded-2xl border border-border bg-muted/30">
+                                        <div className="flex shrink-0 items-center gap-2 border-b border-border bg-muted/50 px-3 py-2.5 md:px-4 md:py-3">
+                                            <Send className="size-4 text-green-500" />
+                                            <span className="text-sm font-medium text-card-foreground">{t('requestContent')}</span>
+                                            {log.request_content_truncated && (
+                                                <Badge variant="outline" className="border-amber-500/40 text-xs text-amber-600 dark:text-amber-400">
+                                                    {t('truncated')}
+                                                </Badge>
                                             )}
-                                            onClick={() => setIsDiagnosticExpanded(!isDiagnosticExpanded)}
-                                            aria-expanded={isDiagnosticExpanded}
-                                            aria-controls={`log-diagnostic-${log.id}`}
-                                        >
-                                            {hasError ? (
-                                                <AlertCircle className="size-4 text-destructive" />
-                                            ) : (
+                                            <Badge variant="secondary" className="ml-auto text-xs">
+                                                {log.input_tokens.toLocaleString()} {t('tokens')}
+                                            </Badge>
+                                        </div>
+                                        <div className="min-h-0 flex-1 overflow-auto">
+                                            <DeferredJsonContent content={log.request_content} fallbackText={t('noRequestContent')} />
+                                        </div>
+                                    </div>
+
+                                    <div className="flex min-h-0 flex-col gap-4 overflow-hidden">
+                                        <section className="flex min-h-0 flex-[1.1] flex-col overflow-hidden rounded-2xl border border-border bg-muted/30">
+                                            <div className="flex shrink-0 items-center gap-2 border-b border-border bg-muted/50 px-3 py-2.5 md:px-4 md:py-3">
                                                 <RotateCw className="size-4 text-muted-foreground" />
-                                            )}
-                                            <span className={cn(
-                                                "text-sm font-medium",
-                                                hasError ? "text-destructive" : "text-secondary-foreground"
-                                            )}>
-                                                {hasError ? t('errorInfo') : t('retryDetails')}
-                                            </span>
-                                            <span className="ml-auto flex items-center gap-2">
-                                                {hasMultipleAttempts && (
-                                                    <Badge
-                                                        variant="outline"
-                                                        className={cn(
-                                                            "text-xs border-0",
-                                                            hasError
-                                                                ? "bg-destructive/10 text-destructive"
-                                                                : "bg-secondary text-secondary-foreground"
-                                                        )}
-                                                    >
-                                                        {log.total_attempts || log.attempts!.length} {t('attempts')}
-                                                    </Badge>
-                                                )}
-                                                {isDiagnosticExpanded ? (
-                                                    <ChevronUp className="size-4 text-muted-foreground" />
-                                                ) : (
-                                                    <ChevronDown className="size-4 text-muted-foreground" />
-                                                )}
-                                            </span>
-                                        </button>
-
-                                        <AnimatePresence initial={false}>
-                                            {isDiagnosticExpanded && (
-                                                <motion.div
-                                                    id={`log-diagnostic-${log.id}`}
-                                                    initial={{ height: 0, opacity: 0 }}
-                                                    animate={{ height: "auto", opacity: 1 }}
-                                                    exit={{ height: 0, opacity: 0 }}
-                                                    transition={{ duration: 0.2, ease: "easeInOut" }}
-                                                    className="overflow-hidden flex flex-col min-h-0"
-                                                >
-                                                    <div className="flex-1 overflow-auto p-2.5 md:p-3 flex flex-col gap-4">
-                                                        {hasError && (
-                                                            <div className="relative pl-1">
-                                                                <div className="absolute right-0 top-0">
-                                                                    <CopyIconButton
-                                                                        text={log.error ?? ''}
-                                                                        className="p-1 rounded-md text-destructive/60 hover:text-destructive hover:bg-destructive/10 transition-colors"
-                                                                        copyIconClassName="size-4"
-                                                                        checkIconClassName="size-4"
-                                                                    />
-                                                                </div>
-                                                                <p className="text-sm text-destructive whitespace-pre-wrap wrap-break-word pr-8 leading-relaxed">
-                                                                    {log.error}
-                                                                </p>
-                                                            </div>
-                                                        )}
-
-                                                        {hasMultipleAttempts && (
-                                                            <div className="flex flex-col gap-2">
-                                                                {log.attempts!.map((attempt, idx) => (
-                                                                    <div
-                                                                        key={idx}
+                                                <span className="text-sm font-medium text-card-foreground">{t('attemptHistory')}</span>
+                                                <Badge variant="secondary" className="text-xs">{orderedAttempts.length} {t('attempts')}</Badge>
+                                            </div>
+                                            <div className="min-h-0 flex-1 overflow-auto p-2.5 md:p-3">
+                                                {orderedAttempts.length > 0 ? (
+                                                    <div className="flex flex-col gap-2">
+                                                        {orderedAttempts.map((attempt, index) => (
+                                                            <div
+                                                                key={`${getAttemptOrder(attempt)}-${index}`}
+                                                                className={cn(
+                                                                    "flex flex-col gap-1.5 rounded-xl border p-2.5 text-xs",
+                                                                    attempt.status === 'success'
+                                                                        ? "border-primary/20 bg-primary/5"
+                                                                        : "border-destructive/20 bg-destructive/5",
+                                                                )}
+                                                            >
+                                                                <div className="flex items-center gap-2">
+                                                                    <span className="shrink-0 font-mono text-[10px] text-muted-foreground">
+                                                                        {t('attemptNumber', { number: getAttemptDisplayNumber(attempt) })}
+                                                                    </span>
+                                                                    <Badge
+                                                                        variant="outline"
                                                                         className={cn(
-                                                                            "text-xs p-2.5 rounded-xl border transition-colors flex flex-col gap-2",
+                                                                            "border-0 px-1.5 text-[10px] font-bold uppercase",
                                                                             attempt.status === 'success'
-                                                                                ? "bg-primary/5 border-primary/20 hover:bg-primary/10"
-                                                                                : "bg-destructive/5 border-destructive/20 hover:bg-destructive/10"
+                                                                                ? "bg-primary/15 text-primary"
+                                                                                : attempt.status === 'running'
+                                                                                    ? "bg-secondary text-secondary-foreground"
+                                                                                    : "bg-destructive/15 text-destructive",
                                                                         )}
                                                                     >
-                                                                        <div className="flex items-center gap-2">
-                                                                            <span className="font-semibold text-foreground">
-                                                                                {attempt.channel_name}
-                                                                                {formatRateMultiplier(attempt.rate_multiplier) && (
-                                                                                    <span className="ml-1 font-normal opacity-80">({t('rateMultiplier')} {formatRateMultiplier(attempt.rate_multiplier)})</span>
-                                                                                )}
-                                                                            </span>
-                                                                            <span className="text-muted-foreground">
-                                                                                ({attempt.model_name})
-                                                                            </span>
-                                                                            <span className="ml-auto text-muted-foreground tabular-nums font-mono">
-                                                                                {formatDuration(attempt.duration)}
-                                                                            </span>
-                                                                        </div>
-                                                                        {attempt.msg && (
-                                                                            <div className="text-destructive/90 pl-2 border-l-2 border-destructive/30 text-[11px] leading-relaxed">
-                                                                                {attempt.msg}
-                                                                            </div>
-                                                                        )}
+                                                                        {attempt.status === 'success'
+                                                                            ? statusT('success')
+                                                                            : attempt.status === 'running'
+                                                                                ? statusT('running')
+                                                                                : attempt.status === 'canceled'
+                                                                                    ? statusT('canceled')
+                                                                                    : attempt.status === 'circuit_break'
+                                                                                        ? statusT('circuitBreak')
+                                                                                        : attempt.status === 'skipped'
+                                                                                            ? statusT('skipped')
+                                                                                            : statusT('failed')}
+                                                                    </Badge>
+                                                                    <span className="font-semibold text-foreground">{attempt.channel_name}</span>
+                                                                    {attempt.model_name && <span className="truncate text-muted-foreground">({attempt.model_name})</span>}
+                                                                    {attempt.sticky && <Pin className="size-3.5 text-amber-500" />}
+                                                                    {attempt.rate_multiplier > 0 && <span className="text-muted-foreground">x{formatRateMultiplier(attempt.rate_multiplier)}</span>}
+                                                                    {attempt.duration > 0 && <span className="ml-auto tabular-nums text-muted-foreground">{formatDuration(attempt.duration)}</span>}
+                                                                </div>
+                                                                {attempt.msg && (
+                                                                    <div className="whitespace-pre-wrap wrap-break-word border-l-2 border-destructive/30 pl-2 text-[11px] leading-relaxed text-destructive/90">
+                                                                        {attempt.msg}
                                                                     </div>
-                                                                ))}
+                                                                )}
                                                             </div>
-                                                        )}
+                                                        ))}
                                                     </div>
-                                                </motion.div>
-                                            )}
-                                        </AnimatePresence>
-                                    </div>
-                                )}
-                                {log.is_overview && <LiveOverviewDetails log={log} />}
-                                {!log.is_overview && (
-                                    <div className="flex-1 min-h-0 overflow-hidden">
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 h-full min-h-0">
-                                        <div className="flex flex-col rounded-2xl border border-border bg-muted/30 overflow-hidden min-h-0">
-                                            <div className="flex items-center gap-2 px-3 md:px-4 py-2.5 md:py-3 border-b border-border bg-muted/50 shrink-0">
-                                                <Send className="size-4 text-green-500" />
-                                                <span className="text-sm font-medium text-card-foreground">{t('requestContent')}</span>
-                                                {log.request_content_truncated && (
-                                                    <Badge variant="outline" className="text-xs text-amber-600 dark:text-amber-400 border-amber-500/40">
-                                                        {t('truncated')}
-                                                    </Badge>
+                                                ) : (
+                                                    <div className="flex h-full items-center justify-center text-xs text-muted-foreground">
+                                                        {t('noAttempts')}
+                                                    </div>
                                                 )}
-                                                <Badge variant="secondary" className="ml-auto text-xs">
-                                                    {log.input_tokens.toLocaleString()} {t('tokens')}
-                                                </Badge>
                                             </div>
-                                            <div className="flex-1 overflow-auto min-h-0">
-                                                <DeferredJsonContent content={log.request_content} fallbackText={t('noRequestContent')} />
-                                            </div>
-                                        </div>
-                                        <div className="flex flex-col rounded-2xl border border-border bg-muted/30 overflow-hidden min-h-0">
-                                            <div className="flex items-center gap-2 px-3 md:px-4 py-2.5 md:py-3 border-b border-border bg-muted/50 shrink-0">
+                                        </section>
+
+                                        <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-border bg-muted/30">
+                                            <div className="flex shrink-0 items-center gap-2 border-b border-border bg-muted/50 px-3 py-2.5 md:px-4 md:py-3">
                                                 <MessageSquare className="size-4 text-purple-500" />
-                                                <span className="text-sm font-medium text-card-foreground">{t('responseContent')}</span>
+                                                <span className="text-sm font-medium text-card-foreground">{t('finalResponse')}</span>
                                                 {log.response_content_truncated && (
-                                                    <Badge variant="outline" className="text-xs text-amber-600 dark:text-amber-400 border-amber-500/40">
+                                                    <Badge variant="outline" className="border-amber-500/40 text-xs text-amber-600 dark:text-amber-400">
                                                         {t('truncated')}
                                                     </Badge>
                                                 )}
@@ -687,14 +657,26 @@ export function LogCard({ log }: { log: RelayLog }) {
                                                     {log.output_tokens.toLocaleString()} {t('tokens')}
                                                 </Badge>
                                             </div>
-                                            <div className="flex-1 overflow-auto min-h-0">
+                                            <div className="min-h-0 flex-1 overflow-auto">
+                                                {log.error && (
+                                                    <div className="relative border-b border-destructive/20 bg-destructive/5 p-3">
+                                                        <CopyIconButton
+                                                            text={log.error}
+                                                            className="absolute right-2 top-2 rounded-md p-1 text-destructive/60 transition-colors hover:bg-destructive/10 hover:text-destructive"
+                                                            copyIconClassName="size-4"
+                                                            checkIconClassName="size-4"
+                                                        />
+                                                        <p className="whitespace-pre-wrap wrap-break-word pr-8 text-sm leading-relaxed text-destructive">
+                                                            {log.error}
+                                                        </p>
+                                                    </div>
+                                                )}
                                                 <DeferredJsonContent content={log.response_content} fallbackText={t('noResponseContent')} />
                                             </div>
-                                        </div>
+                                        </section>
                                     </div>
                                 </div>
-                                )}
-                            </div>
+                            )}
                         </MorphingDialogDescription>
 
                         <div className="flex flex-wrap items-center gap-3 md:gap-4 pt-4 mt-auto text-xs text-muted-foreground [&_svg]:translate-y-px shrink-0">

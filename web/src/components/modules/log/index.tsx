@@ -1,7 +1,6 @@
 import { useCallback, useMemo } from 'react';
 import { useLogs } from '@/api/endpoints/log';
 import { LogCard } from './Item';
-import { ActiveRequests } from './ActiveRequests';
 import { FileClock, Loader2 } from 'lucide-react';
 import { useTranslations } from 'use-intl';
 import { VirtualizedGrid } from '@/components/common/VirtualizedGrid';
@@ -15,7 +14,7 @@ import { ListRequestError } from '@/components/common/ListRequestError';
  */
 export function Log() {
     const t = useTranslations('log');
-    const { logs, activeRequests, isOverview, hasMore, isLoading, isLoadingMore, isError, listError, isFetching, loadMore, refetch } = useLogs({ pageSize: 10 });
+    const { logs, isOverview, hasMore, isLoading, isLoadingMore, isError, listError, isFetching, loadMore, refetch } = useLogs({ pageSize: 10 });
     const commonT = useTranslations('common');
     const hasListError = !isOverview && (isError || Boolean(listError));
 
@@ -44,7 +43,6 @@ export function Log() {
     }, [hasMore, isLoading, isLoadingMore, logs.length, t]);
     return (
         <div className="flex h-full min-h-0 flex-col gap-2">
-            <ActiveRequests requests={activeRequests} />
             <div className="relative min-h-0 flex-1">
                 <VirtualizedGrid
                     items={logs}
