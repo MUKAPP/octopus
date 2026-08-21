@@ -104,7 +104,7 @@ func UpdateLLMPrice(ctx context.Context) error {
 		return fmt.Errorf("failed to parse LLM info: %w", err)
 	}
 
-	llmPriceLock.Lock()
+	updatedPrices := make(map[string]model.LLMPrice)
 	for provider, familyPrefixes := range developerFamilies {
 		for _, priceModel := range rawPrice[provider].Models {
 			modelID := strings.ToLower(priceModel.ID)
@@ -127,29 +127,87 @@ func UpdateLLMPrice(ctx context.Context) error {
 				continue
 			}
 
-			llmPrice[modelID] = priceModel.Cost
+			updatedPrices[modelID] = priceModel.Cost
 		}
 	}
-	llmPriceLock.Unlock()
+
+	llmPriceLock.Lock()
+	for modelID, modelPrice := range updatedPrices {
+		llmPrice[modelID] = modelPrice
+	}
 	lastUpdateTime = time.Now()
+	llmPriceLock.Unlock()
 	return nil
 }
 
 func GetLastUpdateTime() time.Time {
+	llmPriceLock.RLock()
+	defer llmPriceLock.RUnlock()
 	return lastUpdateTime
 }
 
 func GetLLMPrice(modelName string) *model.LLMPrice {
-	modelName = strings.ToLower(modelName)
-	price, err := op.LLMGet(modelName)
-	if err == nil {
-		return &price
-	}
-	llmPriceLock.RLock()
-	defer llmPriceLock.RUnlock()
-	price, ok := llmPrice[modelName]
-	if !ok {
+	modelName = strings.ToLower(strings.TrimSpace(modelName))
+	if modelName == "" {
 		return nil
 	}
-	return &price
+
+	// User-managed prices take precedence over generated presets.
+	if customPrice, err := op.LLMGet(modelName); err == nil {
+		return &customPrice
+	}
+
+	llmPriceLock.RLock()
+	defer llmPriceLock.RUnlock()
+	if modelPrice, ok := llmPrice[modelName]; ok {
+		return &modelPrice
+	}
+
+	// Match a preset model ID as a complete, contiguous sequence of model-name
+	// segments so provider prefixes and deployment suffixes remain supported.
+	modelNameSegments := strings.FieldsFunc(modelName, func(r rune) bool {
+		return (r < 'a' || r > 'z') && (r < '0' || r > '9') && r != '.'
+	})
+	if len(modelNameSegments) == 0 {
+		return nil
+	}
+
+	matchedModelID := ""
+	matchedSegmentCount := 0
+	var matchedPrice model.LLMPrice
+	ambiguous := false
+	for modelID, candidatePrice := range llmPrice {
+		modelID = strings.ToLower(strings.TrimSpace(modelID))
+		modelIDSegments := strings.Split(modelID, "-")
+		if modelID == "" || len(modelIDSegments) == 0 {
+			continue
+		}
+		for start := 0; start+len(modelIDSegments) <= len(modelNameSegments); start++ {
+			matched := true
+			for i, segment := range modelIDSegments {
+				if segment == "" || modelNameSegments[start+i] != segment {
+					matched = false
+					break
+				}
+			}
+			if !matched {
+				continue
+			}
+
+			segmentCount := len(modelIDSegments)
+			if segmentCount > matchedSegmentCount {
+				matchedModelID = modelID
+				matchedSegmentCount = segmentCount
+				matchedPrice = candidatePrice
+				ambiguous = false
+			} else if segmentCount == matchedSegmentCount && matchedModelID != modelID && matchedPrice != candidatePrice {
+				ambiguous = true
+			}
+			break
+		}
+	}
+	if matchedModelID == "" || ambiguous {
+		return nil
+	}
+	return &matchedPrice
 }

@@ -4,7 +4,7 @@ import { ScrollText, Calendar, Trash2, FileText } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
-import { useSettingList, useSetSetting, SettingKey } from '@/api/endpoints/setting';
+import { useSettingList, useSetSetting, SettingKey } from '@/api/setting';
 import { useClearLogs } from '@/api/endpoints/log';
 import { toast } from '@/components/common/Toast';
 

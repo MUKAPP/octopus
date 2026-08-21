@@ -1,4 +1,4 @@
-import { useChannelList } from '@/api/endpoints/channel';
+import { useChannelList } from '@/api/channel';
 import { useMemo } from 'react';
 import { useTranslations } from 'use-intl';
 import { Loader2, TrendingUp } from 'lucide-react';

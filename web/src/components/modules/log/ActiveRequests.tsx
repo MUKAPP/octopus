@@ -22,7 +22,7 @@ function ElapsedTime({ startTime }: { startTime: number }) {
 }
 
 function ActiveRequestCard({ request }: { request: ActiveRelayRequest }) {
-    const { Avatar: ModelAvatar, color: brandColor } = useMemo(
+    const { Icon: ModelIcon, className: iconClassName, color: brandColor } = useMemo(
         () => getModelIcon(request.request_model_name),
         [request.request_model_name]
     );
@@ -30,7 +30,7 @@ function ActiveRequestCard({ request }: { request: ActiveRelayRequest }) {
 
     return (
         <div className="flex w-[320px] shrink-0 items-center gap-3 rounded-2xl border border-border bg-card px-4 py-3">
-            <ModelAvatar size={36} />
+            <ModelIcon aria-hidden="true" className={iconClassName} width={36} height={36} />
             <div className="flex min-w-0 flex-1 flex-col gap-1.5">
                 <div className="flex min-w-0 items-center gap-2 text-sm">
                     <span className="truncate font-semibold text-card-foreground" title={request.request_model_name}>

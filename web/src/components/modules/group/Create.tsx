@@ -1,11 +1,11 @@
-import type { GroupItem } from '@/api/endpoints/group';
+import type { GroupItem } from '@/api/group';
 import {
     MorphingDialogClose,
     MorphingDialogTitle,
     MorphingDialogDescription,
     useMorphingDialog,
 } from '@/components/ui/morphing-dialog';
-import { useCreateGroup } from '@/api/endpoints/group';
+import { useCreateGroup } from '@/api/group';
 import { useTranslations } from 'use-intl';
 import { GroupEditor } from './Editor';
 import { toast } from '@/components/common/Toast';

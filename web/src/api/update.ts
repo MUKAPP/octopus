@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { apiClient } from '../client';
+import { apiClient } from './client';
 
 /** 最新可用版本：Docker Hub latest 镜像与 GitHub Releases 二进制槽位中较新者。 */
 export interface LatestInfo {

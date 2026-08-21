@@ -1,5 +1,5 @@
-import type { LLMChannel } from '@/api/endpoints/model';
-import { GroupMode } from '@/api/endpoints/group';
+import type { LLMChannel } from '@/api/model';
+import { GroupMode } from '@/api/group';
 
 export const MODE_LABELS: Record<GroupMode, string> = {
     [GroupMode.RoundRobin]: 'roundRobin',

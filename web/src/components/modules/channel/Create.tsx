@@ -5,7 +5,7 @@ import {
     MorphingDialogDescription,
     useMorphingDialog,
 } from '@/components/ui/morphing-dialog';
-import { useCreateChannel, ChannelType, AutoGroupType } from '@/api/endpoints/channel';
+import { useCreateChannel, ChannelType, AutoGroupType } from '@/api/channel';
 import { useTranslations } from 'use-intl';
 import { ChannelForm, type ChannelFormData } from './Form';
 import { toast } from '@/components/common/Toast';

@@ -1,7 +1,7 @@
 import { useTranslations } from 'use-intl';
 import { Info, Tag, Github, AlertTriangle, Download, Loader2 } from 'lucide-react';
 import { APP_VERSION, GITHUB_REPO, BINARIES_RELEASE_TAG } from '@/lib/info';
-import { useLatestInfo, useNowVersion } from '@/api/endpoints/update';
+import { useLatestInfo, useNowVersion } from '@/api/update';
 import { Button } from '@/components/ui/button';
 import { isOctopusCacheName, isFontCacheName, SW_MESSAGE_TYPE } from '@/lib/sw';
 

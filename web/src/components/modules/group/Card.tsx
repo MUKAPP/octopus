@@ -1,8 +1,8 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { Trash2, X, Pencil } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { type Group, useDeleteGroup, useUpdateGroup } from '@/api/endpoints/group';
-import { useModelChannelList } from '@/api/endpoints/model';
+import { type Group, useDeleteGroup, useUpdateGroup } from '@/api/group';
+import { useModelChannelList } from '@/api/model';
 import { useTranslations } from 'use-intl';
 import { cn } from '@/lib/utils';
 import { toast } from '@/components/common/Toast';
@@ -12,7 +12,7 @@ import type { SelectedMember } from './ItemList';
 import { MemberList } from './ItemList';
 import { GroupEditor, type GroupEditorValues } from './Editor';
 import { buildChannelNameByModelKey, modelChannelKey, MODE_LABELS } from './utils';
-import { GroupMode, type GroupUpdateRequest } from '@/api/endpoints/group';
+import { GroupMode, type GroupUpdateRequest } from '@/api/group';
 import {
     MorphingDialog,
     MorphingDialogClose,

@@ -35,20 +35,18 @@ jobs:
     timeout-minutes: 90
 
     steps:
-      # Dockerfile builds from the octopus checkout under ./src.
+      # Dockerfile uses the repository root as its build context.
       - name: Checkout octopus
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
         with:
           persist-credentials: false
-          path: src
       - name: Set up Go for latest AxonHub module
         uses: actions/setup-go@v6
         with:
-          go-version-file: src/go.mod
+          go-version-file: go.mod
           cache: false
 
       - name: Resolve latest AxonHub module
-        working-directory: src
         run: go get github.com/looplj/axonhub/llm@unstable
 
       - name: Set image build information
@@ -92,7 +90,7 @@ jobs:
         uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7
         with:
           context: .
-          file: ./src/Dockerfile
+          file: ./Dockerfile
           push: true
           platforms: linux/amd64,linux/arm64
           tags: ${{ steps.meta.outputs.tags }}

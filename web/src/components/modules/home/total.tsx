@@ -13,7 +13,7 @@ import {
     Loader2,
 } from 'lucide-react';
 import { useTranslations } from 'use-intl';
-import { useStatsTotal } from '@/api/endpoints/stats';
+import { useStatsTotal } from '@/api/stats';
 import { AnimatedNumber } from '@/components/common/AnimatedNumber';
 import { EASING, REDUCED_MOTION_TRANSITION } from '@/lib/animations/fluid-transitions';
 

@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { toast } from '@/components/common/Toast';
-import { useExportDB, useImportDB } from '@/api/endpoints/setting';
+import { useExportDB, useImportDB } from '@/api/setting';
 
 export function SettingBackup() {
     const t = useTranslations('setting');

@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { apiClient } from "../client";
+import { apiClient } from './client';
 import { logger } from "@/lib/logger";
 import { formatCount, formatMoney, formatTime } from "@/lib/utils";
 import { StatsChannel, type StatsMetricsFormatted } from "./stats";
@@ -73,7 +73,7 @@ export type Channel = {
 };
 
 // Internal type: backend may return null for slice fields; normalize to [] in select()
-type ChannelServer = Omit<Channel, "base_urls" | "custom_header" | "keys"> & {
+export type ChannelServer = Omit<Channel, "base_urls" | "custom_header" | "keys"> & {
 	base_urls: BaseUrl[] | null;
 	custom_header: CustomHeader[] | null;
 	keys: ChannelKey[] | null;

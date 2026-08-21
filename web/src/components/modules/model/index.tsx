@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { SearchX } from 'lucide-react';
 import { useTranslations } from 'use-intl';
-import { useModelList } from '@/api/endpoints/model';
+import { useModelList } from '@/api/model';
 import { ModelItem } from './Item';
 import { useSearchStore, useToolbarViewOptionsStore } from '@/components/modules/toolbar';
 import { VirtualizedGrid } from '@/components/common/VirtualizedGrid';

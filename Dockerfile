@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1.7
 
-# AxonHub is resolved as a Go module from go.mod.
+# This Dockerfile is built from the repository root.
 
 ARG NODE_VERSION=22
 ARG GO_VERSION=1.26
@@ -9,10 +9,10 @@ ARG ALPINE_VERSION=3.21
 FROM node:${NODE_VERSION}-bookworm-slim AS frontend
 WORKDIR /src
 RUN corepack enable && corepack prepare pnpm@latest --activate
-COPY src/web/package.json src/web/pnpm-lock.yaml ./web/
+COPY web/package.json web/pnpm-lock.yaml ./web/
 WORKDIR /src/web
 RUN pnpm install --frozen-lockfile
-COPY src/web/ ./
+COPY web/ ./
 ARG APP_VERSION=dev
 ENV VITE_APP_VERSION=${APP_VERSION}
 RUN pnpm run build
@@ -22,12 +22,12 @@ WORKDIR /workspace
 ENV CGO_ENABLED=0 \
     GOOS=linux \
     GOFLAGS=-mod=mod
-COPY src/go.mod src/go.sum ./octopus/
-COPY src/third_party ./octopus/third_party
+COPY go.mod go.sum ./octopus/
+COPY third_party ./octopus/third_party
 WORKDIR /workspace/octopus
 RUN --mount=type=cache,target=/go/pkg/mod \
     go mod download
-COPY src/ ./
+COPY . ./
 COPY --from=frontend /src/static/out ./static/out
 ARG APP_VERSION=dev
 ARG BUILD_TIME=unknown
@@ -53,7 +53,7 @@ RUN apk add --no-cache alpine-conf ca-certificates su-exec tzdata && \
     rm -rf /var/cache/apk/* && \
     mkdir -p /app
 COPY --from=backend /out/octopus /app/octopus
-COPY src/scripts/dockerfiles/entrypoint.sh /entrypoint.sh
+COPY scripts/dockerfiles/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh /app/octopus
 WORKDIR /app
 EXPOSE 8080

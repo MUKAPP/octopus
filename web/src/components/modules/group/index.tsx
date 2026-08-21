@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { SearchX } from 'lucide-react';
 import { useTranslations } from 'use-intl';
 import { GroupCard } from './Card';
-import { useGroupList } from '@/api/endpoints/group';
+import { useGroupList } from '@/api/group';
 import { useSearchStore, useToolbarViewOptionsStore } from '@/components/modules/toolbar';
 import { VirtualizedGrid } from '@/components/common/VirtualizedGrid';
 import { ListRequestError } from '@/components/common/ListRequestError';

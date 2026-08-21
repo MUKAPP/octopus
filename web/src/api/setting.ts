@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { apiClient, API_BASE_URL } from '../client';
+import { apiClient, API_BASE_URL } from './client';
 import { logger } from '@/lib/logger';
 import { useAuthStore } from './user';
 
@@ -109,10 +109,9 @@ function getDataField<T>(value: unknown): T | undefined {
     return (value as ApiResponse<T>).data;
 }
 
-function getAuthHeader(): string {
+function getAuthHeader(): string | undefined {
     const token = useAuthStore.getState().token;
-    if (!token) throw new Error('Not authenticated');
-    return `Bearer ${token}`;
+    return token ? `Bearer ${token}` : undefined;
 }
 
 function parseFilename(contentDisposition: string | null): string | null {
@@ -153,13 +152,14 @@ export function useExportDB() {
             params.set('include_logs', String(!!options.include_logs));
             params.set('include_stats', String(!!options.include_stats));
 
+            const exportHeaders = new Headers();
+            const exportAuthHeader = getAuthHeader();
+            if (exportAuthHeader) exportHeaders.set('Authorization', exportAuthHeader);
             const res = await fetch(`${API_BASE_URL}/api/v1/setting/export?${params.toString()}`, {
                 method: 'GET',
-                headers: {
-                    Authorization: getAuthHeader(),
-                },
+                headers: exportHeaders,
+                credentials: 'include',
             });
-
             if (!res.ok) {
                 const text = await res.text();
                 throw new Error(text || res.statusText);
@@ -185,12 +185,14 @@ export function useImportDB() {
             const form = new FormData();
             form.append('file', file);
 
+            const importHeaders = new Headers();
+            const importAuthHeader = getAuthHeader();
+            if (importAuthHeader) importHeaders.set('Authorization', importAuthHeader);
             const res = await fetch(`${API_BASE_URL}/api/v1/setting/import`, {
                 method: 'POST',
-                headers: {
-                    Authorization: getAuthHeader(),
-                },
+                headers: importHeaders,
                 body: form,
+                credentials: 'include',
             });
 
             const contentType = res.headers.get('content-type') || '';

@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect } from 'react';
-import { Clock, Cpu, Zap, AlertCircle, ArrowDownToLine, ArrowUpFromLine, DollarSign, ArrowRight, ArrowDown, Send, MessageSquare, Loader2, RotateCw, ChevronDown, ChevronUp, Pin, KeyRound, Gauge, Database, Square } from 'lucide-react';
+import { Clock, Cpu, Zap, AlertCircle, ArrowDownToLine, ArrowUpFromLine, DollarSign, ArrowRight, ArrowDown, Send, MessageSquare, Loader2, RotateCw, ChevronDown, ChevronUp, Pin, KeyRound, Gauge, Square } from 'lucide-react';
 import { useTranslations } from 'use-intl';
 import { motion, AnimatePresence } from 'motion/react';
 import JsonView from '@uiw/react-json-view';
@@ -26,12 +26,11 @@ import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/comp
 
 function formatTime(timestamp: number): string {
     const date = new Date(timestamp * 1000);
-    return date.toLocaleString('zh-CN', {
-        month: '2-digit',
-        day: '2-digit',
+    return date.toLocaleTimeString('zh-CN', {
         hour: '2-digit',
         minute: '2-digit',
         second: '2-digit',
+        hour12: false,
     });
 }
 
@@ -367,13 +366,13 @@ function LiveOverviewDetails({ log }: { log: RelayLog }) {
                     </div>
                 </div>
             </div>
-            <div className="flex shrink-0 flex-wrap items-center gap-3 text-xs text-muted-foreground">
-                <div className="flex items-center gap-1.5"><Cpu className="size-3.5 text-blue-500" /><span>{t('totalTime')}: {formatDuration(liveDuration)}</span></div>
-                <div className="flex items-center gap-1.5"><Zap className="size-3.5 text-amber-500" /><span>{t('firstTokenTime')}: {formatDuration(log.ftut)}</span></div>
-                <div className="flex items-center gap-1.5"><Gauge className="size-3.5 text-rose-500" /><span>{t('outputSpeed')}: {formatOutputSpeed(log.output_tokens, log.use_time, log.ftut)}</span></div>
-                <div className="flex items-center gap-1.5"><ArrowDownToLine className="size-3.5 text-cyan-500" /><span>{t('cacheRate')}: {formatCacheRate(log.cached_tokens, log.input_tokens)}</span></div>
-                {log.rate_multiplier > 0 && <span>{t('rateMultiplier')}: x{formatRateMultiplier(log.rate_multiplier)}</span>}
-                {attempts.some((attempt) => attempt.sticky) && <Pin className="size-3.5 text-amber-500" />}
+            <div className="grid w-full shrink-0 grid-cols-12 gap-x-4 gap-y-2 pt-4 mt-auto text-xs text-muted-foreground md:grid-cols-7">
+                <div className="col-span-4 flex items-center gap-1.5 whitespace-nowrap md:col-span-1"><Cpu className="size-3.5 shrink-0 text-blue-500" /><span>{t('totalTime')}: {formatDuration(liveDuration)}</span></div>
+                <div className="col-span-4 flex items-center gap-1.5 md:col-span-1"><Zap className="size-3.5 shrink-0 text-amber-500" /><span>{t('firstTokenTime')}: {formatDuration(log.ftut)}</span></div>
+                <div className="col-span-4 flex items-center gap-1.5 md:col-span-1"><Gauge className="size-3.5 shrink-0 text-rose-500" /><span>{t('outputSpeed')}: {formatOutputSpeed(log.output_tokens, log.use_time, log.ftut)}</span></div>
+                <div className="col-span-3 flex items-center gap-1.5 md:col-span-1"><ArrowDownToLine className="size-3.5 shrink-0 text-cyan-500" /><span>{t('cacheRate')}: {formatCacheRate(log.cached_tokens, log.input_tokens)}</span></div>
+                {log.rate_multiplier > 0 && <span className="col-span-3 flex items-center gap-1.5 md:col-span-1">{t('rateMultiplier')}: x{formatRateMultiplier(log.rate_multiplier)}</span>}
+                {attempts.some((attempt) => attempt.sticky) && <span className="col-span-3 flex items-center gap-1.5 md:col-span-1"><Pin className="size-3.5 shrink-0 text-amber-500" /></span>}
             </div>
         </div>
     );
@@ -381,7 +380,7 @@ function LiveOverviewDetails({ log }: { log: RelayLog }) {
 
 export function LogCard({ log }: { log: RelayLog }) {
     const t = useTranslations('log.card');
-    const { Avatar: ModelAvatar, color: brandColor } = useMemo(
+    const { Icon: ModelIcon, className: iconClassName, color: brandColor } = useMemo(
         () => getModelIcon(log.actual_model_name),
         [log.actual_model_name]
     );
@@ -402,7 +401,7 @@ export function LogCard({ log }: { log: RelayLog }) {
                     )}
                 >
                     <div className={cn("p-4 grid grid-cols-[auto_1fr] gap-4", hasError ? "items-start" : "items-center")}>
-                        <ModelAvatar size={40} />
+                        <ModelIcon aria-hidden="true" className={iconClassName} width={40} height={40} />
                         <div className="min-w-0 flex flex-col gap-3">
                             <div className="flex items-center gap-2 min-w-0 text-sm">
                                 <span className="font-semibold text-card-foreground truncate" title={log.request_model_name}>
@@ -440,48 +439,48 @@ export function LogCard({ log }: { log: RelayLog }) {
                                     <Pin className="size-3.5 shrink-0 text-amber-500" />
                                 )}
                             </div>
-                            <div className="grid grid-cols-2 gap-x-5 gap-y-2 text-xs tabular-nums text-muted-foreground [&_svg]:translate-y-px sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-                                <div className="flex shrink-0 items-center gap-1.5 whitespace-nowrap">
+                            <div className="grid grid-cols-12 gap-x-4 gap-y-2 text-xs tabular-nums text-muted-foreground [&_svg]:translate-y-px md:grid-cols-7">
+                                <div className="col-span-4 flex shrink-0 items-center gap-1.5 whitespace-nowrap md:col-span-1">
                                     <Clock className="size-3.5 shrink-0" style={{ color: brandColor }} />
                                     <span>{formatTime(log.time)}</span>
                                 </div>
                                 {requestAPIKeyName && (
-                                    <div className="flex min-w-0 max-w-44 items-center gap-1.5">
+                                    <div className="col-span-4 flex min-w-0 max-w-44 items-center gap-1.5 md:col-span-1">
                                         <KeyRound className="size-3.5 shrink-0 text-orange-500" />
                                         <span className="truncate" title={requestAPIKeyName}>
                                             {requestAPIKeyName}
                                         </span>
                                     </div>
                                 )}
-                                <div className="flex shrink-0 items-center gap-1.5 whitespace-nowrap">
+                                <div className="col-span-4 flex shrink-0 items-center gap-1.5 whitespace-nowrap md:col-span-1">
                                     <Zap className="size-3.5 shrink-0 text-amber-500" />
                                     <span>{t('firstToken')} {formatDuration(log.ftut)}</span>
                                 </div>
-                                <div className="flex shrink-0 items-center gap-1.5 whitespace-nowrap">
+                                <div className="col-span-3 flex shrink-0 items-center gap-1.5 whitespace-nowrap md:col-span-1">
                                     <Cpu className="size-3.5 shrink-0 text-blue-500" />
                                     <span>{t('totalTime')} {formatDuration(log.use_time)}</span>
                                 </div>
-                                <div className="flex shrink-0 items-center gap-1.5 whitespace-nowrap">
+                                <div className="col-span-3 flex shrink-0 items-center gap-1.5 whitespace-nowrap md:col-span-1">
                                     <ArrowDownToLine className="size-3.5 shrink-0 text-green-500" />
                                     <span>{t('input')} {log.input_tokens.toLocaleString()}</span>
                                 </div>
-                                <div className="flex shrink-0 items-center gap-1.5 whitespace-nowrap">
+                                <div className="col-span-3 flex shrink-0 items-center gap-1.5 whitespace-nowrap md:col-span-1">
                                     <ArrowUpFromLine className="size-3.5 shrink-0 text-purple-500" />
                                     <span>{t('output')} {log.output_tokens.toLocaleString()}</span>
                                 </div>
-                                <div className="flex shrink-0 items-center gap-1.5 whitespace-nowrap">
+                                <div className="col-span-3 flex shrink-0 items-center gap-1.5 whitespace-nowrap md:col-span-1">
                                     <ArrowDownToLine className="size-3.5 shrink-0 text-cyan-500" />
                                     <span>{t('cacheTokens')} {log.cached_tokens?.toLocaleString() ?? '—'}</span>
                                 </div>
-                                <div className="flex shrink-0 items-center gap-1.5 whitespace-nowrap">
+                                <div className="col-span-3 flex shrink-0 items-center gap-1.5 whitespace-nowrap md:col-span-1">
                                     <ArrowDownToLine className="size-3.5 shrink-0 text-cyan-500" />
                                     <span>{t('cacheRate')} {formatCacheRate(log.cached_tokens, log.input_tokens)}</span>
                                 </div>
-                                <div className="flex shrink-0 items-center gap-1.5 whitespace-nowrap">
+                                <div className="col-span-3 flex shrink-0 items-center gap-1.5 whitespace-nowrap md:col-span-1">
                                     <Gauge className="size-3.5 shrink-0 text-rose-500" />
                                     <span>{t('outputSpeed')} {formatOutputSpeed(log.output_tokens, log.use_time, log.ftut)}</span>
                                 </div>
-                                <div className="flex shrink-0 items-center gap-1.5 whitespace-nowrap">
+                                <div className="col-span-3 flex shrink-0 items-center gap-1.5 whitespace-nowrap md:col-span-1">
                                     <DollarSign className="size-3.5 shrink-0 text-emerald-500" />
                                     <span className="font-medium text-emerald-600 dark:text-emerald-400">
                                         {t('cost')} {Number(log.cost).toFixed(6)}
@@ -501,7 +500,7 @@ export function LogCard({ log }: { log: RelayLog }) {
                     <MorphingDialogContent className="relative flex h-full max-h-full w-full flex-col overflow-hidden rounded-3xl bg-card px-4 py-5 text-card-foreground sm:px-6 md:w-[80vw]">
                         <MorphingDialogClose className="top-4 right-5 text-muted-foreground hover:text-foreground transition-colors" />
                         <MorphingDialogTitle className="flex items-center gap-2 mb-4 text-sm">
-                            <ModelAvatar size={28} />
+                            <ModelIcon aria-hidden="true" className={iconClassName} width={28} height={28} />
                             <span className="font-semibold text-card-foreground">{log.request_model_name}</span>
                             <ArrowRight className="size-3.5 text-muted-foreground/50" />
                             {hasMultipleAttempts ? (

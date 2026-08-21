@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { SearchX } from 'lucide-react';
 import { useTranslations } from 'use-intl';
-import { useChannelList } from '@/api/endpoints/channel';
+import { useChannelList } from '@/api/channel';
 import { Card } from './Card';
 import { useSearchStore, useToolbarViewOptionsStore } from '@/components/modules/toolbar';
 import { VirtualizedGrid } from '@/components/common/VirtualizedGrid';

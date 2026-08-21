@@ -4,8 +4,8 @@ import { useTranslations } from 'use-intl'
 import { Button } from "@/components/ui/button"
 import { Field, FieldDescription, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
-import { useLogin } from "@/api/endpoints/user"
-import { useAPIKeyLogin } from "@/api/endpoints/apikey"
+import { useLogin } from "@/api/user";
+import { useAPIKeyLogin } from "@/api/apikey";
 import Logo from "@/components/modules/logo"
 import { KeyRound, User } from "lucide-react"
 import {

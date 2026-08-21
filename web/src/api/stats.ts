@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { apiClient } from '../client';
+import { apiClient } from './client';
 import { formatCount, formatMoney, formatTime } from '@/lib/utils';
 
 /**

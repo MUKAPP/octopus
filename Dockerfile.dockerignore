@@ -1,5 +1,5 @@
-src/.git
-src/.pi
-src/build
-src/data
-src/web/node_modules
+.git
+.pi
+build
+data
+web/node_modules

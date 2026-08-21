@@ -40,6 +40,14 @@ wget https://raw.githubusercontent.com/MUKAPP/octopus/refs/heads/dev/docker-comp
 docker compose up -d
 ```
 
+如需在仓库根目录本地构建镜像：
+
+```bash
+docker build -t octopus:local .
+```
+
+Dockerfile 使用仓库根目录作为构建上下文，并包含当前前端和后端源码。
+
 ### 🔄 更新 Docker 镜像
 
 设置页会比对 Docker Hub `latest` 镜像及其相同摘要的 `dev-<短 SHA>` 标签；只有以 `dev-<短 SHA>` 构建的容器才会收到更新提示。
@@ -60,7 +68,7 @@ docker pull mukmiuikong/octopus:latest
 
 **环境要求：**
 
-- Go 1.24.4
+- Go 1.26.0
 - Node.js 20.19+ 或 22.12+
 - pnpm
 
@@ -71,10 +79,20 @@ cd octopus
 # 构建前端，产物会直接写入 static/out
 cd web && pnpm install && pnpm run build && cd ..
 # 启动后端服务
-go run main.go start 
+go run main.go start
 ```
 
 > 💡 **提示**：前端构建产物会被嵌入到 Go 二进制文件中，所以必须先构建前端再启动后端。
+
+**发布产物**
+
+发布脚本会构建二进制工作流所验证的八个平台归档，并准备发布 Docker 镜像所需的 Linux 二进制文件：
+
+```bash
+bash scripts/build.sh release
+```
+
+归档文件写入 `build/archives/`，Docker 构建输入写入 `build/docker/`。
 
 **开发模式**
 

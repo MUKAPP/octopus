@@ -2,7 +2,7 @@ import { memo, useCallback, useEffect, useId, useMemo, useRef, useState } from '
 import { Pencil, Trash2, ArrowDownToLine, ArrowUpFromLine } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useTranslations } from 'use-intl';
-import { useUpdateModel, useDeleteModel, type LLMInfo } from '@/api/endpoints/model';
+import { useUpdateModel, useDeleteModel, type LLMInfo } from '@/api/model';
 import { getModelIcon } from '@/lib/model-icons';
 import { toast } from '@/components/common/Toast';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/animate-ui/components/animate/tooltip';
@@ -37,7 +37,7 @@ export const ModelItem = memo(function ModelItem({ model, layout = 'grid' }: Mod
     const updateModel = useUpdateModel();
     const deleteModel = useDeleteModel();
 
-    const { Avatar: ModelAvatar, color: brandColor } = useMemo(() => getModelIcon(model.name), [model.name]);
+    const { Icon: ModelIcon, className: iconClassName, color: brandColor } = useMemo(() => getModelIcon(model.name), [model.name]);
 
     const updateOverlayRect = useCallback(() => {
         const card = cardRef.current;
@@ -147,7 +147,7 @@ export const ModelItem = memo(function ModelItem({ model, layout = 'grid' }: Mod
                 (isEditOpen || confirmDelete) && 'z-50'
             )}
         >
-            <ModelAvatar size={52} />
+            <ModelIcon aria-hidden="true" className={iconClassName} width={52} height={52} />
 
             <div className="flex-1 min-w-0 flex flex-col justify-center gap-2">
                 <Tooltip side="top" sideOffset={10} align="start">

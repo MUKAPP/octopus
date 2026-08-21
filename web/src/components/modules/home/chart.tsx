@@ -1,4 +1,4 @@
-import { useStatsDaily, useStatsHourly } from '@/api/endpoints/stats';
+import { useStatsDaily, useStatsHourly } from '@/api/stats';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { useMemo } from 'react';
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from 'recharts';

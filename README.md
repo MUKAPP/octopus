@@ -40,6 +40,14 @@ wget https://raw.githubusercontent.com/MUKAPP/octopus/refs/heads/dev/docker-comp
 docker compose up -d
 ```
 
+To build the image locally from the repository root:
+
+```bash
+docker build -t octopus:local .
+```
+
+The Dockerfile uses the repository root as its build context and includes the current frontend and backend sources.
+
 ### 🔄 Update Docker Image
 
 The settings page compares the Docker Hub `latest` image with its same-digest `dev-<short-sha>` tag. It reports an update only to containers built as `dev-<short-sha>`.
@@ -60,7 +68,7 @@ docker pull mukmiuikong/octopus:latest
 
 **Requirements:**
 
-- Go 1.24.4
+- Go 1.26.0
 - Node.js 20.19+ or 22.12+
 - pnpm
 
@@ -71,10 +79,20 @@ cd octopus
 # Build frontend; output is written to static/out
 cd web && pnpm install && pnpm run build && cd ..
 # Start the backend service
-go run main.go start 
+go run main.go start
 ```
 
 > 💡 **Tip**: The frontend build artifacts are embedded into the Go binary, so you must build the frontend before starting the backend.
+
+**Release Artifacts**
+
+The release script builds the eight platform archives consumed by the binary workflow and prepares the Linux binaries used by the release Docker images:
+
+```bash
+bash scripts/build.sh release
+```
+
+Archives are written to `build/archives/`; Docker build inputs are written to `build/docker/`.
 
 **Development Mode**
 

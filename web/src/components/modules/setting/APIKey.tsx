@@ -20,9 +20,9 @@ import {
     useUpdateAPIKey,
     useDeleteAPIKey,
     type APIKey,
-} from '@/api/endpoints/apikey';
-import { useGroupList } from '@/api/endpoints/group';
-import { useStatsAPIKey } from '@/api/endpoints/stats';
+} from '@/api/apikey';
+import { useGroupList } from '@/api/group';
+import { useStatsAPIKey } from '@/api/stats';
 import { cn } from '@/lib/utils';
 import { toast } from '@/components/common/Toast';
 import { CopyIconButton } from '@/components/common/CopyButton';

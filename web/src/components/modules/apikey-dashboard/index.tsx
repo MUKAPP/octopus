@@ -1,8 +1,8 @@
 import { useTranslations } from 'use-intl';
 import { useTheme } from '@/provider/theme';
 import { toast } from '@/components/common/Toast';
-import { useAPIKeyDashboardStats } from '@/api/endpoints/apikey';
-import { useAuthStore } from '@/api/endpoints/user';
+import { useAPIKeyDashboardStats } from '@/api/apikey';
+import { useAuthStore } from '@/api/user';
 import { useSettingStore } from '@/stores/setting';
 import { AnimatedNumber } from '@/components/common/AnimatedNumber';
 import Logo from '@/components/modules/logo';
@@ -21,7 +21,6 @@ import {
     LogOut,
     Calendar,
     Wallet,
-    Copy,
     Sun,
     Moon,
     Languages,

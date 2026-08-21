@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from 'react';
 import { useTranslations } from 'use-intl';
 import { Zap, Hash, Timer, TimerOff, HelpCircle } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import { useSettingList, useSetSetting, SettingKey } from '@/api/endpoints/setting';
+import { useSettingList, useSetSetting, SettingKey } from '@/api/setting';
 import { toast } from '@/components/common/Toast';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/animate-ui/components/animate/tooltip';
 

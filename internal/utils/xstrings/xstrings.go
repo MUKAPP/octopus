@@ -21,6 +21,17 @@ func SplitTrimCompact(sep string, parts ...string) []string {
 	return out
 }
 
+// SplitCompact splits non-empty inputs by sep without trimming or filtering split items.
+func SplitCompact(sep string, parts ...string) []string {
+	out := make([]string, 0)
+	for _, part := range parts {
+		if part != "" {
+			out = append(out, strings.Split(part, sep)...)
+		}
+	}
+	return out
+}
+
 // TrimCompact trims whitespace and drops empty items in a string slice.
 func TrimCompact(items []string) []string {
 	out := make([]string, 0, len(items))

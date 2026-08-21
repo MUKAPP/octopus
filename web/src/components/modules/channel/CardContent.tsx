@@ -11,7 +11,7 @@ import {
     Globe,
     Key
 } from 'lucide-react';
-import { useUpdateChannel, useDeleteChannel, type Channel, type UpdateChannelRequest } from '@/api/endpoints/channel';
+import { useUpdateChannel, useDeleteChannel, type Channel, type UpdateChannelRequest } from '@/api/channel';
 import {
     MorphingDialogTitle,
     MorphingDialogDescription,
@@ -19,7 +19,7 @@ import {
     useMorphingDialog,
 } from '@/components/ui/morphing-dialog';
 import { Tabs, TabsContents, TabsContent } from '@/components/animate-ui/primitives/animate/tabs';
-import { type StatsMetricsFormatted } from '@/api/endpoints/stats';
+import { type StatsMetricsFormatted } from '@/api/stats';
 import { useTranslations } from 'use-intl';
 import { Button } from '@/components/ui/button';
 import { ChannelForm, type ChannelFormData } from './Form';

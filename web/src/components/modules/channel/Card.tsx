@@ -13,8 +13,8 @@ import {
 	RefreshCw,
 	XCircle,
 } from "lucide-react";
-import { type StatsMetricsFormatted } from "@/api/endpoints/stats";
-import { type Channel, useEnableChannel } from "@/api/endpoints/channel";
+import { type StatsMetricsFormatted } from "@/api/stats";
+import { type Channel, useEnableChannel } from "@/api/channel";
 import { CardContent } from "./CardContent";
 import { useTranslations } from "use-intl";
 import {

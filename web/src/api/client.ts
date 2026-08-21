@@ -97,8 +97,8 @@ async function request<T>(
         method,
         headers,
         body,
+        credentials: 'include',
     });
-
     return handleResponse<T>(response);
 }
 

@@ -10,7 +10,7 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '@/lib/utils';
 import { getModelIcon } from '@/lib/model-icons';
-import type { LLMChannel } from '@/api/endpoints/model';
+import type { LLMChannel } from '@/api/model';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/animate-ui/components/animate/tooltip';
 import { useTranslations } from 'use-intl';
 
@@ -58,7 +58,7 @@ function MemberItem({
     layoutScope?: string;
     dnd: MemberItemDnd;
 }) {
-    const { Avatar: ModelAvatar } = getModelIcon(member.name);
+    const { Icon: ModelIcon, className: iconClassName } = getModelIcon(member.name);
     const [confirmDelete, setConfirmDelete] = useState(false);
     const isDisabled = member.enabled === false;
 
@@ -105,7 +105,7 @@ function MemberItem({
                 </div>
 
                 <span className={cn(isDisabled && 'opacity-70')}>
-                    <ModelAvatar size={18} />
+                    <ModelIcon aria-hidden="true" className={iconClassName} width={18} height={18} />
                 </span>
 
                 <div className="flex flex-col min-w-0 flex-1">

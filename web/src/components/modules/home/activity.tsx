@@ -1,4 +1,4 @@
-import { useStatsDaily, type StatsDailyFormatted } from '@/api/endpoints/stats';
+import { useStatsDaily, type StatsDailyFormatted } from '@/api/stats';
 import { useMemo, useRef, useLayoutEffect, useState, useCallback, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslations } from 'use-intl';

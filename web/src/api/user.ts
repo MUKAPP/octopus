@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { apiClient, setAuthStoreGetter } from '../client';
+import { apiClient, setAuthStoreGetter } from './client';
 import { logger } from '@/lib/logger';
 
 /**

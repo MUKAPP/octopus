@@ -2,14 +2,14 @@ import { useCallback, useMemo, useState, type FormEvent } from 'react';
 import { Check, ChevronDownIcon, Plus, Search, Sparkles, Trash2 } from 'lucide-react';
 import { useTranslations } from 'use-intl';
 import * as AccordionPrimitive from '@radix-ui/react-accordion';
-import { useModelChannelList, type LLMChannel } from '@/api/endpoints/model';
+import { useModelChannelList, type LLMChannel } from '@/api/model';
 import { Button } from '@/components/ui/button';
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Accordion, AccordionContent, AccordionItem } from '@/components/ui/accordion';
 import { cn } from '@/lib/utils';
 import { getModelIcon } from '@/lib/model-icons';
-import { GroupMode } from '@/api/endpoints/group';
+import { GroupMode } from '@/api/group';
 import type { SelectedMember } from './ItemList';
 import { MemberList } from './ItemList';
 import { matchesGroupName, memberKey, normalizeKey, MODE_LABELS } from './utils';
@@ -132,7 +132,7 @@ function ModelPickerSection({
                                     <div className="flex flex-col gap-1.5">
                                         {channel.models.map((m) => {
                                             const isSelected = selectedKeys.has(memberKey(m));
-                                            const { Avatar } = getModelIcon(m.name);
+                                            const { Icon: ModelIcon, className: iconClassName } = getModelIcon(m.name);
                                             return (
                                                 <button
                                                     key={memberKey(m)}
@@ -145,7 +145,7 @@ function ModelPickerSection({
                                                     )}
                                                 >
                                                     <span className="flex items-center gap-2 min-w-0">
-                                                        <Avatar size={16} />
+                                                        <ModelIcon aria-hidden="true" className={iconClassName} width={16} height={16} />
                                                         <span className="text-sm font-medium truncate">{m.name}</span>
                                                     </span>
 
