@@ -566,6 +566,7 @@
             "retryDetails": "重试详情",
             "attemptHistory": "尝试历史",
             "attemptNumber": "第 {number} 次尝试",
+            "selectedAttempt": "当前尝试",
             "finalResponse": "最终响应",
             "noAttempts": "暂无渠道尝试",
             "attempts": "次尝试",

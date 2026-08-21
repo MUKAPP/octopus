@@ -52,8 +52,9 @@ function getAttemptOrder(attempt: ChannelAttempt): number {
     const order = attempt.attempt_index ?? attempt.attempt_num;
     return Number.isFinite(order) ? order : Number.MAX_SAFE_INTEGER;
 }
+
 function getAttemptDisplayNumber(attempt: ChannelAttempt): number {
-    return attempt.attempt_index === undefined ? getAttemptOrder(attempt) : getAttemptOrder(attempt) + 1;
+    return getAttemptOrder(attempt);
 }
 
 function sortAttempts(attempts: ChannelAttempt[]): ChannelAttempt[] {
@@ -217,16 +218,14 @@ function LiveOverviewDetails({ log }: { log: RelayLog }) {
     const statusT = useTranslations('log.status');
     const { isOpen } = useMorphingDialog();
     const detail = useLogDetailStream(log.id, log.state, isOpen);
-    const requestBody = useLogRequestBody(log.id, log.started_at, isOpen);
-    const responseBody = useLogResponseBody(log.id, log.started_at, isOpen);
     const stopAttempt = useStopAttempt();
     const [stopError, setStopError] = useState<string | null>(null);
+    const [selectedAttemptIndex, setSelectedAttemptIndex] = useState<number | null>(null);
+    const [requestExpanded, setRequestExpanded] = useState(false);
     const [now, setNow] = useState(() => Date.now());
     const isActive = log.state === 'running' || log.state === 'committed';
     const startedAt = log.started_at ? Date.parse(log.started_at) : Number.NaN;
-    const liveDuration = isActive && Number.isFinite(startedAt)
-        ? Math.max(0, now - startedAt)
-        : log.use_time;
+    const liveDuration = isActive && Number.isFinite(startedAt) ? Math.max(0, now - startedAt) : log.use_time;
 
     useEffect(() => {
         if (!isActive) return;
@@ -239,6 +238,26 @@ function LiveOverviewDetails({ log }: { log: RelayLog }) {
         [detail.attempts, log.attempts],
     );
     const runningAttempt = detail.runningAttempt ?? attempts.find((attempt) => attempt.status === 'running');
+
+    useEffect(() => {
+        if (!isOpen) {
+            setSelectedAttemptIndex(null);
+            setRequestExpanded(false);
+            return;
+        }
+        setSelectedAttemptIndex((current) => {
+            if (current !== null && attempts.some((attempt) => getAttemptOrder(attempt) === current)) return current;
+            const lastAttempt = attempts[attempts.length - 1];
+            return lastAttempt ? getAttemptOrder(lastAttempt) : null;
+        });
+    }, [attempts, isOpen]);
+
+    const selectedAttempt = attempts.find((attempt) => getAttemptOrder(attempt) === selectedAttemptIndex) ?? attempts[attempts.length - 1];
+    const selectedIsSuccessful = selectedAttempt?.status === 'success';
+    const selectedIsCommitted = selectedAttempt?.status === 'running' && (detail.isCommitted || log.state === 'committed');
+    const canShowFinalResponse = selectedAttempt ? selectedIsSuccessful || selectedIsCommitted : detail.isCommitted || log.state === 'success' || log.state === 'committed';
+    const requestBody = useLogRequestBody(log.id, log.started_at, isOpen && requestExpanded);
+    const responseBody = useLogResponseBody(log.id, log.started_at, isOpen && canShowFinalResponse);
     const requestContent = requestBody.data?.content ?? log.request_content;
     const responseContent = responseBody.data?.content ?? log.response_content;
     const requestTruncated = requestBody.data?.truncated ?? log.request_content_truncated;
@@ -248,10 +267,7 @@ function LiveOverviewDetails({ log }: { log: RelayLog }) {
         if (!runningAttempt) return;
         setStopError(null);
         try {
-            await stopAttempt.mutateAsync({
-                requestId: log.id,
-                attemptIndex: runningAttempt.attempt_index ?? runningAttempt.attempt_num,
-            });
+            await stopAttempt.mutateAsync({ requestId: log.id, attemptIndex: runningAttempt.attempt_index ?? runningAttempt.attempt_num });
         } catch (cause) {
             setStopError(cause instanceof Error ? cause.message : t('stopFailed'));
         }
@@ -267,124 +283,70 @@ function LiveOverviewDetails({ log }: { log: RelayLog }) {
             default: return statusT('failed');
         }
     };
+    const selectedError = selectedAttempt && selectedAttempt.status !== 'success' ? selectedAttempt.msg || log.error : undefined;
 
     return (
         <div className="flex h-full min-h-0 flex-col gap-4">
             <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 md:grid-cols-2">
                 <div className="flex min-h-0 flex-col overflow-hidden rounded-2xl border border-border bg-muted/30">
                     <div className="flex shrink-0 items-center gap-2 border-b border-border bg-muted/50 px-3 py-2.5 md:px-4 md:py-3">
-                        <Send className="size-4 text-green-500" />
-                        <span className="text-sm font-medium text-card-foreground">{t('requestContent')}</span>
-                        {requestTruncated && <Badge variant="outline" className="text-xs text-amber-600 dark:text-amber-400 border-amber-500/40">{t('truncated')}</Badge>}
-                        <Badge variant="secondary" className="ml-auto text-xs">{log.input_tokens.toLocaleString()} {t('tokens')}</Badge>
+                        <RotateCw className="size-4 text-muted-foreground" />
+                        <span className="text-sm font-medium text-card-foreground">{t('attemptHistory')}</span>
+                        <Badge variant="secondary" className="text-xs">{attempts.length} {t('attempts')}</Badge>
                     </div>
-                    <div className="min-h-0 flex-1 overflow-auto">
-                        {requestBody.error && !requestContent ? (
-                            <div className="flex h-full items-center justify-center px-4 text-xs text-destructive">{t('detailUnavailable')}</div>
+                    <div className="min-h-0 flex-1 overflow-auto p-2.5 md:p-3">
+                        {attempts.length > 0 ? (
+                            <div className="flex flex-col gap-2">
+                                {attempts.map((attempt, index) => {
+                                    const attemptIndex = getAttemptOrder(attempt);
+                                    const selected = selectedAttempt !== undefined && attemptIndex === getAttemptOrder(selectedAttempt);
+                                    return (
+                                        <button key={`${attemptIndex}-${index}`} type="button" aria-pressed={selected} onClick={() => setSelectedAttemptIndex(attemptIndex)} className={cn("flex w-full flex-col gap-1.5 rounded-xl border p-2.5 text-left text-xs transition-colors", selected ? "border-primary/40 bg-primary/10 ring-1 ring-primary/20" : attempt.status === 'success' ? "border-primary/20 bg-primary/5 hover:border-primary/40" : attempt.status === 'running' ? "border-border/50 bg-secondary/30 hover:border-border" : "border-destructive/20 bg-destructive/5 hover:border-destructive/40")}>
+                                            <div className="flex items-center gap-2">
+                                                <span className="shrink-0 font-mono text-[10px] text-muted-foreground">{t('attemptNumber', { number: getAttemptDisplayNumber(attempt) })}</span>
+                                                <Badge className={cn("border-0 px-1.5 text-[10px] font-bold uppercase", attempt.status === 'success' ? "bg-primary/15 text-primary" : attempt.status === 'running' ? "bg-secondary text-secondary-foreground" : "bg-destructive/15 text-destructive")}>{statusLabel(attempt.status)}</Badge>
+                                                <span className="min-w-0 truncate font-semibold text-foreground">{attempt.channel_name}</span>
+                                                {attempt.sticky && <Pin className="size-3.5 shrink-0 text-amber-500" />}
+                                                {attempt.status === 'running' && <Loader2 className="ml-auto size-3.5 shrink-0 animate-spin text-muted-foreground" />}
+                                                {attempt.duration > 0 && <span className="ml-auto shrink-0 tabular-nums text-muted-foreground">{formatDuration(attempt.duration)}</span>}
+                                            </div>
+                                            {attempt.model_name && <span className="truncate pl-0.5 text-[11px] text-muted-foreground">{attempt.model_name}</span>}
+                                            <div className="flex items-center gap-2 pl-0.5 text-[11px] text-muted-foreground">{attempt.rate_multiplier > 0 && <span>x{formatRateMultiplier(attempt.rate_multiplier)}</span>}{attempt.msg && <span className="truncate text-destructive/90">{attempt.msg}</span>}</div>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        ) : isActive ? (
+                            <div className="flex items-center justify-center gap-2 py-3 text-xs text-muted-foreground"><Loader2 className="size-4 animate-spin" />{t('waitingResponse')}</div>
                         ) : (
-                            <DeferredJsonContent content={requestContent} fallbackText={t('noRequestContent')} />
+                            <div className="flex h-full items-center justify-center text-xs text-muted-foreground">{t('noAttempts')}</div>
                         )}
                     </div>
+                    <button type="button" aria-expanded={requestExpanded} aria-label={t('requestContent')} onClick={() => setRequestExpanded((expanded) => !expanded)} className="flex shrink-0 items-center gap-2 border-t border-border bg-muted/50 px-3 py-2.5 text-left transition-colors hover:bg-muted md:px-4 md:py-3">
+                        <Send className="size-4 text-green-500" />
+                        <span className="text-sm font-medium text-card-foreground">{t('requestContent')}</span>
+                        {requestTruncated && <Badge variant="outline" className="border-amber-500/40 text-xs text-amber-600 dark:text-amber-400">{t('truncated')}</Badge>}
+                        <Badge variant="secondary" className="ml-auto text-xs">{log.input_tokens.toLocaleString()} {t('tokens')}</Badge>
+                        <ArrowDown className={cn("size-4 shrink-0 text-muted-foreground transition-transform", requestExpanded && "rotate-180")} />
+                    </button>
+                    {requestExpanded && <div className="max-h-[45%] min-h-0 shrink-0 overflow-auto border-t border-border bg-background/20">{requestBody.error && !requestContent ? <div className="flex h-full items-center justify-center px-4 py-6 text-xs text-destructive">{t('detailUnavailable')}</div> : <DeferredJsonContent content={requestContent} fallbackText={t('noRequestContent')} />}</div>}
                 </div>
-
-                <div className="flex min-h-0 flex-col gap-4 overflow-hidden">
-                    <section className="flex min-h-0 flex-[1.1] flex-col overflow-hidden rounded-2xl border border-border bg-muted/30">
-                        <div className="flex shrink-0 items-center gap-2 border-b border-border bg-muted/50 px-3 py-2.5 md:px-4 md:py-3">
-                            <RotateCw className="size-4 text-muted-foreground" />
-                            <span className="text-sm font-medium text-card-foreground">{t('attemptHistory')}</span>
-                            <Badge variant="secondary" className="text-xs">{attempts.length} {t('attempts')}</Badge>
-                            {runningAttempt && (
-                                <button
-                                    type="button"
-                                    onClick={() => void handleStop()}
-                                    disabled={stopAttempt.isPending}
-                                    className="ml-auto flex items-center gap-1.5 rounded-md px-2 py-1 text-xs text-destructive transition-colors hover:bg-destructive/10 disabled:opacity-50"
-                                >
-                                    {stopAttempt.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <Square className="size-3.5" />}
-                                    {t('stopAttempt')}
-                                </button>
-                            )}
-                        </div>
-                        <div className="min-h-0 flex-1 overflow-auto p-2.5 md:p-3">
-                            {stopError && <p className="mb-3 text-xs text-destructive">{stopError}</p>}
-                            {attempts.length > 0 ? (
-                                <div className="flex flex-col gap-2">
-                                    {attempts.map((attempt, index) => (
-                                        <div
-                                            key={`${getAttemptOrder(attempt)}-${index}`}
-                                            className={cn(
-                                                "flex flex-col gap-1.5 rounded-xl border p-2.5 text-xs",
-                                                attempt.status === 'success'
-                                                    ? "bg-primary/5 border-primary/20"
-                                                    : attempt.status === 'running'
-                                                        ? "bg-secondary/30 border-border/50"
-                                                        : "bg-destructive/5 border-destructive/20",
-                                            )}
-                                        >
-                                            <div className="flex items-center gap-2">
-                                                <span className="shrink-0 font-mono text-[10px] text-muted-foreground">
-                                                    {t('attemptNumber', { number: getAttemptDisplayNumber(attempt) })}
-                                                </span>
-                                                <Badge
-                                                    className={cn(
-                                                        "border-0 px-1.5 text-[10px] font-bold uppercase",
-                                                        attempt.status === 'success'
-                                                            ? "bg-primary/15 text-primary"
-                                                            : attempt.status === 'running'
-                                                                ? "bg-secondary text-secondary-foreground"
-                                                                : "bg-destructive/15 text-destructive",
-                                                    )}
-                                                >
-                                                    {statusLabel(attempt.status)}
-                                                </Badge>
-                                                <span className="font-semibold text-foreground">{attempt.channel_name}</span>
-                                                {attempt.model_name && <span className="truncate text-muted-foreground">({attempt.model_name})</span>}
-                                                {attempt.sticky && <Pin className="size-3.5 text-amber-500" />}
-                                                {attempt.rate_multiplier > 0 && <span className="text-muted-foreground">x{formatRateMultiplier(attempt.rate_multiplier)}</span>}
-                                                {attempt.status === 'running' && <Loader2 className="ml-auto size-3.5 animate-spin text-muted-foreground" />}
-                                                {attempt.duration > 0 && <span className="ml-auto tabular-nums text-muted-foreground">{formatDuration(attempt.duration)}</span>}
-                                            </div>
-                                            {attempt.msg && <div className="whitespace-pre-wrap wrap-break-word border-l-2 border-destructive/30 pl-2 text-[11px] leading-relaxed text-destructive/90">{attempt.msg}</div>}
-                                        </div>
-                                    ))}
-                                </div>
-                            ) : isActive ? (
-                                <div className="flex items-center justify-center gap-2 py-3 text-xs text-muted-foreground">
-                                    <Loader2 className="size-4 animate-spin" />
-                                    {t('waitingResponse')}
-                                </div>
-                            ) : null}
-                        </div>
-                    </section>
-
-                    <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-border bg-muted/30">
-                        <div className="flex shrink-0 items-center gap-2 border-b border-border bg-muted/50 px-3 py-2.5 md:px-4 md:py-3">
-                            <MessageSquare className="size-4 text-purple-500" />
-                            <span className="text-sm font-medium text-card-foreground">{t('finalResponse')}</span>
-                            {responseTruncated && <Badge variant="outline" className="text-xs text-amber-600 dark:text-amber-400 border-amber-500/40">{t('truncated')}</Badge>}
-                            {detail.isCommitted && <Badge variant="secondary" className="ml-auto text-xs">{statusT('committed')}</Badge>}
-                            {!detail.isCommitted && <Badge variant="secondary" className="ml-auto text-xs">{log.output_tokens.toLocaleString()} {t('tokens')}</Badge>}
-                        </div>
-                        <div className="min-h-0 flex-1 overflow-auto">
-                            {log.error && (
-                                <div className="relative border-b border-destructive/20 bg-destructive/5 p-3">
-                                    <CopyIconButton
-                                        text={log.error}
-                                        className="absolute right-2 top-2 rounded-md p-1 text-destructive/60 transition-colors hover:bg-destructive/10 hover:text-destructive"
-                                        copyIconClassName="size-4"
-                                        checkIconClassName="size-4"
-                                    />
-                                    <p className="whitespace-pre-wrap wrap-break-word pr-8 text-sm leading-relaxed text-destructive">{log.error}</p>
-                                </div>
-                            )}
-                            {responseBody.error && !responseContent && !isActive ? (
-                                <div className="flex h-full items-center justify-center px-4 text-xs text-destructive">{t('detailUnavailable')}</div>
-                            ) : (
-                                <DeferredJsonContent content={responseContent} fallbackText={isActive ? t('responseStreaming') : t('noResponseContent')} />
-                            )}
-                        </div>
-                    </section>
-                </div>
+                <section className="flex min-h-0 flex-col overflow-hidden rounded-2xl border border-border bg-muted/30">
+                    <div className="flex shrink-0 items-center gap-2 border-b border-border bg-muted/50 px-3 py-2.5 md:px-4 md:py-3">
+                        <MessageSquare className="size-4 text-purple-500" />
+                        <span className="text-sm font-medium text-card-foreground">{t('selectedAttempt')}</span>
+                        {selectedAttempt && <Badge className={cn("border-0 px-1.5 text-[10px] font-bold uppercase", selectedAttempt.status === 'success' ? "bg-primary/15 text-primary" : selectedAttempt.status === 'running' ? "bg-secondary text-secondary-foreground" : "bg-destructive/15 text-destructive")}>{statusLabel(selectedAttempt.status)}</Badge>}
+                        {runningAttempt && <button type="button" onClick={() => void handleStop()} disabled={stopAttempt.isPending} className="ml-auto flex items-center gap-1.5 rounded-md px-2 py-1 text-xs text-destructive transition-colors hover:bg-destructive/10 disabled:opacity-50">{stopAttempt.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <Square className="size-3.5" />}{t('stopAttempt')}</button>}
+                    </div>
+                    <div className="min-h-0 flex-1 overflow-auto">
+                        {stopError && <p className="border-b border-destructive/20 bg-destructive/5 px-3 py-2 text-xs text-destructive">{stopError}</p>}
+                        {selectedAttempt ? <div className="flex min-h-full flex-col">
+                            <div className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1 border-b border-border/70 px-3 py-3 text-xs md:px-4"><span className="font-mono text-muted-foreground">{t('attemptNumber', { number: getAttemptDisplayNumber(selectedAttempt) })}</span><span className="font-semibold text-foreground">{selectedAttempt.channel_name}</span>{selectedAttempt.model_name && <span className="text-muted-foreground">{selectedAttempt.model_name}</span>}{selectedAttempt.rate_multiplier > 0 && <span className="text-muted-foreground">x{formatRateMultiplier(selectedAttempt.rate_multiplier)}</span>}{selectedAttempt.duration > 0 && <span className="tabular-nums text-muted-foreground">{formatDuration(selectedAttempt.duration)}</span>}{selectedAttempt.sticky && <Pin className="size-3.5 text-amber-500" />}</div>
+                            {selectedError && <div className="relative border-b border-destructive/20 bg-destructive/5 p-3"><CopyIconButton text={selectedError} className="absolute right-2 top-2 rounded-md p-1 text-destructive/60 transition-colors hover:bg-destructive/10 hover:text-destructive" copyIconClassName="size-4" checkIconClassName="size-4" /><p className="whitespace-pre-wrap wrap-break-word pr-8 text-sm leading-relaxed text-destructive">{selectedError}</p></div>}
+                            {canShowFinalResponse ? <div className="min-h-0 flex-1">{responseTruncated && <div className="px-3 pt-3"><Badge variant="outline" className="border-amber-500/40 text-xs text-amber-600 dark:text-amber-400">{t('truncated')}</Badge></div>}{responseBody.error && !responseContent && !selectedIsCommitted ? <div className="flex h-full items-center justify-center px-4 text-xs text-destructive">{t('detailUnavailable')}</div> : <DeferredJsonContent content={responseContent} fallbackText={selectedIsCommitted ? t('responseStreaming') : t('noResponseContent')} />}</div> : selectedAttempt.status === 'running' ? <div className="flex min-h-0 flex-1 items-center justify-center gap-2 px-4 text-xs text-muted-foreground"><Loader2 className="size-4 animate-spin" />{t('waitingResponse')}</div> : !selectedError ? <div className="flex min-h-0 flex-1 items-center justify-center px-4 text-xs text-muted-foreground">{t('detailUnavailable')}</div> : null}
+                        </div> : <div className="flex min-h-full flex-col">{log.error && <div className="relative border-b border-destructive/20 bg-destructive/5 p-3"><CopyIconButton text={log.error} className="absolute right-2 top-2 rounded-md p-1 text-destructive/60 transition-colors hover:bg-destructive/10 hover:text-destructive" copyIconClassName="size-4" checkIconClassName="size-4" /><p className="whitespace-pre-wrap wrap-break-word pr-8 text-sm leading-relaxed text-destructive">{log.error}</p></div>}<div className="min-h-0 flex-1">{responseBody.error && !responseContent && !isActive ? <div className="flex h-full items-center justify-center px-4 text-xs text-destructive">{t('detailUnavailable')}</div> : <DeferredJsonContent content={responseContent} fallbackText={isActive ? t('responseStreaming') : t('noResponseContent')} />}</div></div>}
+                    </div>
+                </section>
             </div>
             <div className="grid w-full shrink-0 grid-cols-12 gap-x-4 gap-y-2 pt-4 mt-auto text-xs text-muted-foreground md:grid-cols-7">
                 <div className="col-span-4 flex items-center gap-1.5 whitespace-nowrap md:col-span-1"><Cpu className="size-3.5 shrink-0 text-blue-500" /><span>{t('totalTime')}: {formatDuration(liveDuration)}</span></div>
@@ -597,7 +559,7 @@ export function LogCard({ log }: { log: RelayLog }) {
                                                             >
                                                                 <div className="flex items-center gap-2">
                                                                     <span className="shrink-0 font-mono text-[10px] text-muted-foreground">
-                                                                        {t('attemptNumber', { number: getAttemptDisplayNumber(attempt) })}
+                                                                        {t('attemptNumber', { number: index })}
                                                                     </span>
                                                                     <Badge
                                                                         variant="outline"

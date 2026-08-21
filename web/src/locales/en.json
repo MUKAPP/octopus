@@ -566,6 +566,7 @@
             "retryDetails": "Retry Details",
             "attemptHistory": "Attempt history",
             "attemptNumber": "Attempt {number}",
+            "selectedAttempt": "Selected attempt",
             "finalResponse": "Final response",
             "noAttempts": "No channel attempts",
             "attempts": "attempts",
