@@ -214,11 +214,13 @@ func DBImportIncremental(ctx context.Context, dump *model.DBDump) (*model.DBImpo
 	return res, nil
 }
 
+const batchSize = 2000
+
 func createDoNothing[T any](tx *gorm.DB, rows []T) (int64, error) {
 	if len(rows) == 0 {
 		return 0, nil
 	}
-	result := tx.Clauses(clause.OnConflict{DoNothing: true}).Create(&rows)
+	result := tx.Clauses(clause.OnConflict{DoNothing: true}).CreateInBatches(&rows, batchSize)
 	return result.RowsAffected, result.Error
 }
 
@@ -229,7 +231,7 @@ func createUpsertAll[T any](tx *gorm.DB, rows []T, columns []clause.Column) (int
 	result := tx.Clauses(clause.OnConflict{
 		Columns:   columns,
 		UpdateAll: true,
-	}).Create(&rows)
+	}).CreateInBatches(&rows, batchSize)
 	return result.RowsAffected, result.Error
 }
 
