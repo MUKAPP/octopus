@@ -6,6 +6,7 @@ import (
 	"github.com/bestruirui/octopus/internal/relay"
 	"github.com/bestruirui/octopus/internal/server/middleware"
 	"github.com/bestruirui/octopus/internal/server/router"
+	"github.com/looplj/axonhub/llm"
 )
 
 func init() {
@@ -13,14 +14,14 @@ func init() {
 		Use(middleware.APIKeyAuth()).
 		AddRoute(
 			router.NewRoute("/chat/completions", http.MethodPost).
-			Handle(relay.HandleChatCompletions),
+				Handle(relay.Forward(llm.APIFormatOpenAIChatCompletion)),
 		).
 		AddRoute(
 			router.NewRoute("/responses", http.MethodPost).
-			Handle(relay.HandleResponses),
+				Handle(relay.Forward(llm.APIFormatOpenAIResponse)),
 		).
 		AddRoute(
 			router.NewRoute("/messages", http.MethodPost).
-			Handle(relay.HandleMessages),
+				Handle(relay.Forward(llm.APIFormatAnthropicMessage)),
 		)
 }
