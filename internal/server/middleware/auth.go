@@ -23,33 +23,19 @@ func requestUsesTLS(c *gin.Context) bool {
 func Auth() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		cookieToken, cookieErr := c.Cookie("auth")
-		cookiePresent := cookieErr == nil && cookieToken != ""
-		if cookiePresent && auth.VerifyJWTToken(cookieToken) {
-			c.Next()
-			return
-		}
-
-		authorization := strings.TrimSpace(c.GetHeader("Authorization"))
-		if authorization != "" && auth.VerifyJWTToken(strings.TrimPrefix(authorization, "Bearer ")) {
-			if cookiePresent {
-				c.SetSameSite(http.SameSiteLaxMode)
-				c.SetCookie("auth", "", -1, "/", "", requestUsesTLS(c), true)
-			}
-			c.Next()
-			return
-		}
-
-		if !cookiePresent && authorization == "" {
-			resp.Error(c, http.StatusBadRequest, resp.ErrBadRequest)
+		if cookieErr != nil || cookieToken == "" {
+			resp.Error(c, http.StatusUnauthorized, resp.ErrUnauthorized)
 			c.Abort()
 			return
 		}
-		if cookiePresent {
+		if !auth.VerifyJWTToken(cookieToken) {
 			c.SetSameSite(http.SameSiteLaxMode)
 			c.SetCookie("auth", "", -1, "/", "", requestUsesTLS(c), true)
+			resp.Error(c, http.StatusUnauthorized, resp.ErrUnauthorized)
+			c.Abort()
+			return
 		}
-		resp.Error(c, http.StatusUnauthorized, resp.ErrUnauthorized)
-		c.Abort()
+		c.Next()
 	}
 }
 

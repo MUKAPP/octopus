@@ -27,6 +27,7 @@ export const ModelItem = memo(function ModelItem({ model, layout = 'grid' }: Mod
     const cardRef = useRef<HTMLElement | null>(null);
     const editButtonRef = useRef<HTMLButtonElement | null>(null);
     const editOverlayRef = useRef<HTMLDivElement | null>(null);
+    const editOverlayHeightRef = useRef(0);
     const [editValues, setEditValues] = useState(() => ({
         input: model.input.toString(),
         output: model.output.toString(),
@@ -43,17 +44,30 @@ export const ModelItem = memo(function ModelItem({ model, layout = 'grid' }: Mod
         const card = cardRef.current;
         if (!card) return;
         const rect = card.getBoundingClientRect();
+        const height = editOverlayHeightRef.current;
+        const viewportHeight = window.innerHeight;
+        const maxTop = Math.max(viewportHeight - height, 0);
+        const flipUp = height > 0 && rect.top + height > viewportHeight;
+        const anchorTop = flipUp ? rect.bottom - height : rect.top;
+        const top = Math.min(Math.max(anchorTop, 0), maxTop);
         setOverlayRect((prev) => {
-            if (prev && prev.top === rect.top && prev.left === rect.left && prev.width === rect.width) {
+            if (prev && prev.top === top && prev.left === rect.left && prev.width === rect.width) {
                 return prev;
             }
-            return { top: rect.top, left: rect.left, width: rect.width };
+            return { top, left: rect.left, width: rect.width };
         });
     }, []);
 
     const closeEdit = useCallback(() => {
         setIsEditOpen(false);
     }, []);
+
+    const handleOverlayHeightChange = useCallback((height: number) => {
+        const nextHeight = Math.max(height, 0);
+        if (nextHeight === editOverlayHeightRef.current) return;
+        editOverlayHeightRef.current = nextHeight;
+        updateOverlayRect();
+    }, [updateOverlayRect]);
 
     const handleEditClick = () => {
         setConfirmDelete(false);
@@ -246,18 +260,17 @@ export const ModelItem = memo(function ModelItem({ model, layout = 'grid' }: Mod
                                     width: `${overlayRect.width}px`,
                                 }}
                             >
-                                <div className="relative">
-                                    <ModelEditOverlay
-                                        layoutId={editLayoutId}
-                                        modelName={model.name}
-                                        brandColor={brandColor}
-                                        editValues={editValues}
-                                        isPending={updateModel.isPending}
-                                        onChange={setEditValues}
-                                        onCancel={handleCancelEdit}
-                                        onSave={handleSaveEdit}
-                                    />
-                                </div>
+                                <ModelEditOverlay
+                                    layoutId={editLayoutId}
+                                    onHeightChange={handleOverlayHeightChange}
+                                    modelName={model.name}
+                                    brandColor={brandColor}
+                                    editValues={editValues}
+                                    isPending={updateModel.isPending}
+                                    onChange={setEditValues}
+                                    onCancel={handleCancelEdit}
+                                    onSave={handleSaveEdit}
+                                />
                             </div>
                         )}
                     </AnimatePresence>,

@@ -26,7 +26,7 @@ import { useStatsAPIKey } from '@/api/stats';
 import { cn } from '@/lib/utils';
 import { toast } from '@/components/common/Toast';
 import { CopyIconButton } from '@/components/common/CopyButton';
-import type { ApiError } from '@/api/types';
+import type { ApiError } from '@/api/client';
 
 function toExpireAt(date: Date, time: string): number {
     const t = /^\d{2}:\d{2}$/.test(time) ? time : '00:00';

@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { apiClient } from './client';
+import { apiRequest } from './client';
 import { formatCount, formatMoney, formatTime } from '@/lib/utils';
 
 /**
@@ -70,7 +70,7 @@ export function useStatsToday() {
     return useQuery({
         queryKey: ['stats', 'today'],
         queryFn: async () => {
-            return apiClient.get<StatsDaily>('/api/v1/stats/today');
+            return apiRequest<StatsDaily>('/api/v1/stats/today');
         },
         refetchInterval: 30000,
         refetchOnMount: 'always',
@@ -84,7 +84,7 @@ export function useStatsDaily() {
     return useQuery({
         queryKey: ['stats', 'daily'],
         queryFn: async () => {
-            return apiClient.get<StatsDaily[]>('/api/v1/stats/daily');
+            return apiRequest<StatsDaily[]>('/api/v1/stats/daily');
         },
         select: (data) => data.map((item): StatsDailyFormatted => ({
             input_token: formatCount(item.input_token),
@@ -110,7 +110,7 @@ export function useStatsHourly() {
     return useQuery({
         queryKey: ['stats', 'hourly'],
         queryFn: async () => {
-            return apiClient.get<StatsHourly[]>('/api/v1/stats/hourly');
+            return apiRequest<StatsHourly[]>('/api/v1/stats/hourly');
         },
         select: (data) => data.map((item): StatsHourlyFormatted => ({
             hour: item.hour,
@@ -135,7 +135,7 @@ export function useStatsTotal() {
     return useQuery({
         queryKey: ['stats', 'total'],
         queryFn: async () => {
-            return apiClient.get<StatsTotal>('/api/v1/stats/total');
+            return apiRequest<StatsTotal>('/api/v1/stats/total');
         },
         select: (data) => ({
             input_token: formatCount(data.input_token),
@@ -163,7 +163,7 @@ export function useStatsAPIKey() {
     return useQuery({
         queryKey: ['stats', 'apikey'],
         queryFn: async () => {
-            return apiClient.get<StatsAPIKey[]>('/api/v1/stats/apikey');
+            return apiRequest<StatsAPIKey[]>('/api/v1/stats/apikey');
         },
         select: (data) => data.map((item): StatsAPIKeyFormatted => ({
             api_key_id: item.api_key_id,

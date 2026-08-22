@@ -1,6 +1,6 @@
 import type { InfiniteData } from '@tanstack/react-query';
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { apiClient, API_BASE_URL } from '../client';
+import { apiRequest } from '../client';
 import { logger } from '@/lib/logger';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
@@ -267,7 +267,7 @@ export function useClearLogs() {
 
     return useMutation({
         mutationFn: async () => {
-            return apiClient.delete<null>('/api/v1/log/clear');
+            return apiRequest<null>('/api/v1/log/clear', { method: 'DELETE' });
         },
         onSuccess: () => {
             logger.log('日志清空成功');
@@ -283,7 +283,7 @@ export function useClearLogs() {
 export function useStopAttempt() {
     return useMutation({
         mutationFn: ({ requestId, attemptIndex }: { requestId: number; attemptIndex: number }) =>
-            apiClient.post<null>(`/api/v1/log/${requestId}/${attemptIndex}/stop`),
+            apiRequest<null>(`/api/v1/log/${requestId}/${attemptIndex}/stop`, { method: 'POST' }),
     });
 }
 
@@ -306,7 +306,7 @@ function normalizeLogBody(value: unknown): RelayLogBody {
 export function useLogRequestBody(id: number, startedAt: string | undefined, enabled: boolean) {
     return useQuery({
         queryKey: ['logs', id, startedAt ?? '', 'request-body'],
-        queryFn: async () => normalizeLogBody(await apiClient.get<unknown>(`/api/v1/log/${id}/request-body`)),
+        queryFn: async () => normalizeLogBody(await apiRequest<unknown>(`/api/v1/log/${id}/request-body`)),
         enabled,
         staleTime: Infinity,
     });
@@ -316,7 +316,7 @@ export function useLogRequestBody(id: number, startedAt: string | undefined, ena
 export function useLogResponseBody(id: number, startedAt: string | undefined, enabled: boolean) {
     return useQuery({
         queryKey: ['logs', id, startedAt ?? '', 'response-body'],
-        queryFn: async () => normalizeLogBody(await apiClient.get<unknown>(`/api/v1/log/${id}/response-body`)),
+        queryFn: async () => normalizeLogBody(await apiRequest<unknown>(`/api/v1/log/${id}/response-body`)),
         enabled,
         staleTime: Infinity,
     });
@@ -357,7 +357,6 @@ export function useLogDetailStream(id: number, state: RequestState | undefined, 
         let source: EventSource | null = null;
         let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
         let reconnectAttempt = 0;
-        let connect: () => Promise<void>;
 
         setAttempts([]);
         setRunningAttempt(null);
@@ -428,13 +427,10 @@ export function useLogDetailStream(id: number, state: RequestState | undefined, 
             if (payload.state === 'committed' || payload.state === 'success') setIsCommitted(true);
         };
 
-        connect = async () => {
+        const connect = async () => {
             if (cancelled || !enabled) return;
             try {
-                const streamToken = await apiClient.get<{ token: string }>('/api/v1/log/stream-token');
-                if (cancelled) return;
-                const token = encodeURIComponent(streamToken.token);
-                source = new EventSource(`${API_BASE_URL}/api/v1/log/${id}/stream?token=${token}`, { withCredentials: true });
+                source = new EventSource(`/api/v1/log/${id}/stream`, { withCredentials: true });
                 source.onopen = () => {
                     if (cancelled) return;
                     reconnectAttempt = 0;
@@ -490,7 +486,7 @@ export function useLogDetailStream(id: number, state: RequestState | undefined, 
             } catch (cause) {
                 if (cancelled) return;
                 setIsConnected(false);
-                setError(cause instanceof Error ? cause : new Error('获取日志详情流令牌失败'));
+                setError(cause instanceof Error ? cause : new Error('创建日志详情流失败'));
                 scheduleReconnect();
             }
         };
@@ -552,7 +548,7 @@ export function useLogs(options: { pageSize?: number } = {}) {
             const params = new URLSearchParams();
             params.set('page', String(pageParam));
             params.set('page_size', String(pageSize));
-            const result = await apiClient.get<unknown[] | null>(`/api/v1/log/list?${params.toString()}`);
+            const result = await apiRequest<unknown[] | null>(`/api/v1/log/list?${params.toString()}`);
             return (result ?? []).map(normalizeRelayLog);
         },
         getNextPageParam: (lastPage, allPages) => {
@@ -637,10 +633,7 @@ export function useLogs(options: { pageSize?: number } = {}) {
         const connect = async () => {
             if (cancelled) return;
             try {
-                const streamToken = await apiClient.get<{ token: string }>('/api/v1/log/stream-token');
-                if (cancelled) return;
-                const token = encodeURIComponent(streamToken.token);
-                source = new EventSource(`${API_BASE_URL}/api/v1/log/overview/stream?token=${token}`, { withCredentials: true });
+                source = new EventSource('/api/v1/log/overview/stream', { withCredentials: true });
                 overviewSourceRef.current = source;
                 source.onopen = () => {
                     if (cancelled) return;
@@ -664,7 +657,7 @@ export function useLogs(options: { pageSize?: number } = {}) {
                 };
             } catch (cause) {
                 if (cancelled) return;
-                if (opened) setError(cause instanceof Error ? cause : new Error('获取日志概览流令牌失败'));
+                if (opened) setError(cause instanceof Error ? cause : new Error('创建日志概览流失败'));
                 scheduleReconnect();
             }
         };
@@ -768,7 +761,7 @@ export function useLogs(options: { pageSize?: number } = {}) {
         activeFetchInFlightRef.current = true;
         const eventVersion = activeEventVersionRef.current;
         try {
-            const result = await apiClient.get<ActiveRelayRequest[] | null>('/api/v1/log/active');
+            const result = await apiRequest<ActiveRelayRequest[] | null>('/api/v1/log/active');
             if (eventVersion === activeEventVersionRef.current) {
                 setActiveRequests(result ?? []);
             }
@@ -788,7 +781,7 @@ export function useLogs(options: { pageSize?: number } = {}) {
             const params = new URLSearchParams();
             params.set('page', '1');
             params.set('page_size', String(catchUpPageSize));
-            const result = await apiClient.get<unknown[] | null>(`/api/v1/log/list?${params.toString()}`);
+            const result = await apiRequest<unknown[] | null>(`/api/v1/log/list?${params.toString()}`);
             if (result?.length) {
                 prependLogs(result.map(normalizeRelayLog));
             }
@@ -870,7 +863,6 @@ export function useLogs(options: { pageSize?: number } = {}) {
                 || reconnectAttemptRef.current > 0;
 
             try {
-                const { token } = await apiClient.get<{ token: string }>('/api/v1/log/stream-token');
                 if (cancelled || generation !== connectGenerationRef.current) {
                     if (generation === connectGenerationRef.current) {
                         connectingRef.current = false;
@@ -878,7 +870,7 @@ export function useLogs(options: { pageSize?: number } = {}) {
                     return;
                 }
 
-                const eventSource = new EventSource(`${API_BASE_URL}/api/v1/log/stream?token=${token}`);
+                const eventSource = new EventSource('/api/v1/log/stream', { withCredentials: true });
                 eventSourceRef.current = eventSource;
                 // EventSource 已创建后就释放 connecting 锁；是否连上由 onopen/onerror 处理
                 connectingRef.current = false;
@@ -939,15 +931,15 @@ export function useLogs(options: { pageSize?: number } = {}) {
                     if (cancelled || generation !== connectGenerationRef.current) return;
                     setIsConnected(false);
                     setError(new Error('SSE 连接断开'));
-                    // stream token 一次性使用，浏览器默认重连同一 URL 会 401，需主动重新取 token
+                    // Reconnect with a fresh EventSource so the browser re-sends the auth cookie.
                     closeEventSource();
                     scheduleReconnect();
                 };
             } catch (e) {
                 if (cancelled || generation !== connectGenerationRef.current) return;
                 connectingRef.current = false;
-                setError(e instanceof Error ? e : new Error('获取 stream token 失败'));
-                logger.error('获取 stream token 失败:', e);
+                setError(e instanceof Error ? e : new Error('创建日志流失败'));
+                logger.error('创建日志流失败:', e);
                 scheduleReconnect();
             }
         };

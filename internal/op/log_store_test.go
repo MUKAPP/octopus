@@ -186,16 +186,3 @@ func TestRelayLogOverviewJSONOmitsBodies(t *testing.T) {
 		t.Fatalf("overview leaked request/response body: %s", payload)
 	}
 }
-
-func TestRelayLogStreamTokenConsumedOnce(t *testing.T) {
-	token, err := RelayLogStreamTokenCreate()
-	if err != nil {
-		t.Fatalf("create stream token: %v", err)
-	}
-	if !RelayLogStreamTokenConsume(token) {
-		t.Fatal("first stream token consume failed")
-	}
-	if RelayLogStreamTokenConsume(token) {
-		t.Fatal("stream token was reusable")
-	}
-}

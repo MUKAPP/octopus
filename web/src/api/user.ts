@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { apiClient, setAuthStoreGetter } from './client';
+import { apiRequest, apiUnauthorizedEvent, setAPIKey } from './client';
 import { logger } from '@/lib/logger';
 
 /**
@@ -11,30 +11,7 @@ import { logger } from '@/lib/logger';
 export interface UserLoginRequest {
     username: string;
     password: string;
-    expire: number; // token 过期时间（秒）
-}
-
-/**
- * 用户登录响应
- */
-export interface UserLoginResponse {
-    token: string;
-    expire_at: string; // ISO 8601 格式
-}
-
-/**
- * 修改密码请求
- */
-export interface ChangePasswordRequest {
-    old_password: string;
-    new_password: string;
-}
-
-/**
- * 修改用户名请求
- */
-export interface ChangeUsernameRequest {
-    new_username: string;
+    expire: number; // 登录状态过期时间，正数为秒，-1 表示 30 天。
 }
 
 /**
@@ -45,10 +22,8 @@ interface AuthState {
     isLoading: boolean;
     isAPIKeyAuth: boolean;
     token: string | null;
-    expireAt: string | null;
 
-    // Actions
-    setAuth: (token: string, expireAt: string) => void;
+    setAuth: () => void;
     setAPIKeyAuth: (apiKey: string) => void;
     checkAuth: () => Promise<void>;
     logout: () => void;
@@ -64,49 +39,46 @@ export const useAuthStore = create<AuthState>()(
             isLoading: true,
             isAPIKeyAuth: false,
             token: null,
-            expireAt: null,
 
-            setAuth: (token: string, expireAt: string) => {
+            setAuth: () => {
+                setAPIKey(null);
                 set({
                     isAuthenticated: true,
                     isAPIKeyAuth: false,
-                    token,
-                    expireAt,
-                    isLoading: false
+                    token: null,
+                    isLoading: false,
                 });
             },
 
             setAPIKeyAuth: (apiKey: string) => {
+                setAPIKey(apiKey);
                 set({
                     isAuthenticated: true,
                     isAPIKeyAuth: true,
                     token: apiKey,
-                    expireAt: null,
-                    isLoading: false
+                    isLoading: false,
                 });
             },
 
             checkAuth: async () => {
-                const { token, expireAt, isAPIKeyAuth } = get();
+                const { token, isAPIKeyAuth } = get();
+                setAPIKey(isAPIKeyAuth ? token : null);
 
-                if (!token) {
+                // Ordinary users authenticate through the HttpOnly cookie, so they
+                // must still probe /user/status when no persisted token exists.
+                if (isAPIKeyAuth && !token) {
                     set({ isAuthenticated: false, isLoading: false });
                     return;
                 }
 
-                // API Key 不检查本地过期时间
-                if (!isAPIKeyAuth) {
-                    if (!expireAt || Date.now() >= new Date(expireAt).getTime()) {
-                        get().logout();
-                        return;
-                    }
-                }
-
                 try {
-                    // API Key 模式只需校验 key 是否有效即可
                     const endpoint = isAPIKeyAuth ? '/api/v1/apikey/login' : '/api/v1/user/status';
-                    await apiClient.get<unknown>(endpoint);
-                    set({ isAuthenticated: true, isLoading: false });
+                    await apiRequest<unknown>(endpoint, { dispatchUnauthorized: false });
+                    set({
+                        isAuthenticated: true,
+                        isLoading: false,
+                        token: isAPIKeyAuth ? token : null,
+                    });
                 } catch (error) {
                     logger.error('认证验证失败:', error);
                     get().logout();
@@ -114,59 +86,46 @@ export const useAuthStore = create<AuthState>()(
             },
 
             logout: () => {
-                // Cookie 登录与本地 token 并存时，必须通知后端清除 HttpOnly Cookie。
-                void apiClient.post('/api/v1/user/logout', {}).catch(() => undefined);
+                setAPIKey(null);
                 set({
                     isAuthenticated: false,
                     isAPIKeyAuth: false,
                     token: null,
-                    expireAt: null,
-                    isLoading: false
+                    isLoading: false,
                 });
-            }
+                void apiRequest('/api/v1/user/logout', {
+                    method: 'POST',
+                    dispatchUnauthorized: false,
+                }).catch(() => undefined);
+            },
         }),
         {
             name: 'auth-storage',
             partialize: (state) => ({
-                token: state.token,
-                expireAt: state.expireAt,
+                token: state.isAPIKeyAuth ? state.token : null,
                 isAPIKeyAuth: state.isAPIKeyAuth,
-            })
+            }),
         }
     )
 );
 
-// 注册 auth store getter 到 apiClient
-if (typeof window !== 'undefined') {
-    setAuthStoreGetter(() => {
-        const state = useAuthStore.getState();
-        return {
-            token: state.token,
-            logout: state.logout
-        };
-    });
-}
-
 /**
  * 用户登录 Hook
- * 
- * @example
- * const login = useLogin();
- * login.mutate({ username: 'admin', password: '123456', expire: 86400 });
- * 
- * if (login.isPending) return <Loading />;
- * if (login.isError) return <Error message={login.error.message} />;
  */
 export function useLogin() {
     const { setAuth } = useAuthStore();
 
     return useMutation({
         mutationFn: async (data: UserLoginRequest) => {
-            return apiClient.post<UserLoginResponse>('/api/v1/user/login', data);
+            setAPIKey(null);
+            return apiRequest<string>('/api/v1/user/login', {
+                method: 'POST',
+                body: data,
+                dispatchUnauthorized: false,
+            });
         },
-        onSuccess: (data) => {
-            // 保存到 zustand store
-            setAuth(data.token, data.expire_at);
+        onSuccess: () => {
+            setAuth();
         },
         onError: (error) => {
             logger.error('登录失败:', error);
@@ -176,20 +135,17 @@ export function useLogin() {
 
 /**
  * 修改密码 Hook
- * 
- * @example
- * const changePassword = useChangePassword();
- * changePassword.mutate({ oldPassword: '123', newPassword: '456' });
  */
 export function useChangePassword() {
     return useMutation({
-        mutationFn: async (data: { oldPassword: string; newPassword: string }) => {
-            const payload: ChangePasswordRequest = {
-                old_password: data.oldPassword,
-                new_password: data.newPassword,
-            };
-            return apiClient.post<string>('/api/v1/user/change-password', payload);
-        },
+        mutationFn: (data: { oldPassword: string; newPassword: string }) =>
+            apiRequest<string>('/api/v1/user/change-password', {
+                method: 'POST',
+                body: {
+                    old_password: data.oldPassword,
+                    new_password: data.newPassword,
+                },
+            }),
         onSuccess: (message) => {
             logger.log('密码修改成功:', message);
         },
@@ -201,19 +157,14 @@ export function useChangePassword() {
 
 /**
  * 修改用户名 Hook
- * 
- * @example
- * const changeUsername = useChangeUsername();
- * changeUsername.mutate({ newUsername: 'newname' });
  */
 export function useChangeUsername() {
     return useMutation({
-        mutationFn: async (data: { newUsername: string }) => {
-            const payload: ChangeUsernameRequest = {
-                new_username: data.newUsername,
-            };
-            return apiClient.post<string>('/api/v1/user/change-username', payload);
-        },
+        mutationFn: (data: { newUsername: string }) =>
+            apiRequest<string>('/api/v1/user/change-username', {
+                method: 'POST',
+                body: { new_username: data.newUsername },
+            }),
         onSuccess: (message) => {
             logger.log('用户名修改成功:', message);
         },
@@ -225,27 +176,20 @@ export function useChangeUsername() {
 
 /**
  * 认证状态和方法 Hook
- * 
- * @example
- * const auth = useAuth();
- * 
- * if (auth.isAuthenticated) {
- *   // 已登录
- * }
- * 
- * auth.logout(); // 登出
  */
 export function useAuth() {
     const store = useAuthStore();
     const { checkAuth, isLoading } = store;
 
-    // 只在首次挂载时检查认证状态
     useEffect(() => {
+        const handleUnauthorized = () => useAuthStore.getState().logout();
+        window.addEventListener(apiUnauthorizedEvent, handleUnauthorized);
         if (isLoading) {
-            checkAuth();
+            void checkAuth();
         }
+        return () => window.removeEventListener(apiUnauthorizedEvent, handleUnauthorized);
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []); // 有意只在挂载时执行一次
+    }, []);
 
     return {
         isAuthenticated: store.isAuthenticated,

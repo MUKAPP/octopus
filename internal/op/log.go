@@ -1,74 +1,13 @@
 package op
 
 import (
-	"crypto/rand"
-	"encoding/hex"
 	"sync"
-	"time"
 
 	"github.com/bestruirui/octopus/internal/model"
 )
 
 var relayLogSubscribers = make(map[chan model.RelayLog]struct{})
 var relayLogSubscribersLock sync.RWMutex
-
-var relayLogStreamTokens = make(map[string]time.Time)
-var relayLogStreamTokensLock sync.RWMutex
-
-const relayLogStreamTokenTTL = 1 * time.Minute
-
-func RelayLogStreamTokenCreate() (string, error) {
-	bytes := make([]byte, 32)
-	if _, err := rand.Read(bytes); err != nil {
-		return "", err
-	}
-	token := hex.EncodeToString(bytes)
-	expiresAt := time.Now().Add(relayLogStreamTokenTTL)
-
-	relayLogStreamTokensLock.Lock()
-	now := time.Now()
-	for existing, expires := range relayLogStreamTokens {
-		if !expires.After(now) {
-			delete(relayLogStreamTokens, existing)
-		}
-	}
-	relayLogStreamTokens[token] = expiresAt
-	relayLogStreamTokensLock.Unlock()
-
-	return token, nil
-}
-
-func RelayLogStreamTokenVerify(token string) bool {
-	relayLogStreamTokensLock.Lock()
-	expiresAt, ok := relayLogStreamTokens[token]
-	if ok && !expiresAt.After(time.Now()) {
-		delete(relayLogStreamTokens, token)
-		ok = false
-	}
-	relayLogStreamTokensLock.Unlock()
-	return ok
-}
-
-// RelayLogStreamTokenConsume verifies and revokes a stream token atomically.
-func RelayLogStreamTokenConsume(token string) bool {
-	if token == "" {
-		return false
-	}
-	relayLogStreamTokensLock.Lock()
-	expiresAt, ok := relayLogStreamTokens[token]
-	if ok {
-		delete(relayLogStreamTokens, token)
-		ok = expiresAt.After(time.Now())
-	}
-	relayLogStreamTokensLock.Unlock()
-	return ok
-}
-
-func RelayLogStreamTokenRevoke(token string) {
-	relayLogStreamTokensLock.Lock()
-	delete(relayLogStreamTokens, token)
-	relayLogStreamTokensLock.Unlock()
-}
 
 func RelayLogSubscribe() chan model.RelayLog {
 	ch := make(chan model.RelayLog, 10)

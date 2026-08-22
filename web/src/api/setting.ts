@@ -1,7 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { apiClient, API_BASE_URL } from './client';
+import { apiRequest, ApiError } from './client';
 import { logger } from '@/lib/logger';
-import { useAuthStore } from './user';
 
 /**
  * Setting 数据
@@ -37,7 +36,7 @@ export function useSettingList() {
     return useQuery({
         queryKey: ['settings', 'list'],
         queryFn: async () => {
-            return apiClient.get<Setting[]>('/api/v1/setting/list');
+            return apiRequest<Setting[]>('/api/v1/setting/list');
         },
         refetchInterval: 30000,
         refetchOnMount: 'always',
@@ -60,7 +59,7 @@ export function useSetSetting() {
 
     return useMutation({
         mutationFn: async (data: Setting) => {
-            return apiClient.post<Setting>('/api/v1/setting/set', data);
+            return apiRequest<Setting>('/api/v1/setting/set', { method: 'POST', body: data });
         },
         onSuccess: (data) => {
             logger.log('Setting 设置成功:', data);
@@ -105,11 +104,6 @@ function getDataField<T>(value: unknown): T | undefined {
     return (value as ApiResponse<T>).data;
 }
 
-function getAuthHeader(): string | undefined {
-    const token = useAuthStore.getState().token;
-    return token ? `Bearer ${token}` : undefined;
-}
-
 function parseFilename(contentDisposition: string | null): string | null {
     if (!contentDisposition) return null;
     // e.g. attachment; filename="octopus-export-20250101120000.json"
@@ -148,17 +142,13 @@ export function useExportDB() {
             params.set('include_logs', String(!!options.include_logs));
             params.set('include_stats', String(!!options.include_stats));
 
-            const exportHeaders = new Headers();
-            const exportAuthHeader = getAuthHeader();
-            if (exportAuthHeader) exportHeaders.set('Authorization', exportAuthHeader);
-            const res = await fetch(`${API_BASE_URL}/api/v1/setting/export?${params.toString()}`, {
+            const res = await fetch(`/api/v1/setting/export?${params.toString()}`, {
                 method: 'GET',
-                headers: exportHeaders,
                 credentials: 'include',
             });
             if (!res.ok) {
                 const text = await res.text();
-                throw new Error(text || res.statusText);
+                throw new ApiError(res.status, text || res.statusText);
             }
 
             const blob = await res.blob();
@@ -181,12 +171,8 @@ export function useImportDB() {
             const form = new FormData();
             form.append('file', file);
 
-            const importHeaders = new Headers();
-            const importAuthHeader = getAuthHeader();
-            if (importAuthHeader) importHeaders.set('Authorization', importAuthHeader);
-            const res = await fetch(`${API_BASE_URL}/api/v1/setting/import`, {
+            const res = await fetch('/api/v1/setting/import', {
                 method: 'POST',
-                headers: importHeaders,
                 body: form,
                 credentials: 'include',
             });
@@ -197,7 +183,7 @@ export function useImportDB() {
 
             if (!res.ok) {
                 const message = getMessageField(data) ?? (typeof data === 'string' ? data : res.statusText);
-                throw new Error(message);
+                throw new ApiError(res.status, message);
             }
 
             // 支持后端标准 ApiResponse：{code,message,data:{...}}

@@ -1,138 +1,102 @@
-import type { ApiError } from './types';
-import { HttpStatus } from './types';
+type RequestMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
 
-export const API_BASE_URL = '.'; // API 请求固定使用当前站点，由 Vite 开发代理转发。
+export type RequestParams = Record<string, string | number | boolean>;
 
-/**
- * 获取认证 Store（延迟导入以避免循环依赖）
- */
-let getAuthStore: (() => { token: string | null; logout: () => void }) | null = null;
-
-export function setAuthStoreGetter(getter: () => { token: string | null; logout: () => void }) {
-    getAuthStore = getter;
-}
-
-/**
- * 全局错误处理
- */
-const handleError = (error: ApiError) => {
-    console.error('API Error:', error);
-
-    // 401 未授权，调用 store 的 logout
-    if (error.code === HttpStatus.UNAUTHORIZED) {
-        if (getAuthStore) {
-            const store = getAuthStore();
-            store.logout();
-        }
-    }
+export type RequestOptions = {
+    method?: RequestMethod;
+    body?: unknown;
+    params?: RequestParams;
+    headers?: HeadersInit;
+    dispatchUnauthorized?: boolean;
+    signal?: AbortSignal;
 };
 
-/**
- * 处理响应
- */
-async function handleResponse<T>(response: Response): Promise<T> {
-    const contentType = response.headers.get('content-type');
-    const isJson = contentType?.includes('application/json');
+export class ApiError extends Error {
+    readonly status: number;
+    readonly code: number;
 
-    let data: unknown;
-    if (isJson) {
-        data = await response.json();
-    } else {
-        data = await response.text();
+    constructor(status: number, message: string) {
+        super(message);
+        this.name = 'ApiError';
+        this.status = status;
+        this.code = status;
     }
-
-    if (!response.ok) {
-        const error: ApiError = {
-            code: response.status,
-            message: (data && typeof data === 'object' && 'message' in data && typeof data.message === 'string')
-                ? data.message
-                : (typeof data === 'string' ? data : response.statusText),
-        };
-
-        handleError(error);
-        throw error;
-    }
-
-    // 如果是标准的 ApiResponse 格式，返回 data 字段
-    if (data && typeof data === 'object' && 'data' in data) {
-        return data.data as T;
-    }
-
-    return data as T;
 }
 
-/**
- * 发送请求
- */
-async function request<T>(
-    method: string,
-    path: string,
-    body?: BodyInit,
-    params?: Record<string, string | number | boolean>
-): Promise<T> {
-    // 构建 URL
-    const searchParams = params ? new URLSearchParams(
-        Object.entries(params).map(([k, v]) => [k, String(v)])
-    ).toString() : '';
-    const url = `${API_BASE_URL}${path}${searchParams ? `?${searchParams}` : ''}`;
+export const apiUnauthorizedEvent = 'api:unauthorized';
 
-    // 构建请求头
-    const headers = new Headers();
+let apiKey: string | null = null;
 
-    // 只在有 body 时设置 Content-Type
-    if (body) {
-        headers.set('Content-Type', 'application/json');
+export function setAPIKey(value: string | null) {
+    apiKey = value;
+}
+
+function isJsonBody(value: unknown): boolean {
+    if (value === null || typeof value !== 'object') return typeof value !== 'string';
+    if (typeof FormData !== 'undefined' && value instanceof FormData) return false;
+    if (typeof Blob !== 'undefined' && value instanceof Blob) return false;
+    if (typeof URLSearchParams !== 'undefined' && value instanceof URLSearchParams) return false;
+    if (typeof ArrayBuffer !== 'undefined' && value instanceof ArrayBuffer) return false;
+    return true;
+}
+
+function appendParams(path: string, params?: RequestParams): string {
+    if (!params) return path;
+    const query = new URLSearchParams(
+        Object.entries(params).map(([key, value]) => [key, String(value)])
+    ).toString();
+    if (!query) return path;
+    return `${path}${path.includes('?') ? '&' : '?'}${query}`;
+}
+
+async function readResponse(response: Response): Promise<unknown> {
+    if (response.status === 204) return null;
+    const contentType = response.headers.get('content-type') ?? '';
+    if (contentType.includes('application/json')) {
+        return response.json().catch(() => null);
     }
+    return response.text();
+}
 
-    // 添加 Authorization - 从 zustand store 获取 token
-    if (typeof window !== 'undefined' && getAuthStore) {
-        const store = getAuthStore();
-        if (store.token) {
-            headers.set('Authorization', `Bearer ${store.token}`);
+export async function apiRequest<T>(path: string, options: RequestOptions = {}): Promise<T> {
+    const headers = new Headers(options.headers);
+    let body: BodyInit | undefined;
+
+    if (options.body !== undefined) {
+        if (isJsonBody(options.body)) {
+            headers.set('Content-Type', 'application/json');
+            body = JSON.stringify(options.body);
+        } else {
+            body = options.body as BodyInit;
         }
     }
 
-    // 发送请求
-    const response = await fetch(url.toString(), {
-        method,
+    if (apiKey) headers.set('Authorization', `Bearer ${apiKey}`);
+
+    const response = await fetch(appendParams(path, options.params), {
+        method: options.method ?? 'GET',
         headers,
         body,
         credentials: 'include',
+        signal: options.signal,
     });
-    return handleResponse<T>(response);
+    const data = await readResponse(response) as { message?: unknown; data?: unknown } | unknown;
+
+    if (!response.ok) {
+        const record = data && typeof data === 'object' ? data as Record<string, unknown> : null;
+        const message = typeof record?.message === 'string'
+            ? record.message
+            : typeof data === 'string' && data
+                ? data
+                : response.statusText || `Request failed: ${response.status}`;
+        if (response.status === 401 && options.dispatchUnauthorized !== false && typeof window !== 'undefined') {
+            window.dispatchEvent(new Event(apiUnauthorizedEvent));
+        }
+        throw new ApiError(response.status, message);
+    }
+
+    if (data && typeof data === 'object' && 'data' in data) {
+        return (data as { data?: T }).data as T;
+    }
+    return data as T;
 }
-
-/**
- * API 客户端 - 基础 HTTP 方法
- */
-export const apiClient = {
-    /**
-     * GET 请求
-     */
-    get: <T>(path: string, params?: Record<string, string | number | boolean>): Promise<T> =>
-        request<T>('GET', path, undefined, params),
-
-    /**
-     * POST 请求
-     */
-    post: <T>(path: string, data?: unknown, params?: Record<string, string | number | boolean>): Promise<T> =>
-        request<T>('POST', path, data ? JSON.stringify(data) : undefined, params),
-
-    /**
-     * PUT 请求
-     */
-    put: <T>(path: string, data?: unknown, params?: Record<string, string | number | boolean>): Promise<T> =>
-        request<T>('PUT', path, data ? JSON.stringify(data) : undefined, params),
-
-    /**
-     * DELETE 请求
-     */
-    delete: <T>(path: string, params?: Record<string, string | number | boolean>): Promise<T> =>
-        request<T>('DELETE', path, undefined, params),
-
-    /**
-     * PATCH 请求
-     */
-    patch: <T>(path: string, data?: unknown, params?: Record<string, string | number | boolean>): Promise<T> =>
-        request<T>('PATCH', path, data ? JSON.stringify(data) : undefined, params),
-};

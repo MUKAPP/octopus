@@ -1,3 +1,4 @@
+import { useCallback, useEffect, useRef } from 'react';
 import { Check, Loader, Trash2, X } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useTranslations } from 'use-intl';
@@ -57,6 +58,7 @@ export function ModelDeleteOverlay({
 
 type ModelEditOverlayProps = {
     layoutId: string;
+    onHeightChange?: (height: number) => void;
     modelName: string;
     brandColor: string;
     editValues: EditValues;
@@ -68,6 +70,7 @@ type ModelEditOverlayProps = {
 
 export function ModelEditOverlay({
     layoutId,
+    onHeightChange,
     modelName,
     brandColor,
     editValues,
@@ -77,10 +80,26 @@ export function ModelEditOverlay({
     onSave,
 }: ModelEditOverlayProps) {
     const t = useTranslations('model.overlay');
+    const overlayRef = useRef<HTMLDivElement | null>(null);
+    const setOverlayRef = useCallback((node: HTMLDivElement | null) => {
+        overlayRef.current = node;
+        if (node) onHeightChange?.(node.offsetHeight);
+    }, [onHeightChange]);
+
+    useEffect(() => {
+        const node = overlayRef.current;
+        if (!node || !onHeightChange || typeof ResizeObserver === 'undefined') return;
+
+        const observer = new ResizeObserver(() => onHeightChange(node.offsetHeight));
+        observer.observe(node);
+        return () => observer.disconnect();
+    }, [onHeightChange]);
+
     return (
         <motion.div
+            ref={setOverlayRef}
             layoutId={layoutId}
-            className="absolute inset-x-0 top-0 z-20 flex flex-col bg-card p-5 rounded-3xl border border-border custom-shadow"
+            className="z-20 flex flex-col bg-card p-5 rounded-3xl border border-border custom-shadow"
             transition={{ type: 'spring', stiffness: 400, damping: 30 }}
         >
             <h3 className="text-sm font-semibold text-card-foreground line-clamp-1 mb-3">

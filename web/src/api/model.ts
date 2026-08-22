@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { apiClient } from './client';
+import { apiRequest } from './client';
 import { logger } from '@/lib/logger';
 
 /**
@@ -45,7 +45,7 @@ export function useModelList() {
     return useQuery({
         queryKey: ['models', 'list'],
         queryFn: async () => {
-            return apiClient.get<LLMInfo[]>('/api/v1/model/list');
+            return apiRequest<LLMInfo[]>('/api/v1/model/list');
         },
         refetchInterval: 30000,
         refetchOnMount: 'always',
@@ -67,7 +67,7 @@ export function useModelChannelList() {
     return useQuery({
         queryKey: ['models', 'channel'],
         queryFn: async () => {
-            return apiClient.get<LLMChannel[]>('/api/v1/model/channel');
+            return apiRequest<LLMChannel[]>('/api/v1/model/channel');
         },
         refetchInterval: 30000,
     });
@@ -92,7 +92,7 @@ export function useUpdateModel() {
 
     return useMutation({
         mutationFn: async (data: LLMInfo) => {
-            return apiClient.post<LLMInfo>('/api/v1/model/update', data);
+            return apiRequest<LLMInfo>('/api/v1/model/update', { method: 'POST', body: data });
         },
         onSuccess: (data) => {
             logger.log('模型更新成功:', data);
@@ -123,7 +123,7 @@ export function useCreateModel() {
 
     return useMutation({
         mutationFn: async (data: LLMInfo) => {
-            return apiClient.post<LLMInfo>('/api/v1/model/create', data);
+            return apiRequest<LLMInfo>('/api/v1/model/create', { method: 'POST', body: data });
         },
         onSuccess: (data) => {
             logger.log('模型创建成功:', data);
@@ -148,7 +148,7 @@ export function useDeleteModel() {
 
     return useMutation({
         mutationFn: async (name: string) => {
-            return apiClient.post<null>('/api/v1/model/delete', { name });
+            return apiRequest<null>('/api/v1/model/delete', { method: 'POST', body: { name } });
         },
         onSuccess: () => {
             logger.log('模型删除成功');
@@ -173,7 +173,7 @@ export function useUpdateModelPrice() {
 
     return useMutation({
         mutationFn: async () => {
-            return apiClient.post<null>('/api/v1/model/update-price', {});
+            return apiRequest<null>('/api/v1/model/update-price', { method: 'POST', body: {} });
         },
         onSuccess: () => {
             logger.log('模型价格更新成功');
@@ -199,7 +199,7 @@ export function useLastUpdateTime() {
     return useQuery({
         queryKey: ['models', 'last-update-time'],
         queryFn: async () => {
-            return apiClient.get<string>('/api/v1/model/last-update-time');
+            return apiRequest<string>('/api/v1/model/last-update-time');
         },
         refetchInterval: 30000,
     });

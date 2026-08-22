@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { apiClient } from './client';
+import { apiRequest } from './client';
 import { logger } from '@/lib/logger';
 import { useAuthStore } from './user';
 import { StatsAPIKey, StatsAPIKeyFormatted } from './stats';
@@ -39,9 +39,9 @@ export function useAPIKeyLogin() {
 
     return useMutation({
         mutationFn: async (apiKey: string) => {
-            // 先设置以便 apiClient 发送请求时带上 token
+            // 先设置以便请求带上 API Key Bearer 认证
             setAPIKeyAuth(apiKey);
-            await apiClient.get<null>('/api/v1/apikey/login');
+            await apiRequest<null>('/api/v1/apikey/login', { dispatchUnauthorized: false });
             return apiKey;
         },
         onError: (error) => {
@@ -59,7 +59,7 @@ export function useAPIKeyDashboardStats() {
 
     return useQuery({
         queryKey: ['apikey', 'dashboard', 'stats'],
-        queryFn: () => apiClient.get<APIKeyStatsResponse>('/api/v1/apikey/stats'),
+        queryFn: () => apiRequest<APIKeyStatsResponse>('/api/v1/apikey/stats'),
         select: (data): APIKeyStatsResponseFormatted => ({
             stats: {
                 api_key_id: data.stats.api_key_id,
@@ -106,7 +106,7 @@ export function useAPIKeyList() {
     return useQuery({
         queryKey: ['apikeys', 'list'],
         queryFn: async () => {
-            return apiClient.get<APIKey[]>('/api/v1/apikey/list');
+            return apiRequest<APIKey[]>('/api/v1/apikey/list');
         },
         refetchInterval: 30000,
     });
@@ -127,7 +127,7 @@ export function useCreateAPIKey() {
 
     return useMutation({
         mutationFn: async (data: CreateAPIKeyRequest) => {
-            return apiClient.post<APIKey>('/api/v1/apikey/create', data);
+            return apiRequest<APIKey>('/api/v1/apikey/create', { method: 'POST', body: data });
         },
         onSuccess: (data) => {
             logger.log('API Key 创建成功:', data);
@@ -156,7 +156,7 @@ export function useUpdateAPIKey() {
 
     return useMutation({
         mutationFn: async (data: UpdateAPIKeyRequest) => {
-            return apiClient.post<APIKey>('/api/v1/apikey/update', data);
+            return apiRequest<APIKey>('/api/v1/apikey/update', { method: 'POST', body: data });
         },
         onSuccess: (data) => {
             logger.log('API Key 更新成功:', data);
@@ -181,7 +181,7 @@ export function useDeleteAPIKey() {
 
     return useMutation({
         mutationFn: async (id: number) => {
-            return apiClient.delete<null>(`/api/v1/apikey/delete/${id}`);
+            return apiRequest<null>(`/api/v1/apikey/delete/${id}`, { method: 'DELETE' });
         },
         onSuccess: () => {
             logger.log('API Key 删除成功');
@@ -205,7 +205,7 @@ export function useAPIKeyStats() {
     return useQuery({
         queryKey: ['apikey', 'stats'],
         queryFn: async () => {
-            return apiClient.get<StatsAPIKey>('/api/v1/apikey/stats');
+            return apiRequest<StatsAPIKey>('/api/v1/apikey/stats');
         },
         select: (data): StatsAPIKeyFormatted => ({
             api_key_id: data.api_key_id,

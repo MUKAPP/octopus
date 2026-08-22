@@ -30,10 +30,6 @@ func init() {
 				Handle(clearLog),
 		).
 		AddRoute(
-			router.NewRoute("/stream-token", http.MethodGet).
-				Handle(getStreamToken),
-		).
-		AddRoute(
 			router.NewRoute("/:request_id/request-body", http.MethodGet).
 				Handle(requestBody),
 		).
@@ -47,6 +43,7 @@ func init() {
 		)
 
 	router.NewGroupRouter("/api/v1/log").
+		Use(middleware.Auth()).
 		AddRoute(
 			router.NewRoute("/overview/stream", http.MethodGet).
 				Handle(streamLogOverview),
@@ -57,6 +54,7 @@ func init() {
 		)
 
 	router.NewGroupRouter("/api/v1/log").
+		Use(middleware.Auth()).
 		AddRoute(
 			router.NewRoute("/stream", http.MethodGet).
 				Handle(streamLog),
@@ -101,14 +99,6 @@ func activeLog(c *gin.Context) {
 func clearLog(c *gin.Context) {
 	op.RelayLogStoreClear()
 	resp.Success(c, nil)
-}
-func getStreamToken(c *gin.Context) {
-	token, err := op.RelayLogStreamTokenCreate()
-	if err != nil {
-		resp.Error(c, http.StatusInternalServerError, err.Error())
-		return
-	}
-	resp.Success(c, gin.H{"token": token})
 }
 
 func parseRelayLogID(c *gin.Context) (int64, bool) {
@@ -163,14 +153,6 @@ func stopAttempt(c *gin.Context) {
 	resp.Success(c, gin.H{"stopped": true})
 }
 
-func authorizeLogStream(c *gin.Context) bool {
-	if !op.RelayLogStreamTokenConsume(c.Query("token")) {
-		resp.Error(c, http.StatusUnauthorized, "invalid stream token")
-		return false
-	}
-	return true
-}
-
 func writeLogEvent(c *gin.Context, event string, payload any) error {
 	data, err := json.Marshal(payload)
 	if err != nil {
@@ -193,9 +175,6 @@ func setupLogSSE(c *gin.Context) {
 }
 
 func streamLogOverview(c *gin.Context) {
-	if !authorizeLogStream(c) {
-		return
-	}
 	setupLogSSE(c)
 	sub := op.RelayLogStoreSubscribeOverview()
 	defer op.RelayLogStoreUnsubscribeOverview(sub)
@@ -227,9 +206,6 @@ func streamLogOverview(c *gin.Context) {
 }
 
 func streamLogDetail(c *gin.Context) {
-	if !authorizeLogStream(c) {
-		return
-	}
 	id, ok := parseRelayLogID(c)
 	if !ok {
 		return
@@ -296,11 +272,6 @@ func streamLogDetail(c *gin.Context) {
 }
 
 func streamLog(c *gin.Context) {
-	if !op.RelayLogStreamTokenConsume(c.Query("token")) {
-		resp.Error(c, http.StatusUnauthorized, "invalid stream token")
-		return
-	}
-
 	c.Header("Content-Type", "text/event-stream")
 	c.Header("Cache-Control", "no-cache")
 	c.Header("Connection", "keep-alive")

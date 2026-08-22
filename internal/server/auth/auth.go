@@ -10,7 +10,7 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-func GenerateJWTToken(expiresSec int) (string, string, error) {
+func GenerateJWTToken(expiresSec int) (string, int, error) {
 	now := time.Now()
 	maxAge := int((15 * time.Minute).Seconds())
 	if expiresSec > 0 {
@@ -28,9 +28,9 @@ func GenerateJWTToken(expiresSec int) (string, string, error) {
 	secret := user.Username + user.Password
 	token, err := jwt.NewWithClaims(jwt.SigningMethodHS256, claims).SignedString([]byte(secret))
 	if err != nil {
-		return "", "", err
+		return "", 0, err
 	}
-	return token, claims.ExpiresAt.Format(time.RFC3339), nil
+	return token, maxAge, nil
 }
 
 func VerifyJWTToken(token string) bool {

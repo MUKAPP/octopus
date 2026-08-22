@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { apiClient } from './client';
+import { apiRequest } from './client';
 import { logger } from '@/lib/logger';
 
 /**
@@ -88,7 +88,7 @@ export function useGroupList() {
     return useQuery({
         queryKey: ['groups', 'list'],
         queryFn: async () => {
-            return apiClient.get<Group[]>('/api/v1/group/list');
+            return apiRequest<Group[]>('/api/v1/group/list');
         },
         refetchInterval: 30000,
         refetchOnMount: 'always',
@@ -113,7 +113,7 @@ export function useCreateGroup() {
 
     return useMutation({
         mutationFn: async (data: Group) => {
-            return apiClient.post<Group>('/api/v1/group/create', data);
+            return apiRequest<Group>('/api/v1/group/create', { method: 'POST', body: data });
         },
         onSuccess: (data) => {
             logger.log('分组创建成功:', data);
@@ -144,7 +144,7 @@ export function useUpdateGroup() {
 
     return useMutation({
         mutationFn: async (data: GroupUpdateRequest) => {
-            return apiClient.post<Group>('/api/v1/group/update', data);
+            return apiRequest<Group>('/api/v1/group/update', { method: 'POST', body: data });
         },
         onSuccess: (data) => {
             logger.log('分组更新成功:', data);
@@ -169,7 +169,7 @@ export function useDeleteGroup() {
 
     return useMutation({
         mutationFn: async (id: number) => {
-            return apiClient.delete<null>(`/api/v1/group/delete/${id}`);
+            return apiRequest<null>(`/api/v1/group/delete/${id}`, { method: 'DELETE' });
         },
         onSuccess: () => {
             logger.log('分组删除成功');
@@ -196,7 +196,7 @@ export function useDeleteGroup() {
 
 //     return useMutation({
 //         mutationFn: async (groupId: number) => {
-//             return apiClient.post<null>(`/api/v1/group/auto-add-item`, { id: groupId });
+//             return apiRequest<null>(`/api/v1/group/auto-add-item`, { method: 'POST', body: { id: groupId } });
 //         },
 //         onSuccess: () => {
 //             logger.log('自动添加分组 item 成功');

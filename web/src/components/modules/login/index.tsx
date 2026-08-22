@@ -25,6 +25,7 @@ export function LoginForm({ onLoginSuccess }: { onLoginSuccess?: () => void }) {
   const [mode, setMode] = useState<LoginMode>('user')
   const [username, setUsername] = useState("")
   const [password, setPassword] = useState("")
+  const [trustDevice, setTrustDevice] = useState(false)
   const [apiKey, setApiKey] = useState("")
   const [error, setError] = useState<string | null>(null)
 
@@ -40,7 +41,7 @@ export function LoginForm({ onLoginSuccess }: { onLoginSuccess?: () => void }) {
         await loginMutation.mutateAsync({
           username,
           password,
-          expire: 86400,
+          expire: trustDevice ? -1 : 86400,
         })
       } else {
         await apiKeyLoginMutation.mutateAsync(apiKey)
@@ -124,6 +125,19 @@ export function LoginForm({ onLoginSuccess }: { onLoginSuccess?: () => void }) {
                     required={mode === 'user'}
                     disabled={isPending}
                   />
+                </Field>
+                <Field orientation="horizontal" data-disabled={isPending}>
+                  <input
+                    id="trust-device"
+                    type="checkbox"
+                    checked={trustDevice}
+                    onChange={(e) => setTrustDevice(e.target.checked)}
+                    disabled={isPending}
+                    className="h-4 w-4 rounded border-input accent-primary"
+                  />
+                  <FieldLabel htmlFor="trust-device" className="text-muted-foreground">
+                    {t('trustDevice')}
+                  </FieldLabel>
                 </Field>
               </TabsContent>
               <TabsContent value="apikey" style={{ overflow: 'visible' }}>

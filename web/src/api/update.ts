@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { apiClient } from './client';
+import { apiRequest } from './client';
 
 /** 最新可用版本：Docker Hub latest 镜像与 GitHub Releases 二进制槽位中较新者。 */
 export interface LatestInfo {
@@ -15,7 +15,7 @@ export function useLatestInfo(current?: string) {
             const params: Record<string, string | number | boolean> | undefined = current
                 ? { current }
                 : undefined;
-            return apiClient.get<LatestInfo>('/api/v1/update', params);
+            return apiRequest<LatestInfo>('/api/v1/update', { params });
         },
         refetchInterval: 3600000,
         refetchOnMount: 'always',
@@ -27,7 +27,7 @@ export function useLatestInfo(current?: string) {
 export function useNowVersion() {
     return useQuery({
         queryKey: ['update', 'now-version'],
-        queryFn: async () => apiClient.get<string>('/api/v1/update/now-version'),
+        queryFn: async () => apiRequest<string>('/api/v1/update/now-version'),
         refetchInterval: 3600000,
         refetchOnMount: 'always',
     });

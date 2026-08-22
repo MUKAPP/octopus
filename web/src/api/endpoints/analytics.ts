@@ -1,5 +1,5 @@
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
-import { apiClient } from '../client';
+import { apiRequest } from '../client';
 import { formatCount, formatMoney, formatTime } from '@/lib/utils';
 
 /**
@@ -160,7 +160,7 @@ export function useAnalytics(filters: AnalyticsFilters, enabled = true): UseQuer
     return useQuery({
         queryKey: ['stats', 'analytics', params ?? { period: filters.period }],
         queryFn: async () => {
-            return apiClient.get<AnalyticsResponse>('/api/v1/stats/analytics', params ?? undefined);
+            return apiRequest<AnalyticsResponse>('/api/v1/stats/analytics', { params: params ?? undefined });
         },
         enabled: enabled && params !== null,
         select: (data): AnalyticsResponseFormatted => ({
@@ -203,7 +203,7 @@ export function useAnalyticsDimensions(): UseQueryResult<AnalyticsDimensions> {
     return useQuery({
         queryKey: ['stats', 'analytics', 'dimensions'],
         queryFn: async () => {
-            return apiClient.get<AnalyticsDimensions>('/api/v1/stats/analytics/dimensions');
+            return apiRequest<AnalyticsDimensions>('/api/v1/stats/analytics/dimensions');
         },
         refetchInterval: 30000,
         refetchOnMount: 'always',

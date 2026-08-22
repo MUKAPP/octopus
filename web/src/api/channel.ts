@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { apiClient } from './client';
+import { apiRequest } from './client';
 import { logger } from "@/lib/logger";
 import { formatCount, formatMoney, formatTime } from "@/lib/utils";
 import { StatsChannel, type StatsMetricsFormatted } from "./stats";
@@ -159,7 +159,7 @@ export function useChannelList() {
 	return useQuery({
 		queryKey: ["channels", "list"],
 		queryFn: async () => {
-			return apiClient.get<ChannelServer[]>("/api/v1/channel/list");
+			return apiRequest<ChannelServer[]>('/api/v1/channel/list');
 		},
 		select: (data) =>
 			data.map((item) => ({
@@ -212,7 +212,7 @@ export function useCreateChannel() {
 
 	return useMutation({
 		mutationFn: async (data: CreateChannelRequest) => {
-			return apiClient.post<ChannelServer>("/api/v1/channel/create", data);
+			return apiRequest<ChannelServer>('/api/v1/channel/create', { method: 'POST', body: data });
 		},
 		onSuccess: (data) => {
 			logger.log("渠道创建成功:", data);
@@ -248,7 +248,7 @@ export function useUpdateChannel() {
 
 	return useMutation({
 		mutationFn: async (data: UpdateChannelRequest) => {
-			return apiClient.post<ChannelServer>("/api/v1/channel/update", data);
+			return apiRequest<ChannelServer>('/api/v1/channel/update', { method: 'POST', body: data });
 		},
 		onSuccess: (data) => {
 			logger.log("渠道更新成功:", data);
@@ -276,7 +276,7 @@ export function useDeleteChannel() {
 
 	return useMutation({
 		mutationFn: async (id: number) => {
-			return apiClient.delete<null>(`/api/v1/channel/delete/${id}`);
+			return apiRequest<null>(`/api/v1/channel/delete/${id}`, { method: 'DELETE' });
 		},
         onSuccess: () => {
             logger.log("渠道删除成功");
@@ -304,7 +304,7 @@ export function useEnableChannel() {
 
     return useMutation({
         mutationFn: async (data: { id: number; enabled: boolean }) => {
-            return apiClient.post<null>("/api/v1/channel/enable", data);
+            return apiRequest<null>('/api/v1/channel/enable', { method: 'POST', body: data });
         },
         onSuccess: () => {
             logger.log("渠道状态更新成功");
@@ -338,7 +338,7 @@ export function useEnableChannel() {
 export function useFetchModel() {
 	return useMutation({
 		mutationFn: async (data: FetchModelRequest) => {
-			return apiClient.post<string[]>("/api/v1/channel/fetch-model", data);
+			return apiRequest<string[]>('/api/v1/channel/fetch-model', { method: 'POST', body: data });
 		},
 		onSuccess: (data) => {
 			logger.log("模型列表获取成功:", data);
@@ -363,7 +363,7 @@ export function useLastSyncTime() {
 	return useQuery({
 		queryKey: ["channels", "last-sync-time"],
 		queryFn: async () => {
-			return apiClient.get<string>("/api/v1/channel/last-sync-time");
+			return apiRequest<string>('/api/v1/channel/last-sync-time');
 		},
 		refetchInterval: 30000,
 	});
@@ -380,7 +380,7 @@ export function useSyncChannel() {
 	const queryClient = useQueryClient();
 	return useMutation({
 		mutationFn: async () => {
-			return apiClient.post<null>("/api/v1/channel/sync");
+			return apiRequest<null>('/api/v1/channel/sync', { method: 'POST' });
 		},
         onSuccess: () => {
             logger.log("渠道同步成功");
