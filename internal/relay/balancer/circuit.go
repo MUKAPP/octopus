@@ -46,6 +46,12 @@ func getOrCreateEntry(key string) *circuitEntry {
 	return actual.(*circuitEntry)
 }
 
+// isCircuitBreakerEnabled 返回熔断器是否启用；配置缺失或非法时保持既有启用行为。
+func isCircuitBreakerEnabled() bool {
+	enabled, err := op.SettingGetBool(model.SettingKeyCircuitBreakerEnabled)
+	return err != nil || enabled
+}
+
 // getThreshold 获取熔断阈值配置
 func getThreshold() int64 {
 	v, err := op.SettingGetInt(model.SettingKeyCircuitBreakerThreshold)
@@ -85,6 +91,11 @@ func GetCooldown(tripCount int) time.Duration {
 // IsTripped 检查通道是否处于熔断状态
 // 返回 tripped=true 表示该通道应被跳过，remaining 为剩余冷却时间
 func IsTripped(channelID, keyID int, modelName string) (tripped bool, remaining time.Duration) {
+	if !isCircuitBreakerEnabled() {
+		globalBreaker.Clear()
+		return false, 0
+	}
+
 	key := circuitKey(channelID, keyID, modelName)
 	v, ok := globalBreaker.Load(key)
 	if !ok {
@@ -121,6 +132,11 @@ func IsTripped(channelID, keyID int, modelName string) (tripped bool, remaining 
 
 // RecordSuccess 记录成功，重置熔断器状态
 func RecordSuccess(channelID, keyID int, modelName string) {
+	if !isCircuitBreakerEnabled() {
+		globalBreaker.Clear()
+		return
+	}
+
 	key := circuitKey(channelID, keyID, modelName)
 	v, ok := globalBreaker.Load(key)
 	if !ok {
@@ -143,6 +159,11 @@ func RecordSuccess(channelID, keyID int, modelName string) {
 
 // RecordFailure 记录失败，可能触发熔断
 func RecordFailure(channelID, keyID int, modelName string) {
+	if !isCircuitBreakerEnabled() {
+		globalBreaker.Clear()
+		return
+	}
+
 	key := circuitKey(channelID, keyID, modelName)
 	entry := getOrCreateEntry(key)
 

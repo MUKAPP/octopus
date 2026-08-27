@@ -262,6 +262,9 @@
         },
         "circuitBreaker": {
             "title": "熔断器配置",
+            "enabled": {
+                "label": "启用熔断器"
+            },
             "threshold": {
                 "label": "熔断触发阈值（连续失败次数）",
                 "placeholder": "请输入阈值"

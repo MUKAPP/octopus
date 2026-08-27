@@ -262,6 +262,9 @@
         },
         "circuitBreaker": {
             "title": "Circuit Breaker",
+            "enabled": {
+                "label": "Enable circuit breaker"
+            },
             "threshold": {
                 "label": "Failure Threshold (consecutive failures)",
                 "placeholder": "Enter threshold"
