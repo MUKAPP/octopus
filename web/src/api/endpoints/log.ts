@@ -231,6 +231,38 @@ export interface RelayLog {
     final_rate_multiplier?: number;
     is_overview?: boolean;
 }
+function getEffectiveLogState(log: RelayLog): RequestState {
+    return log.state ?? (log.error ? 'failed' : 'success');
+}
+
+function isTerminalLogState(state: RequestState): boolean {
+    return state === 'success' || state === 'failed' || state === 'canceled';
+}
+
+function mergeRelayLog(existing: RelayLog, incoming: RelayLog): RelayLog {
+    const existingState = getEffectiveLogState(existing);
+    const incomingState = getEffectiveLogState(incoming);
+    const existingTerminal = isTerminalLogState(existingState);
+    const incomingTerminal = isTerminalLogState(incomingState);
+
+    if (existingTerminal !== incomingTerminal) {
+        return incomingTerminal ? incoming : existing;
+    }
+    if (existingTerminal && incomingTerminal) {
+        if (existingState === 'success' && incomingState !== 'success') return existing;
+        if (incomingState === 'success' && existingState !== 'success') return incoming;
+    }
+    return incoming;
+}
+
+function mergeRelayLogList(logs: RelayLog[]): RelayLog[] {
+    const byID = new Map<number, RelayLog>();
+    for (const log of logs) {
+        const existing = byID.get(log.id);
+        byID.set(log.id, existing ? mergeRelayLog(existing, log) : log);
+    }
+    return Array.from(byID.values()).sort((a, b) => b.time - a.time || b.id - a.id);
+}
 
 /**
  * 日志列表查询参数
@@ -579,10 +611,7 @@ export function useLogs(options: { pageSize?: number } = {}) {
     }, [logsQuery.data]);
     const mergedLogs = useMemo(() => {
         if (!overviewUsable) return fallbackLogs;
-        const byID = new Map<number, RelayLog>();
-        for (const log of fallbackLogs) byID.set(log.id, log);
-        for (const log of overviewLogs) byID.set(log.id, log);
-        return Array.from(byID.values()).sort((a, b) => b.time - a.time || b.id - a.id);
+        return mergeRelayLogList([...fallbackLogs, ...overviewLogs]);
     }, [fallbackLogs, overviewLogs, overviewUsable]);
 
     // 新日志流提供完整的进程内快照和运行中请求更新；连接不可用时继续使用旧分页/日志流。
@@ -603,16 +632,18 @@ export function useLogs(options: { pageSize?: number } = {}) {
             source = null;
         };
 
+        const disableOverview = () => {
+            overviewUsableRef.current = false;
+            setOverviewUsable(false);
+            setOverviewLogs([]);
+        };
+
         const applyOverview = (event: MessageEvent<string>) => {
             try {
                 const parsed = JSON.parse(event.data) as unknown;
                 const next = normalizeRelayLog(parsed);
                 if (!next.id) return;
-                setOverviewLogs((current) => {
-                    const merged = [...current.filter((log) => log.id !== next.id), next];
-                    merged.sort((a, b) => b.time - a.time || b.id - a.id);
-                    return merged;
-                });
+                setOverviewLogs((current) => mergeRelayLogList([...current, next]));
             } catch (cause) {
                 logger.error('解析日志概览失败:', cause);
             }
@@ -648,6 +679,7 @@ export function useLogs(options: { pageSize?: number } = {}) {
                 source.addEventListener('log', applyOverview);
                 source.onerror = () => {
                     if (cancelled) return;
+                    disableOverview();
                     closeSource();
                     if (opened) {
                         setIsConnected(false);
@@ -657,7 +689,10 @@ export function useLogs(options: { pageSize?: number } = {}) {
                 };
             } catch (cause) {
                 if (cancelled) return;
-                if (opened) setError(cause instanceof Error ? cause : new Error('创建日志概览流失败'));
+                if (opened) {
+                    disableOverview();
+                    setError(cause instanceof Error ? cause : new Error('创建日志概览流失败'));
+                }
                 scheduleReconnect();
             }
         };

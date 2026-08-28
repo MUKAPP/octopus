@@ -54,7 +54,8 @@ function getAttemptOrder(attempt: ChannelAttempt): number {
 }
 
 function getAttemptDisplayNumber(attempt: ChannelAttempt): number {
-    return getAttemptOrder(attempt);
+    const order = getAttemptOrder(attempt);
+    return attempt.attempt_index !== undefined && attempt.attempt_num > attempt.attempt_index ? order + 1 : order;
 }
 
 function sortAttempts(attempts: ChannelAttempt[]): ChannelAttempt[] {
@@ -63,6 +64,30 @@ function sortAttempts(attempts: ChannelAttempt[]): ChannelAttempt[] {
         .sort((a, b) => getAttemptOrder(a.attempt) - getAttemptOrder(b.attempt) || a.index - b.index)
         .map(({ attempt }) => attempt);
 }
+type AttemptStatusTranslationKey = 'running' | 'success' | 'canceled' | 'circuitBreak' | 'skipped' | 'failed';
+
+function getAttemptStatusLabelKey(status: ChannelAttempt['status']): AttemptStatusTranslationKey {
+    switch (status) {
+        case 'running': return 'running';
+        case 'success': return 'success';
+        case 'canceled': return 'canceled';
+        case 'circuit_break': return 'circuitBreak';
+        case 'skipped': return 'skipped';
+        default: return 'failed';
+    }
+}
+
+function getAttemptStatusClass(status: ChannelAttempt['status']): string {
+    switch (status) {
+        case 'success': return 'bg-primary/15 text-primary';
+        case 'running': return 'bg-secondary text-secondary-foreground';
+        case 'canceled': return 'bg-amber-500/15 text-amber-700 dark:text-amber-300';
+        case 'circuit_break': return 'bg-orange-500/15 text-orange-700 dark:text-orange-300';
+        case 'skipped': return 'bg-muted text-muted-foreground';
+        default: return 'bg-destructive/15 text-destructive';
+    }
+}
+
 
 interface RetryBadgeWithTooltipProps {
     channelName: string;
@@ -73,61 +98,56 @@ interface RetryBadgeWithTooltipProps {
 
 function RetryBadgeWithTooltip({ channelName, brandColor, rateMultiplier, attempts }: RetryBadgeWithTooltipProps) {
     const t = useTranslations('log.card');
+    const statusT = useTranslations('log.status');
 
     return (
         <Tooltip>
             <TooltipTrigger asChild>
                 <Badge
                     variant="secondary"
-                    className="shrink-0 text-xs px-1.5 py-0 cursor-help"
+                    className="shrink-0 cursor-help px-1.5 py-0 text-xs"
                     style={{ backgroundColor: `${brandColor}15`, color: brandColor }}
                 >
-                    <RotateCw className="size-3 mr-1 translate-y-px opacity-80" />
+                    <RotateCw className="mr-1 size-3 translate-y-px opacity-80" />
                     {channelName}
                     {formatRateMultiplier(rateMultiplier) && (
                         <span className="ml-1 opacity-80">x{formatRateMultiplier(rateMultiplier)}</span>
                     )}
                 </Badge>
             </TooltipTrigger>
-            <TooltipContent className="border bg-card p-2 min-w-[280px] shadow-sm rounded-3xl flex flex-col gap-1">
-                {attempts.map((attempt, idx) => (
-                    <div key={idx} className="flex flex-col w-full">
-                        <div className="flex items-center gap-2 rounded-md px-2 py-1.5 hover:bg-muted/50 transition-colors">
-                            <Badge
-                                className={cn(
-                                    "h-5 shrink-0 px-1.5 text-[10px] font-bold uppercase shadow-none border-0",
-                                    attempt.status === 'success'
-                                        ? "bg-primary/15 text-primary"
-                                        : "bg-destructive/15 text-destructive"
-                                )}
-                            >
-                                {attempt.status === 'success' ? t('success') : t('failed')}
-                            </Badge>
-                            <div className="flex min-w-0 flex-col flex-1">
-                                <span className="truncate text-xs font-semibold text-foreground">
-                                    {attempt.channel_name}
-                                    {formatRateMultiplier(attempt.rate_multiplier) && (
-                                        <span className="ml-1 font-normal opacity-80">({t('rateMultiplier')} {formatRateMultiplier(attempt.rate_multiplier)})</span>
-                                    )}
-                                </span>
-                                <span className="text-[10px] text-muted-foreground">
-                                    {attempt.model_name} • {formatDuration(attempt.duration)}
-                                </span>
+            <TooltipContent className="w-[min(22rem,calc(100vw-2rem))] min-w-0 rounded-3xl border bg-card p-2 shadow-sm">
+                <div className="flex flex-col gap-1">
+                    {attempts.map((attempt, idx) => (
+                        <div key={idx} className="flex w-full flex-col">
+                            <div className="flex min-w-0 items-center gap-2 rounded-md px-2 py-1.5 transition-colors hover:bg-muted/50">
+                                <Badge className={cn("h-5 shrink-0 border-0 px-1.5 text-[10px] font-bold uppercase shadow-none", getAttemptStatusClass(attempt.status))}>
+                                    {statusT(getAttemptStatusLabelKey(attempt.status))}
+                                </Badge>
+                                <div className="flex min-w-0 flex-1 flex-col">
+                                    <span className="truncate text-xs font-semibold text-foreground">
+                                        {attempt.channel_name}
+                                        {formatRateMultiplier(attempt.rate_multiplier) && (
+                                            <span className="ml-1 font-normal opacity-80">({t('rateMultiplier')} {formatRateMultiplier(attempt.rate_multiplier)})</span>
+                                        )}
+                                    </span>
+                                    <span className="truncate text-[10px] text-muted-foreground">
+                                        {attempt.model_name} • {formatDuration(attempt.duration)}
+                                    </span>
+                                </div>
                             </div>
-                        </div>
-                        {
-                            idx < attempts.length - 1 && (
+                            {idx < attempts.length - 1 && (
                                 <div className="flex justify-center py-0.5">
                                     <ArrowDown className="size-3 text-muted-foreground/30" />
                                 </div>
-                            )
-                        }
-                    </div>
-                ))}
+                            )}
+                        </div>
+                    ))}
+                </div>
             </TooltipContent>
-        </Tooltip >
+        </Tooltip>
     );
 }
+
 
 function DeferredJsonContent({ content, fallbackText }: { content: string | undefined; fallbackText: string }) {
     const { resolvedTheme } = useTheme();
@@ -212,8 +232,61 @@ function DeferredJsonContent({ content, fallbackText }: { content: string | unde
         </AnimatePresence>
     );
 }
+function LogMetrics({ log, brandColor, totalTime = log.use_time }: { log: RelayLog; brandColor: string; totalTime?: number }) {
+    const t = useTranslations('log.card');
+    const requestAPIKeyName = log.request_api_key_name?.trim() ?? '';
+    const timeLabel = formatTime(log.time);
+    const firstTokenLabel = `${t('firstTokenTime')}: ${formatDuration(log.ftut)}`;
+    const totalTimeLabel = `${t('totalTime')}: ${formatDuration(totalTime)}`;
+    const speedLabel = `${t('outputSpeed')}: ${formatOutputSpeed(log.output_tokens, totalTime, log.ftut)}`;
+    const cacheRateLabel = `${t('cacheRate')}: ${formatCacheRate(log.cached_tokens, log.input_tokens)}`;
+    const costLabel = `${t('cost')}: ${Number(log.cost).toFixed(6)}`;
+    const rateLabel = `x${formatRateMultiplier(log.rate_multiplier)}`;
 
-function LiveOverviewDetails({ log }: { log: RelayLog }) {
+    return (
+        <div className="mt-auto grid w-full shrink-0 grid-cols-1 gap-x-3 gap-y-2 pt-4 text-xs leading-5 text-muted-foreground sm:grid-cols-3 lg:grid-cols-5 min-[420px]:grid-cols-2 [&_svg]:translate-y-px">
+            <div className="flex min-w-0 items-center gap-1.5">
+                <Clock className="size-3.5 shrink-0" style={{ color: brandColor }} />
+                <span className="min-w-0 truncate tabular-nums" title={timeLabel}>{timeLabel}</span>
+            </div>
+            {requestAPIKeyName && (
+                <div className="flex min-w-0 items-center gap-1.5">
+                    <KeyRound className="size-3.5 shrink-0 text-orange-500" />
+                    <span className="min-w-0 truncate" title={requestAPIKeyName}>{requestAPIKeyName}</span>
+                </div>
+            )}
+            <div className="flex min-w-0 items-center gap-1.5">
+                <Zap className="size-3.5 shrink-0 text-amber-500" />
+                <span className="min-w-0 truncate" title={firstTokenLabel}>{firstTokenLabel}</span>
+            </div>
+            <div className="flex min-w-0 items-center gap-1.5">
+                <Cpu className="size-3.5 shrink-0 text-blue-500" />
+                <span className="min-w-0 truncate" title={totalTimeLabel}>{totalTimeLabel}</span>
+            </div>
+            <div className="flex min-w-0 items-center gap-1.5">
+                <Gauge className="size-3.5 shrink-0 text-rose-500" />
+                <span className="min-w-0 truncate" title={speedLabel}>{speedLabel}</span>
+            </div>
+            <div className="flex min-w-0 items-center gap-1.5">
+                <ArrowDownToLine className="size-3.5 shrink-0 text-cyan-500" />
+                <span className="min-w-0 truncate" title={cacheRateLabel}>{cacheRateLabel}</span>
+            </div>
+            {log.rate_multiplier > 0 && (
+                <div className="flex min-w-0 items-center gap-1.5">
+                    <span className="min-w-0 truncate" title={rateLabel}>{t('rateMultiplier')}: {rateLabel}</span>
+                </div>
+            )}
+            <div className="flex min-w-0 items-center gap-1.5">
+                <DollarSign className="size-3.5 shrink-0 text-emerald-500" />
+                <span className="min-w-0 truncate font-medium text-emerald-600 dark:text-emerald-400" title={costLabel}>{costLabel}</span>
+            </div>
+            {log.attempts?.some((attempt) => attempt.sticky) && <Pin className="size-3.5 shrink-0 text-amber-500" />}
+        </div>
+    );
+}
+
+
+function LiveOverviewDetails({ log, brandColor }: { log: RelayLog; brandColor: string }) {
     const t = useTranslations('log.card');
     const statusT = useTranslations('log.status');
     const { isOpen } = useMorphingDialog();
@@ -221,6 +294,7 @@ function LiveOverviewDetails({ log }: { log: RelayLog }) {
     const stopAttempt = useStopAttempt();
     const [stopError, setStopError] = useState<string | null>(null);
     const [selectedAttemptIndex, setSelectedAttemptIndex] = useState<number | null>(null);
+    const manualAttemptSelectionRef = useRef(false);
     const [requestExpanded, setRequestExpanded] = useState(false);
     const [now, setNow] = useState(() => Date.now());
     const isActive = log.state === 'running' || log.state === 'committed';
@@ -241,14 +315,19 @@ function LiveOverviewDetails({ log }: { log: RelayLog }) {
 
     useEffect(() => {
         if (!isOpen) {
+            manualAttemptSelectionRef.current = false;
             setSelectedAttemptIndex(null);
             setRequestExpanded(false);
             return;
         }
         setSelectedAttemptIndex((current) => {
-            if (current !== null && attempts.some((attempt) => getAttemptOrder(attempt) === current)) return current;
-            const lastAttempt = attempts[attempts.length - 1];
-            return lastAttempt ? getAttemptOrder(lastAttempt) : null;
+            const currentAttempt = current === null
+                ? undefined
+                : attempts.find((attempt) => getAttemptOrder(attempt) === current);
+            if (manualAttemptSelectionRef.current && currentAttempt) return current;
+            const lastSuccessfulAttempt = [...attempts].reverse().find((attempt) => attempt.status === 'success');
+            const preferredAttempt = lastSuccessfulAttempt ?? attempts[attempts.length - 1];
+            return preferredAttempt ? getAttemptOrder(preferredAttempt) : null;
         });
     }, [attempts, isOpen]);
 
@@ -291,17 +370,11 @@ function LiveOverviewDetails({ log }: { log: RelayLog }) {
             setStopError(cause instanceof Error ? cause.message : t('stopFailed'));
         }
     };
-
-    const statusLabel = (status: ChannelAttempt['status']) => {
-        switch (status) {
-            case 'running': return statusT('running');
-            case 'success': return statusT('success');
-            case 'canceled': return statusT('canceled');
-            case 'circuit_break': return statusT('circuitBreak');
-            case 'skipped': return statusT('skipped');
-            default: return statusT('failed');
-        }
+    const handleAttemptSelect = (attemptIndex: number) => {
+        manualAttemptSelectionRef.current = true;
+        setSelectedAttemptIndex(attemptIndex);
     };
+
     const selectedError = selectedAttempt && selectedAttempt.status !== 'success' ? selectedAttempt.msg || log.error : undefined;
 
     return (
@@ -320,10 +393,10 @@ function LiveOverviewDetails({ log }: { log: RelayLog }) {
                                     const attemptIndex = getAttemptOrder(attempt);
                                     const selected = selectedAttempt !== undefined && attemptIndex === getAttemptOrder(selectedAttempt);
                                     return (
-                                        <button key={`${attemptIndex}-${index}`} type="button" aria-pressed={selected} onClick={() => setSelectedAttemptIndex(attemptIndex)} className={cn("flex w-full flex-col gap-1.5 rounded-xl border p-2.5 text-left text-xs transition-colors", selected ? "border-primary/40 bg-primary/10 ring-1 ring-primary/20" : attempt.status === 'success' ? "border-primary/20 bg-primary/5 hover:border-primary/40" : attempt.status === 'running' ? "border-border/50 bg-secondary/30 hover:border-border" : "border-destructive/20 bg-destructive/5 hover:border-destructive/40")}>
+                                        <button key={`${attemptIndex}-${index}`} type="button" aria-pressed={selected} onClick={() => handleAttemptSelect(attemptIndex)} className={cn("flex w-full flex-col gap-1.5 rounded-xl border p-2.5 text-left text-xs transition-colors", selected ? "border-primary/40 bg-primary/10 ring-1 ring-primary/20" : attempt.status === 'success' ? "border-primary/20 bg-primary/5 hover:border-primary/40" : attempt.status === 'running' ? "border-border/50 bg-secondary/30 hover:border-border" : "border-destructive/20 bg-destructive/5 hover:border-destructive/40")}>
                                             <div className="flex items-center gap-2">
                                                 <span className="shrink-0 font-mono text-[10px] text-muted-foreground">{t('attemptNumber', { number: getAttemptDisplayNumber(attempt) })}</span>
-                                                <Badge className={cn("border-0 px-1.5 text-[10px] font-bold uppercase", attempt.status === 'success' ? "bg-primary/15 text-primary" : attempt.status === 'running' ? "bg-secondary text-secondary-foreground" : "bg-destructive/15 text-destructive")}>{statusLabel(attempt.status)}</Badge>
+                                                <Badge className={cn("border-0 px-1.5 text-[10px] font-bold uppercase", getAttemptStatusClass(attempt.status))}>{statusT(getAttemptStatusLabelKey(attempt.status))}</Badge>
                                                 <span className="min-w-0 truncate font-semibold text-foreground">{attempt.channel_name}</span>
                                                 {attempt.sticky && <Pin className="size-3.5 shrink-0 text-amber-500" />}
                                                 {attempt.status === 'running' && <Loader2 className="ml-auto size-3.5 shrink-0 animate-spin text-muted-foreground" />}
@@ -354,7 +427,7 @@ function LiveOverviewDetails({ log }: { log: RelayLog }) {
                     <div className="flex shrink-0 items-center gap-2 border-b border-border bg-muted/50 px-3 py-2.5 md:px-4 md:py-3">
                         <MessageSquare className="size-4 text-purple-500" />
                         <span className="text-sm font-medium text-card-foreground">{t('selectedAttempt')}</span>
-                        {selectedAttempt && <Badge className={cn("border-0 px-1.5 text-[10px] font-bold uppercase", selectedAttempt.status === 'success' ? "bg-primary/15 text-primary" : selectedAttempt.status === 'running' ? "bg-secondary text-secondary-foreground" : "bg-destructive/15 text-destructive")}>{statusLabel(selectedAttempt.status)}</Badge>}
+                        {selectedAttempt && <Badge className={cn("border-0 px-1.5 text-[10px] font-bold uppercase", getAttemptStatusClass(selectedAttempt.status))}>{statusT(getAttemptStatusLabelKey(selectedAttempt.status))}</Badge>}
                         {runningAttempt && <button type="button" onClick={() => void handleStop()} disabled={stopAttempt.isPending} className="ml-auto flex items-center gap-1.5 rounded-md px-2 py-1 text-xs text-destructive transition-colors hover:bg-destructive/10 disabled:opacity-50">{stopAttempt.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <Square className="size-3.5" />}{t('stopAttempt')}</button>}
                     </div>
                     <div className="min-h-0 flex-1 overflow-auto">
@@ -367,14 +440,7 @@ function LiveOverviewDetails({ log }: { log: RelayLog }) {
                     </div>
                 </section>
             </div>
-            <div className="grid w-full shrink-0 grid-cols-12 gap-x-4 gap-y-2 pt-4 mt-auto text-xs text-muted-foreground md:grid-cols-7">
-                <div className="col-span-4 flex items-center gap-1.5 whitespace-nowrap md:col-span-1"><Cpu className="size-3.5 shrink-0 text-blue-500" /><span>{t('totalTime')}: {formatDuration(liveDuration)}</span></div>
-                <div className="col-span-4 flex items-center gap-1.5 md:col-span-1"><Zap className="size-3.5 shrink-0 text-amber-500" /><span>{t('firstTokenTime')}: {formatDuration(log.ftut)}</span></div>
-                <div className="col-span-4 flex items-center gap-1.5 md:col-span-1"><Gauge className="size-3.5 shrink-0 text-rose-500" /><span>{t('outputSpeed')}: {formatOutputSpeed(log.output_tokens, log.use_time, log.ftut)}</span></div>
-                <div className="col-span-3 flex items-center gap-1.5 md:col-span-1"><ArrowDownToLine className="size-3.5 shrink-0 text-cyan-500" /><span>{t('cacheRate')}: {formatCacheRate(log.cached_tokens, log.input_tokens)}</span></div>
-                {log.rate_multiplier > 0 && <span className="col-span-3 flex items-center gap-1.5 md:col-span-1">{t('rateMultiplier')}: x{formatRateMultiplier(log.rate_multiplier)}</span>}
-                {attempts.some((attempt) => attempt.sticky) && <span className="col-span-3 flex items-center gap-1.5 md:col-span-1"><Pin className="size-3.5 shrink-0 text-amber-500" /></span>}
-            </div>
+            <LogMetrics log={log} brandColor={brandColor} totalTime={liveDuration} />
         </div>
     );
 }
@@ -439,52 +505,48 @@ export function LogCard({ log }: { log: RelayLog }) {
                                     <Pin className="size-3.5 shrink-0 text-amber-500" />
                                 )}
                             </div>
-                            <div className="grid grid-cols-12 gap-x-4 gap-y-2 text-xs tabular-nums text-muted-foreground [&_svg]:translate-y-px md:grid-cols-7">
-                                <div className="col-span-4 flex shrink-0 items-center gap-1.5 whitespace-nowrap md:col-span-1">
+                            <div className="grid grid-cols-1 gap-x-3 gap-y-2 text-xs leading-5 tabular-nums text-muted-foreground sm:grid-cols-3 lg:grid-cols-5 min-[420px]:grid-cols-2 [&_svg]:translate-y-px">
+                                <div className="flex min-w-0 items-center gap-1.5">
                                     <Clock className="size-3.5 shrink-0" style={{ color: brandColor }} />
-                                    <span>{formatTime(log.time)}</span>
+                                    <span className="min-w-0 truncate" title={formatTime(log.time)}>{formatTime(log.time)}</span>
                                 </div>
                                 {requestAPIKeyName && (
-                                    <div className="col-span-4 flex min-w-0 max-w-44 items-center gap-1.5 md:col-span-1">
+                                    <div className="flex min-w-0 items-center gap-1.5">
                                         <KeyRound className="size-3.5 shrink-0 text-orange-500" />
-                                        <span className="truncate" title={requestAPIKeyName}>
-                                            {requestAPIKeyName}
-                                        </span>
+                                        <span className="min-w-0 truncate" title={requestAPIKeyName}>{requestAPIKeyName}</span>
                                     </div>
                                 )}
-                                <div className="col-span-4 flex shrink-0 items-center gap-1.5 whitespace-nowrap md:col-span-1">
+                                <div className="flex min-w-0 items-center gap-1.5">
                                     <Zap className="size-3.5 shrink-0 text-amber-500" />
-                                    <span>{t('firstToken')} {formatDuration(log.ftut)}</span>
+                                    <span className="min-w-0 truncate" title={`${t('firstToken')} ${formatDuration(log.ftut)}`}>{t('firstToken')} {formatDuration(log.ftut)}</span>
                                 </div>
-                                <div className="col-span-3 flex shrink-0 items-center gap-1.5 whitespace-nowrap md:col-span-1">
+                                <div className="flex min-w-0 items-center gap-1.5">
                                     <Cpu className="size-3.5 shrink-0 text-blue-500" />
-                                    <span>{t('totalTime')} {formatDuration(log.use_time)}</span>
+                                    <span className="min-w-0 truncate" title={`${t('totalTime')} ${formatDuration(log.use_time)}`}>{t('totalTime')} {formatDuration(log.use_time)}</span>
                                 </div>
-                                <div className="col-span-3 flex shrink-0 items-center gap-1.5 whitespace-nowrap md:col-span-1">
+                                <div className="flex min-w-0 items-center gap-1.5">
                                     <ArrowDownToLine className="size-3.5 shrink-0 text-green-500" />
-                                    <span>{t('input')} {log.input_tokens.toLocaleString()}</span>
+                                    <span className="min-w-0 truncate" title={`${t('input')} ${log.input_tokens.toLocaleString()}`}>{t('input')} {log.input_tokens.toLocaleString()}</span>
                                 </div>
-                                <div className="col-span-3 flex shrink-0 items-center gap-1.5 whitespace-nowrap md:col-span-1">
+                                <div className="flex min-w-0 items-center gap-1.5">
                                     <ArrowUpFromLine className="size-3.5 shrink-0 text-purple-500" />
-                                    <span>{t('output')} {log.output_tokens.toLocaleString()}</span>
+                                    <span className="min-w-0 truncate" title={`${t('output')} ${log.output_tokens.toLocaleString()}`}>{t('output')} {log.output_tokens.toLocaleString()}</span>
                                 </div>
-                                <div className="col-span-3 flex shrink-0 items-center gap-1.5 whitespace-nowrap md:col-span-1">
+                                <div className="flex min-w-0 items-center gap-1.5">
                                     <ArrowDownToLine className="size-3.5 shrink-0 text-cyan-500" />
-                                    <span>{t('cacheTokens')} {log.cached_tokens?.toLocaleString() ?? '—'}</span>
+                                    <span className="min-w-0 truncate" title={`${t('cacheTokens')} ${log.cached_tokens?.toLocaleString() ?? '—'}`}>{t('cacheTokens')} {log.cached_tokens?.toLocaleString() ?? '—'}</span>
                                 </div>
-                                <div className="col-span-3 flex shrink-0 items-center gap-1.5 whitespace-nowrap md:col-span-1">
+                                <div className="flex min-w-0 items-center gap-1.5">
                                     <ArrowDownToLine className="size-3.5 shrink-0 text-cyan-500" />
-                                    <span>{t('cacheRate')} {formatCacheRate(log.cached_tokens, log.input_tokens)}</span>
+                                    <span className="min-w-0 truncate" title={`${t('cacheRate')} ${formatCacheRate(log.cached_tokens, log.input_tokens)}`}>{t('cacheRate')} {formatCacheRate(log.cached_tokens, log.input_tokens)}</span>
                                 </div>
-                                <div className="col-span-3 flex shrink-0 items-center gap-1.5 whitespace-nowrap md:col-span-1">
+                                <div className="flex min-w-0 items-center gap-1.5">
                                     <Gauge className="size-3.5 shrink-0 text-rose-500" />
-                                    <span>{t('outputSpeed')} {formatOutputSpeed(log.output_tokens, log.use_time, log.ftut)}</span>
+                                    <span className="min-w-0 truncate" title={`${t('outputSpeed')} ${formatOutputSpeed(log.output_tokens, log.use_time, log.ftut)}`}>{t('outputSpeed')} {formatOutputSpeed(log.output_tokens, log.use_time, log.ftut)}</span>
                                 </div>
-                                <div className="col-span-3 flex shrink-0 items-center gap-1.5 whitespace-nowrap md:col-span-1">
+                                <div className="flex min-w-0 items-center gap-1.5">
                                     <DollarSign className="size-3.5 shrink-0 text-emerald-500" />
-                                    <span className="font-medium text-emerald-600 dark:text-emerald-400">
-                                        {t('cost')} {Number(log.cost).toFixed(6)}
-                                    </span>
+                                    <span className="min-w-0 truncate font-medium text-emerald-600 dark:text-emerald-400" title={`${t('cost')} ${Number(log.cost).toFixed(6)}`}>{t('cost')} {Number(log.cost).toFixed(6)}</span>
                                 </div>
                             </div>
                             {hasError && (
@@ -535,7 +597,7 @@ export function LogCard({ log }: { log: RelayLog }) {
 
                         <MorphingDialogDescription className="flex-1 min-h-0">
                             {log.is_overview ? (
-                                <LiveOverviewDetails log={log} />
+                                <LiveOverviewDetails log={log} brandColor={brandColor} />
                             ) : (
                                 <div className="grid h-full min-h-0 grid-cols-1 gap-4 md:grid-cols-2">
                                     <div className="flex min-h-0 flex-col overflow-hidden rounded-2xl border border-border bg-muted/30">
@@ -578,30 +640,16 @@ export function LogCard({ log }: { log: RelayLog }) {
                                                             >
                                                                 <div className="flex items-center gap-2">
                                                                     <span className="shrink-0 font-mono text-[10px] text-muted-foreground">
-                                                                        {t('attemptNumber', { number: index })}
+                                                                        {t('attemptNumber', { number: index + 1 })}
                                                                     </span>
                                                                     <Badge
                                                                         variant="outline"
                                                                         className={cn(
                                                                             "border-0 px-1.5 text-[10px] font-bold uppercase",
-                                                                            attempt.status === 'success'
-                                                                                ? "bg-primary/15 text-primary"
-                                                                                : attempt.status === 'running'
-                                                                                    ? "bg-secondary text-secondary-foreground"
-                                                                                    : "bg-destructive/15 text-destructive",
+                                                                            getAttemptStatusClass(attempt.status),
                                                                         )}
                                                                     >
-                                                                        {attempt.status === 'success'
-                                                                            ? statusT('success')
-                                                                            : attempt.status === 'running'
-                                                                                ? statusT('running')
-                                                                                : attempt.status === 'canceled'
-                                                                                    ? statusT('canceled')
-                                                                                    : attempt.status === 'circuit_break'
-                                                                                        ? statusT('circuitBreak')
-                                                                                        : attempt.status === 'skipped'
-                                                                                            ? statusT('skipped')
-                                                                                            : statusT('failed')}
+                                                                        {statusT(getAttemptStatusLabelKey(attempt.status))}
                                                                     </Badge>
                                                                     <span className="font-semibold text-foreground">{attempt.channel_name}</span>
                                                                     {attempt.model_name && <span className="truncate text-muted-foreground">({attempt.model_name})</span>}
@@ -660,34 +708,7 @@ export function LogCard({ log }: { log: RelayLog }) {
                             )}
                         </MorphingDialogDescription>
 
-                        <div className="flex flex-wrap items-center gap-3 md:gap-4 pt-4 mt-auto text-xs text-muted-foreground [&_svg]:translate-y-px shrink-0">
-                            <div className="flex items-center gap-1.5">
-                                <Clock className="size-3.5" style={{ color: brandColor }} />
-                                <span className="tabular-nums">{formatTime(log.time)}</span>
-                            </div>
-                            {requestAPIKeyName && (
-                                <div className="flex min-w-0 items-center gap-1.5">
-                                    <KeyRound className="size-3.5 shrink-0 text-orange-500" />
-                                    <span className="truncate" title={requestAPIKeyName}>
-                                        {requestAPIKeyName}
-                                    </span>
-                                </div>
-                            )}
-                            <div className="flex items-center gap-1.5">
-                                <Zap className="size-3.5 text-amber-500" />
-                                <span>{t('firstTokenTime')}: {formatDuration(log.ftut)}</span>
-                            </div>
-                            <div className="flex items-center gap-1.5">
-                                <Cpu className="size-3.5 text-blue-500" />
-                                <span>{t('totalTime')}: {formatDuration(log.use_time)}</span>
-                            </div>
-                            <div className="flex items-center gap-1.5">
-                                <DollarSign className="size-3.5 text-emerald-500" />
-                                <span className="font-medium text-emerald-600 dark:text-emerald-400">
-                                    {t('cost')}: {Number(log.cost).toFixed(6)}
-                                </span>
-                            </div>
-                        </div>
+                        {!log.is_overview && <LogMetrics log={log} brandColor={brandColor} />}
                     </MorphingDialogContent>
                 </MorphingDialogContainer>
             </MorphingDialog>
