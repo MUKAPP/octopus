@@ -127,7 +127,7 @@ export function normalizeRelayLog(value: RelayLog | RelayLogOverview | unknown):
         const actualModel = stringValue(record.actual_model ?? record.actual_model_name, requestModel);
         const cacheRead = numberValue(record.cache_read_tokens ?? record.cached_tokens);
         const duration = durationNanosecondsToMilliseconds(record.duration);
-        const attempts = rawAttempts.map((attempt, index) => normalizeAttempt(attempt, index, false));
+        const attempts = normalizeAttemptsForLogState(rawAttempts.map((attempt, index) => normalizeAttempt(attempt, index, false)), state) ?? [];
         const finalAttempt = attempts[attempts.length - 1];
         const finalChannel = stringValue(record.final_channel_name ?? record.channel_name, finalAttempt?.channel_name ?? '—');
         const finalRate = numberValue(record.final_rate_multiplier ?? record.rate_multiplier ?? finalAttempt?.rate_multiplier);
@@ -167,9 +167,13 @@ export function normalizeRelayLog(value: RelayLog | RelayLogOverview | unknown):
     }
 
     const old = record as unknown as RelayLog;
-    const attempts = Array.isArray(old.attempts)
-        ? old.attempts.map((attempt, index) => normalizeAttempt(attempt, index, false))
-        : undefined;
+    const state = old.state ?? (old.error ? 'failed' : 'success');
+    const attempts = normalizeAttemptsForLogState(
+        Array.isArray(old.attempts)
+            ? old.attempts.map((attempt, index) => normalizeAttempt(attempt, index, false))
+            : undefined,
+        state,
+    );
     return { ...old, attempts };
 }
 
@@ -193,6 +197,20 @@ export interface ChannelAttempt {
     duration: number;       // 耗时(毫秒)
     sticky?: boolean;
     msg?: string;
+}
+function terminalAttemptStatus(state: RequestState): AttemptStatus | undefined {
+    switch (state) {
+        case 'success': return 'success';
+        case 'failed': return 'failed';
+        case 'canceled': return 'canceled';
+        default: return undefined;
+    }
+}
+
+function normalizeAttemptsForLogState(attempts: ChannelAttempt[] | undefined, state: RequestState): ChannelAttempt[] | undefined {
+    const terminalStatus = terminalAttemptStatus(state);
+    if (!terminalStatus || !attempts?.some((attempt) => attempt.status === 'running')) return attempts;
+    return attempts.map((attempt) => attempt.status === 'running' ? { ...attempt, status: terminalStatus } : attempt);
 }
 
 /**
@@ -367,7 +385,8 @@ function detailAttemptsFromPayload(value: unknown): ChannelAttempt[] {
     const record = asRecord(value);
     const candidates = record && (Array.isArray(record.history) ? record.history : record.attempts);
     if (!Array.isArray(candidates)) return [];
-    return candidates.map((attempt, index) => attemptFromDetail(attempt, index));
+    const attempts = candidates.map((attempt, index) => attemptFromDetail(attempt, index));
+    return normalizeAttemptsForLogState(attempts, stringValue(record?.state) as RequestState) ?? [];
 }
 
 function detailPayload(value: unknown): Record<string, unknown> {
@@ -447,16 +466,19 @@ export function useLogDetailStream(id: number, state: RequestState | undefined, 
 
         const applySnapshot = (value: unknown) => {
             const payload = detailPayload(value);
+            const snapshotState = stringValue(payload.state) as RequestState;
             const history = detailAttemptsFromPayload(payload);
             if (history.length) setAttempts(history);
             const currentAttempt = payload.current_attempt;
             const currentIndex = numberValue(payload.current_attempt_index, -1);
-            if (currentAttempt) {
+            if (isTerminalLogState(snapshotState)) {
+                setRunningAttempt(null);
+            } else if (currentAttempt) {
                 setRunningAttempt(attemptFromDetail(currentAttempt));
             } else if (currentIndex >= 0) {
                 setRunningAttempt(history.find((attempt) => (attempt.attempt_index ?? attempt.attempt_num) === currentIndex) ?? null);
             }
-            if (payload.state === 'committed' || payload.state === 'success') setIsCommitted(true);
+            if (snapshotState === 'committed' || snapshotState === 'success') setIsCommitted(true);
         };
 
         const connect = async () => {
