@@ -2,6 +2,10 @@
 
 适用于仓库根目录及其所有子目录。
 
+## 仓库关系
+
+- 本仓库是 `MUKAPP/octopus` 的 fork，已在上游基础上修改部分功能；上游仓库地址为 `https://github.com/bestruirui/octopus.git`。
+
 ## 项目结构
 
 - `main.go`、`cmd/`：Cobra 命令入口；服务通过 `go run main.go start` 启动。
@@ -13,7 +17,7 @@
 
 ## 环境与命令
 
-- `go.mod` 声明 Go `1.26.0`，通过远程模块依赖 `github.com/looplj/axonhub/llm`；CI 构建前执行 `go get github.com/looplj/axonhub/llm@unstable` 以跟随上游最新代码。
+- `go.mod` 声明 Go `1.26.0`，通过远程模块依赖 `github.com/looplj/axonhub/llm`；GitHub Actions 在构建前执行 `go get github.com/looplj/axonhub/llm@unstable`，构建时以该命令解析的上游最新版本为准。仅更新某个伪版本的上游依赖提交通常不需要单独合入；本地确需验证最新版时使用同一命令，不要手工修改 `go.sum`。
 - 前端使用 pnpm，锁文件为 `web/pnpm-lock.yaml`。在 `web/` 中执行：
   - `pnpm install`：安装依赖。
   - `pnpm dev`：启动 Vite 开发服务器；可用 `VITE_PROXY_TARGET` 改写后端代理目标。
@@ -23,6 +27,11 @@
   - `go test ./...`：运行后端测试。
   - `go run main.go start`：以默认 `data/config.json` 启动服务；可使用 `--config <path>` 指定配置。
 - 前端依赖后端 API。联调时先启动后端，再在 `web/` 使用 `VITE_PROXY_TARGET="http://127.0.0.1:8080" pnpm dev`。改动嵌入式前端前，先运行 `pnpm build`。
+
+## 上游同步边界
+
+- 不合并上游改变请求调度方式的提交。当前 fork 保留独立的调度器、balancer、渠道/分组模型和相关数据库结构。
+- 上游故障转移、倍率/优先级调度、渠道模型拆表等调度或 schema 改动，以及依赖它们的 relay、超时、统计、迁移和前端提交，均不要与当前 fork 混合合并，除非任务明确要求迁移。
 
 ## 开发约定
 

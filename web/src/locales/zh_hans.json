@@ -309,6 +309,8 @@
             "loadFailed": "加载失败",
             "form": {
                 "name": "名称",
+                "value": "密钥值",
+                "valuePlaceholder": "留空自动生成",
                 "maxCost": "最大金额",
                 "maxCostPlaceholder": "请输入金额",
                 "unlimited": "无限制",
@@ -378,6 +380,7 @@
             "title": "账户设置",
             "save": "保存",
             "saving": "保存中...",
+            "cancel": "取消",
             "username": {
                 "label": "修改用户名",
                 "placeholder": "请输入新用户名",

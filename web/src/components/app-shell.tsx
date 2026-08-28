@@ -28,7 +28,7 @@ export function AppShell({ children, actions }: { children: ReactNode; actions?:
         >
             <NavBar />
             <main className="flex min-h-0 w-full min-w-0 flex-1 flex-col">
-                <header className="my-6 flex flex-none items-center gap-x-2 px-2">
+                <header className="my-3 md:my-6 flex flex-none items-center gap-x-2 px-2">
                     <Logo size={48} />
                     <div className="min-w-0 flex-1 overflow-hidden">
                         <AnimatePresence mode="wait" custom={direction}>
