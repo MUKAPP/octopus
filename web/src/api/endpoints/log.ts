@@ -263,14 +263,36 @@ function mergeRelayLog(existing: RelayLog, incoming: RelayLog): RelayLog {
     const existingTerminal = isTerminalLogState(existingState);
     const incomingTerminal = isTerminalLogState(incomingState);
 
-    if (existingTerminal !== incomingTerminal) {
-        return incomingTerminal ? incoming : existing;
-    }
+    // 终态是同一请求的权威结果；断线补拉或旧分页返回的运行中快照不能覆盖它。
+    if (existingTerminal && !incomingTerminal) return existing;
+    if (!existingTerminal && incomingTerminal) return incoming;
     if (existingTerminal && incomingTerminal) {
         if (existingState === 'success' && incomingState !== 'success') return existing;
         if (incomingState === 'success' && existingState !== 'success') return incoming;
     }
+
+    // 同一生命周期内以后收到的快照包含更完整的尝试历史和当前渠道。
     return incoming;
+}
+
+function normalizeMergedLog(log: RelayLog): RelayLog {
+    const state = getEffectiveLogState(log);
+    const attempts = normalizeAttemptsForLogState(log.attempts, state);
+    if (!attempts || attempts.length === 0) return log;
+
+    const currentAttempt = attempts.find((attempt) => attempt.status === 'running');
+    const finalAttempt = [...attempts].reverse().find((attempt) => attempt.status === 'success') ?? attempts[attempts.length - 1];
+    const displayedAttempt = currentAttempt ?? finalAttempt;
+    return {
+        ...log,
+        attempts,
+        channel: displayedAttempt?.channel_id ?? log.channel,
+        channel_name: displayedAttempt?.channel_name ?? log.channel_name,
+        rate_multiplier: displayedAttempt?.rate_multiplier ?? log.rate_multiplier,
+        actual_model_name: displayedAttempt?.model_name || log.actual_model_name,
+        final_channel_name: finalAttempt?.channel_name ?? log.final_channel_name,
+        final_rate_multiplier: finalAttempt?.rate_multiplier ?? log.final_rate_multiplier,
+    };
 }
 
 function mergeRelayLogList(logs: RelayLog[]): RelayLog[] {
@@ -279,8 +301,9 @@ function mergeRelayLogList(logs: RelayLog[]): RelayLog[] {
         const existing = byID.get(log.id);
         byID.set(log.id, existing ? mergeRelayLog(existing, log) : log);
     }
-    return Array.from(byID.values()).sort((a, b) => b.time - a.time || b.id - a.id);
+    return Array.from(byID.values()).map(normalizeMergedLog).sort((a, b) => b.time - a.time || b.id - a.id);
 }
+
 
 /**
  * 日志列表查询参数

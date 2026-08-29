@@ -115,7 +115,10 @@ function RetryBadgeWithTooltip({ channelName, brandColor, rateMultiplier, attemp
                     )}
                 </Badge>
             </TooltipTrigger>
-            <TooltipContent className="w-[min(22rem,calc(100vw-2rem))] min-w-0 rounded-3xl border bg-card p-2 shadow-sm">
+            <TooltipContent
+                data-attempt-state={attempts.map((attempt) => `${getAttemptOrder(attempt)}:${attempt.channel_id}:${attempt.status}:${attempt.duration}:${attempt.msg ?? ''}`).join('|')}
+                className="w-[min(22rem,calc(100vw-2rem))] min-w-0 rounded-3xl border bg-card p-2 shadow-sm"
+            >
                 <div className="flex flex-col gap-1">
                     {attempts.map((attempt, idx) => (
                         <div key={idx} className="flex w-full flex-col">

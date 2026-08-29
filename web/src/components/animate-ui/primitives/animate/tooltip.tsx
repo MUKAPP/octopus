@@ -36,6 +36,7 @@ type TooltipData = {
 
 type GlobalTooltipContextType = {
   showTooltip: (data: TooltipData) => void;
+  updateTooltip: (id: string, contentProps: HTMLMotionProps<'div'>, contentAsChild: boolean) => void;
   hideTooltip: () => void;
   hideImmediate: () => void;
   currentTooltip: TooltipData | null;
@@ -119,6 +120,20 @@ function TooltipProvider({
     [openDelay, closeDelay, currentTooltip],
   );
 
+  const updateTooltip = React.useCallback((id: string, contentProps: HTMLMotionProps<'div'>, contentAsChild: boolean) => {
+    setCurrentTooltip((current) => {
+      if (current?.id !== id) return current;
+      const previous = current.contentProps;
+      const keys = new Set([...Object.keys(previous), ...Object.keys(contentProps)]);
+      for (const key of keys) {
+        if (key !== 'children' && (previous as Record<string, unknown>)[key] !== (contentProps as Record<string, unknown>)[key]) {
+          return { ...current, contentProps, contentAsChild };
+        }
+      }
+      return current;
+    });
+  }, []);
+
   const hideTooltip = React.useCallback(() => {
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
     timeoutRef.current = window.setTimeout(() => {
@@ -155,6 +170,7 @@ function TooltipProvider({
     <GlobalTooltipProvider
       value={{
         showTooltip,
+        updateTooltip,
         hideTooltip,
         hideImmediate,
         currentTooltip,
@@ -431,7 +447,8 @@ function shallowEqualWithoutChildren(
 }
 
 function TooltipContent({ asChild = false, ...props }: TooltipContentProps) {
-  const { setProps, setAsChild } = useTooltip();
+  const { setProps, setAsChild, id } = useTooltip();
+  const { updateTooltip } = useGlobalTooltip();
   const lastPropsRef = React.useRef<HTMLMotionProps<'div'> | undefined>(
     undefined,
   );
@@ -441,7 +458,8 @@ function TooltipContent({ asChild = false, ...props }: TooltipContentProps) {
       lastPropsRef.current = props;
       setProps(props);
     }
-  }, [props, setProps]);
+    updateTooltip(id, props, asChild);
+  }, [asChild, id, props, setProps, updateTooltip]);
 
   React.useEffect(() => {
     setAsChild(asChild);
