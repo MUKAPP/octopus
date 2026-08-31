@@ -464,7 +464,7 @@ function LiveOverviewDetails({ log, brandColor }: { log: RelayLog; brandColor: s
                     </section>
                 </div>
 
-                <section className="order-3 flex h-fit min-h-0 shrink-0 flex-col overflow-hidden rounded-2xl border border-border bg-muted/30 md:order-none md:flex-1">
+                <section className="order-3 flex h-fit min-h-0 shrink-0 flex-col overflow-hidden rounded-2xl border border-border bg-muted/30 md:order-none md:h-full md:flex-1">
                     <div
                         role="button"
                         tabIndex={0}
