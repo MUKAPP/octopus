@@ -632,6 +632,7 @@ export function LogCard({ log }: { log: RelayLog }) {
                         <MorphingDialogClose className="top-4 right-5 text-muted-foreground hover:text-foreground transition-colors" />
                         <MorphingDialogTitle className="mb-4 flex min-w-0 flex-wrap items-center gap-2 pr-10 text-sm">
                             <ModelIcon aria-hidden="true" className={cn(iconClassName, "shrink-0")} width={28} height={28} />
+                            <span className="min-w-0 max-w-full break-words font-semibold text-card-foreground">{log.request_model_name}</span>
                             {reasoningEffort && <span className="min-w-0 max-w-full break-words text-xs font-normal text-muted-foreground">{reasoningEffort}</span>}
                             <ArrowRight className="size-3.5 shrink-0 text-muted-foreground/50" />
                             {hasMultipleAttempts ? (
