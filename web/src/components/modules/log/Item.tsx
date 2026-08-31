@@ -105,13 +105,13 @@ function RetryBadgeWithTooltip({ channelName, brandColor, rateMultiplier, attemp
             <TooltipTrigger asChild>
                 <Badge
                     variant="secondary"
-                    className="shrink-0 cursor-help px-1.5 py-0 text-xs"
+                    className="min-w-0 max-w-full shrink-0 cursor-help whitespace-normal px-1.5 py-0 text-xs"
                     style={{ backgroundColor: `${brandColor}15`, color: brandColor }}
                 >
-                    <RotateCw className="mr-1 size-3 translate-y-px opacity-80" />
-                    {channelName}
+                    <RotateCw className="mr-1 size-3 shrink-0 translate-y-px opacity-80" />
+                    <span className="min-w-0 break-words">{channelName}</span>
                     {formatRateMultiplier(rateMultiplier) && (
-                        <span className="ml-1 opacity-80">x{formatRateMultiplier(rateMultiplier)}</span>
+                        <span className="ml-1 shrink-0 opacity-80">x{formatRateMultiplier(rateMultiplier)}</span>
                     )}
                 </Badge>
             </TooltipTrigger>
@@ -167,10 +167,7 @@ function DeferredJsonContent({ content, fallbackText }: { content: string | unde
     }, [content]);
 
     useEffect(() => {
-        if (!isOpen) {
-            setShouldRender(false);
-            return;
-        }
+        if (!isOpen) return;
         const timer = setTimeout(() => setShouldRender(true), 300);
         return () => clearTimeout(timer);
     }, [isOpen]);
@@ -247,7 +244,7 @@ function LogMetrics({ log, brandColor, totalTime = log.use_time }: { log: RelayL
     const rateLabel = `x${formatRateMultiplier(log.rate_multiplier)}`;
 
     return (
-        <div className="mt-auto grid w-full shrink-0 grid-cols-1 gap-x-3 gap-y-2 pt-4 text-xs leading-5 text-muted-foreground sm:grid-cols-3 lg:grid-cols-5 min-[420px]:grid-cols-2 [&_svg]:translate-y-px">
+        <div className="mt-auto grid w-full shrink-0 grid-cols-2 gap-x-3 gap-y-2 pt-4 text-xs leading-5 text-muted-foreground sm:grid-cols-3 lg:grid-cols-5 [&_svg]:translate-y-px">
             <div className="flex min-w-0 items-center gap-1.5">
                 <Clock className="size-3.5 shrink-0" style={{ color: brandColor }} />
                 <span className="min-w-0 truncate tabular-nums" title={timeLabel}>{timeLabel}</span>
@@ -298,7 +295,7 @@ function LiveOverviewDetails({ log, brandColor }: { log: RelayLog; brandColor: s
     const [stopError, setStopError] = useState<string | null>(null);
     const [selectedAttemptIndex, setSelectedAttemptIndex] = useState<number | null>(null);
     const manualAttemptSelectionRef = useRef(false);
-    const [requestExpanded, setRequestExpanded] = useState(false);
+    const [requestExpanded, setRequestExpanded] = useState(() => typeof window !== 'undefined' && window.innerWidth < 768);
     const [attemptHistoryExpanded, setAttemptHistoryExpanded] = useState(true);
     const [responseExpanded, setResponseExpanded] = useState(true);
     const [now, setNow] = useState(() => Date.now());
@@ -321,10 +318,6 @@ function LiveOverviewDetails({ log, brandColor }: { log: RelayLog; brandColor: s
     useEffect(() => {
         if (!isOpen) {
             manualAttemptSelectionRef.current = false;
-            setSelectedAttemptIndex(null);
-            setRequestExpanded(false);
-            setAttemptHistoryExpanded(true);
-            setResponseExpanded(true);
             return;
         }
         setSelectedAttemptIndex((current) => {
@@ -338,6 +331,7 @@ function LiveOverviewDetails({ log, brandColor }: { log: RelayLog; brandColor: s
         });
     }, [attempts, isOpen]);
 
+
     const selectedAttempt = attempts.find((attempt) => getAttemptOrder(attempt) === selectedAttemptIndex) ?? attempts[attempts.length - 1];
     const selectedIsSuccessful = selectedAttempt?.status === 'success';
     const selectedIsCommitted = selectedAttempt?.status === 'running' && (detail.isCommitted || log.state === 'committed');
@@ -348,6 +342,7 @@ function LiveOverviewDetails({ log, brandColor }: { log: RelayLog; brandColor: s
     const responseContent = responseBody.data?.content ?? log.response_content;
     const requestTruncated = requestBody.data?.truncated ?? log.request_content_truncated;
     const responseTruncated = responseBody.data?.truncated ?? log.response_content_truncated;
+    const refetchResponseBody = responseBody.refetch;
     const previousResponseReadyRef = useRef(false);
     const previousLogStateRef = useRef(log.state);
     useEffect(() => {
@@ -363,9 +358,9 @@ function LiveOverviewDetails({ log, brandColor }: { log: RelayLog; brandColor: s
             && (log.state === 'success' || log.state === 'failed' || log.state === 'canceled');
         previousResponseReadyRef.current = true;
         if (becameReady || becameTerminal) {
-            void responseBody.refetch();
+            void refetchResponseBody();
         }
-    }, [canShowFinalResponse, isOpen, log.state, responseBody.refetch]);
+    }, [canShowFinalResponse, isOpen, log.state, refetchResponseBody]);
     const responseLoading = responseBody.isLoading || (responseBody.isFetching && !responseContent);
 
     const handleStop = async () => {
@@ -382,53 +377,45 @@ function LiveOverviewDetails({ log, brandColor }: { log: RelayLog; brandColor: s
         setSelectedAttemptIndex(attemptIndex);
     };
     const handleRequestToggle = () => {
-        if (requestExpanded) {
-            setRequestExpanded(false);
-            setResponseExpanded(true);
-        } else {
-            setRequestExpanded(true);
-            setResponseExpanded(false);
-        }
-    };
-    const handleResponseToggle = () => {
-        if (responseExpanded) {
-            setResponseExpanded(false);
-            setRequestExpanded(true);
-        } else {
-            setResponseExpanded(true);
-            setRequestExpanded(false);
-        }
+        setRequestExpanded((expanded) => !expanded);
     };
 
     const selectedError = selectedAttempt && selectedAttempt.status !== 'success' ? selectedAttempt.msg || log.error : undefined;
 
     return (
         <div className="flex h-full min-h-0 flex-col gap-4">
-            <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 md:grid-cols-2">
-                <div className="flex min-h-0 flex-col overflow-hidden rounded-2xl border border-border bg-muted/30">
-                    <div className={cn(
-                        "flex min-h-0 flex-col overflow-hidden",
-                        requestExpanded ? "hidden" : "md:flex-1",
-                        attemptHistoryExpanded ? "flex-1" : "shrink-0",
+            <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-auto md:grid md:grid-cols-2 md:overflow-hidden">
+                <div className="contents md:flex md:min-h-0 md:flex-1 md:flex-col md:overflow-hidden md:rounded-2xl md:border md:border-border md:bg-muted/30">
+                    <section className={cn(
+                        "order-1 flex min-h-0 shrink-0 flex-col overflow-hidden rounded-2xl border border-border bg-muted/30 md:order-none md:rounded-none md:border-0 md:bg-transparent",
+                        requestExpanded ? "md:hidden" : "md:flex-1",
                     )}>
-                        <div className="flex shrink-0 items-center gap-2 border-b border-border bg-muted/50 px-3 py-2.5 md:px-4 md:py-3">
-                            <RotateCw className="size-4 text-muted-foreground" />
-                            <span className="text-sm font-medium text-card-foreground">{t('attemptHistory')}</span>
-                            <Badge variant="secondary" className="text-xs">{attempts.length} {t('attempts')}</Badge>
-                            <button
-                                type="button"
-                                aria-label={t('attemptHistory')}
-                                aria-expanded={attemptHistoryExpanded}
-                                aria-controls={`attempt-history-${log.id}`}
-                                onClick={() => setAttemptHistoryExpanded((expanded) => !expanded)}
-                                className="ml-auto rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted md:hidden"
-                            >
-                                <ChevronDown className={cn("size-4 transition-transform", attemptHistoryExpanded && "rotate-180")} />
-                            </button>
+                        <div
+                            role="button"
+                            tabIndex={0}
+                            aria-label={t('attemptHistory')}
+                            aria-expanded={attemptHistoryExpanded}
+                            aria-controls={`attempt-history-${log.id}`}
+                            onClick={() => setAttemptHistoryExpanded((expanded) => !expanded)}
+                            onKeyDown={(event) => {
+                                if (event.key === 'Enter' || event.key === ' ') {
+                                    event.preventDefault();
+                                    setAttemptHistoryExpanded((expanded) => !expanded);
+                                }
+                            }}
+                            className="flex h-fit shrink-0 cursor-pointer flex-wrap items-center gap-2 border-b border-border bg-muted/50 px-3 py-2.5 md:px-4 md:py-3"
+                        >
+                            <RotateCw className="size-4 shrink-0 text-muted-foreground" />
+                            <span className="min-w-0 text-sm font-medium text-card-foreground">{t('attemptHistory')}</span>
+                            <Badge variant="secondary" className="shrink-0 text-xs">{attempts.length} {t('attempts')}</Badge>
+                            <ChevronDown className={cn("ml-auto size-4 text-muted-foreground transition-transform md:hidden", attemptHistoryExpanded && "rotate-180")} />
                         </div>
                         <div
                             id={`attempt-history-${log.id}`}
-                            className={cn("min-h-0 flex-1 overflow-auto p-2.5 md:p-3", !attemptHistoryExpanded && "hidden md:block")}
+                            className={cn(
+                                "max-h-[30dvh] overflow-auto p-2.5 md:min-h-0 md:flex-1 md:max-h-none md:p-3",
+                                !attemptHistoryExpanded && "hidden md:block",
+                            )}
                         >
                             {attempts.length > 0 ? (
                                 <div className="flex flex-col gap-2">
@@ -436,17 +423,20 @@ function LiveOverviewDetails({ log, brandColor }: { log: RelayLog; brandColor: s
                                         const attemptIndex = getAttemptOrder(attempt);
                                         const selected = selectedAttempt !== undefined && attemptIndex === getAttemptOrder(selectedAttempt);
                                         return (
-                                            <button key={`${attemptIndex}-${index}`} type="button" aria-pressed={selected} onClick={() => handleAttemptSelect(attemptIndex)} className={cn("flex w-full flex-col gap-1.5 rounded-xl border p-2.5 text-left text-xs transition-colors", selected ? "border-primary/40 bg-primary/10 ring-1 ring-primary/20" : attempt.status === 'success' ? "border-primary/20 bg-primary/5 hover:border-primary/40" : attempt.status === 'running' ? "border-border/50 bg-secondary/30 hover:border-border" : "border-destructive/20 bg-destructive/5 hover:border-destructive/40")}>
-                                                <div className="flex items-center gap-2">
+                                            <button key={`${attemptIndex}-${index}`} type="button" aria-pressed={selected} onClick={() => handleAttemptSelect(attemptIndex)} className={cn("flex w-full min-w-0 flex-col gap-1.5 rounded-xl border p-2.5 text-left text-xs transition-colors", selected ? "border-primary/40 bg-primary/10 ring-1 ring-primary/20" : attempt.status === 'success' ? "border-primary/20 bg-primary/5 hover:border-primary/40" : attempt.status === 'running' ? "border-border/50 bg-secondary/30 hover:border-border" : "border-destructive/20 bg-destructive/5 hover:border-destructive/40")}>
+                                                <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
                                                     <span className="shrink-0 font-mono text-[10px] text-muted-foreground">{t('attemptNumber', { number: getAttemptDisplayNumber(attempt) })}</span>
-                                                    <Badge className={cn("border-0 px-1.5 text-[10px] font-bold uppercase", getAttemptStatusClass(attempt.status))}>{statusT(getAttemptStatusLabelKey(attempt.status))}</Badge>
-                                                    <span className="min-w-0 truncate font-semibold text-foreground">{attempt.channel_name}</span>
+                                                    <Badge className={cn("shrink-0 border-0 px-1.5 text-[10px] font-bold uppercase", getAttemptStatusClass(attempt.status))}>{statusT(getAttemptStatusLabelKey(attempt.status))}</Badge>
+                                                    <span className="min-w-0 break-words font-semibold text-foreground">{attempt.channel_name}</span>
                                                     {attempt.sticky && <Pin className="size-3.5 shrink-0 text-amber-500" />}
-                                                    {attempt.status === 'running' && <Loader2 className="ml-auto size-3.5 shrink-0 animate-spin text-muted-foreground" />}
-                                                    {attempt.duration > 0 && <span className="ml-auto shrink-0 tabular-nums text-muted-foreground">{formatDuration(attempt.duration)}</span>}
+                                                    {attempt.status === 'running' && <Loader2 className="size-3.5 shrink-0 animate-spin text-muted-foreground" />}
+                                                    {attempt.duration > 0 && <span className="shrink-0 tabular-nums text-muted-foreground">{formatDuration(attempt.duration)}</span>}
                                                 </div>
-                                                {attempt.model_name && <span className="truncate pl-0.5 text-[11px] text-muted-foreground">{attempt.model_name}</span>}
-                                                <div className="flex items-center gap-2 pl-0.5 text-[11px] text-muted-foreground">{attempt.rate_multiplier > 0 && <span>x{formatRateMultiplier(attempt.rate_multiplier)}</span>}{attempt.msg && <span className="truncate text-destructive/90">{attempt.msg}</span>}</div>
+                                                {attempt.model_name && <span className="min-w-0 break-words pl-0.5 text-[11px] text-muted-foreground">{attempt.model_name}</span>}
+                                                <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1 pl-0.5 text-[11px] text-muted-foreground">
+                                                    {attempt.rate_multiplier > 0 && <span className="shrink-0">x{formatRateMultiplier(attempt.rate_multiplier)}</span>}
+                                                    {attempt.msg && <span className="min-w-0 basis-full break-words text-destructive/90">{attempt.msg}</span>}
+                                                </div>
                                             </button>
                                         );
                                     })}
@@ -457,49 +447,61 @@ function LiveOverviewDetails({ log, brandColor }: { log: RelayLog; brandColor: s
                                 <div className="flex h-full items-center justify-center text-xs text-muted-foreground">{t('noAttempts')}</div>
                             )}
                         </div>
-                    </div>
-                    <button type="button" aria-expanded={requestExpanded} aria-label={t('requestContent')} onClick={handleRequestToggle} className="flex shrink-0 items-center gap-2 border-t border-border bg-muted/50 px-3 py-2.5 text-left transition-colors hover:bg-muted md:px-4 md:py-3">
-                        <Send className="size-4 text-green-500" />
-                        <span className="text-sm font-medium text-card-foreground">{t('requestContent')}</span>
-                        {requestTruncated && <Badge variant="outline" className="border-amber-500/40 text-xs text-amber-600 dark:text-amber-400">{t('truncated')}</Badge>}
-                        <Badge variant="secondary" className="ml-auto text-xs">{log.input_tokens.toLocaleString()} {t('tokens')}</Badge>
-                        <ArrowDown className={cn("size-4 shrink-0 text-muted-foreground transition-transform", requestExpanded && "rotate-180")} />
-                    </button>
-                    {requestExpanded && <div className="min-h-0 flex-1 overflow-auto border-t border-border bg-background/20">{requestBody.error && !requestContent ? <div className="flex h-full items-center justify-center px-4 py-6 text-xs text-destructive">{t('detailUnavailable')}</div> : <DeferredJsonContent content={requestContent} fallbackText={t('noRequestContent')} />}</div>}
-                </div>
-                <section className="flex min-h-0 flex-col overflow-hidden rounded-2xl border border-border bg-muted/30">
-                    <div className="flex shrink-0 items-center gap-2 border-b border-border bg-muted/50 px-3 py-2.5 md:px-4 md:py-3">
-                        <MessageSquare className="size-4 text-purple-500" />
-                        <span className="text-sm font-medium text-card-foreground">{t('selectedAttempt')}</span>
-                        {selectedAttempt && <Badge className={cn("border-0 px-1.5 text-[10px] font-bold uppercase", getAttemptStatusClass(selectedAttempt.status))}>{statusT(getAttemptStatusLabelKey(selectedAttempt.status))}</Badge>}
-                        <button
-                            type="button"
-                            aria-label={t('finalResponse')}
-                            aria-expanded={responseExpanded}
-                            aria-controls={`response-content-${log.id}`}
-                            onClick={handleResponseToggle}
-                            className={cn("rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted md:hidden", !runningAttempt && "ml-auto")}
-                        >
-                            <ChevronDown className={cn("size-4 transition-transform", responseExpanded && "rotate-180")} />
+                    </section>
+
+                    <section className={cn(
+                        "order-2 flex h-fit min-h-0 shrink-0 flex-col overflow-hidden rounded-2xl border border-border bg-muted/30 md:order-none md:rounded-none md:border-0 md:bg-transparent",
+                        requestExpanded ? "md:flex-1" : "md:shrink-0",
+                    )}>
+                        <button type="button" aria-expanded={requestExpanded} aria-label={t('requestContent')} onClick={handleRequestToggle} className="flex w-full shrink-0 flex-wrap items-center gap-2 border-b border-border bg-muted/50 px-3 py-2.5 text-left transition-colors hover:bg-muted md:border-t md:border-b-0 md:px-4 md:py-3">
+                            <Send className="size-4 shrink-0 text-green-500" />
+                            <span className="min-w-0 text-sm font-medium text-card-foreground">{t('requestContent')}</span>
+                            {requestTruncated && <Badge variant="outline" className="shrink-0 border-amber-500/40 text-xs text-amber-600 dark:text-amber-400">{t('truncated')}</Badge>}
+                            <Badge variant="secondary" className="ml-auto shrink-0 text-xs">{log.input_tokens.toLocaleString()} {t('tokens')}</Badge>
+                            <ChevronDown className={cn("size-4 shrink-0 text-muted-foreground transition-transform", requestExpanded && "rotate-180")} />
                         </button>
-                        {runningAttempt && <button type="button" onClick={() => void handleStop()} disabled={stopAttempt.isPending} className="ml-auto flex items-center gap-1.5 rounded-md px-2 py-1 text-xs text-destructive transition-colors hover:bg-destructive/10 disabled:opacity-50">{stopAttempt.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <Square className="size-3.5" />}{t('stopAttempt')}</button>}
+                        {requestExpanded && <div className="max-h-[30dvh] overflow-auto border-t border-border bg-background/20 md:min-h-0 md:flex-1 md:max-h-none">{requestBody.error && !requestContent ? <div className="flex h-full items-center justify-center px-4 py-6 text-xs text-destructive">{t('detailUnavailable')}</div> : <DeferredJsonContent content={requestContent} fallbackText={t('noRequestContent')} />}</div>}
+                    </section>
+                </div>
+
+                <section className="order-3 flex h-fit min-h-0 shrink-0 flex-col overflow-hidden rounded-2xl border border-border bg-muted/30 md:order-none md:flex-1">
+                    <div
+                        role="button"
+                        tabIndex={0}
+                        aria-label={t('finalResponse')}
+                        aria-expanded={responseExpanded}
+                        aria-controls={`response-panel-${log.id}`}
+                        onClick={() => setResponseExpanded((expanded) => !expanded)}
+                        onKeyDown={(event) => {
+                            if (event.key === 'Enter' || event.key === ' ') {
+                                event.preventDefault();
+                                setResponseExpanded((expanded) => !expanded);
+                            }
+                        }}
+                        className="flex h-fit shrink-0 cursor-pointer flex-wrap items-center gap-2 border-b border-border bg-muted/50 px-3 py-2.5 md:px-4 md:py-3"
+                    >
+                        <MessageSquare className="size-4 shrink-0 text-purple-500" />
+                        <span className="min-w-0 text-sm font-medium text-card-foreground">{t('selectedAttempt')}</span>
+                        {selectedAttempt && <Badge className={cn("shrink-0 border-0 px-1.5 text-[10px] font-bold uppercase", getAttemptStatusClass(selectedAttempt.status))}>{statusT(getAttemptStatusLabelKey(selectedAttempt.status))}</Badge>}
+                        <ChevronDown className={cn("ml-auto size-4 text-muted-foreground transition-transform md:hidden", responseExpanded && "rotate-180")} />
+                        {runningAttempt && <button type="button" onClick={(event) => { event.stopPropagation(); void handleStop(); }} disabled={stopAttempt.isPending} className="ml-auto flex shrink-0 items-center gap-1.5 rounded-md px-2 py-1 text-xs text-destructive transition-colors hover:bg-destructive/10 disabled:opacity-50">{stopAttempt.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <Square className="size-3.5" />}{t('stopAttempt')}</button>}
                     </div>
-                    <div className="min-h-0 flex-1 overflow-auto">
+                    <div id={`response-panel-${log.id}`} className={cn("max-h-[30dvh] overflow-auto md:min-h-0 md:flex-1 md:max-h-none", !responseExpanded && "hidden md:block")}>
                         {stopError && <p className="border-b border-destructive/20 bg-destructive/5 px-3 py-2 text-xs text-destructive">{stopError}</p>}
-                        {selectedAttempt ? <div className="flex min-h-full flex-col">
-                            <div className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1 border-b border-border/70 px-3 py-3 text-xs md:px-4">
-                                <span className="font-mono text-muted-foreground">{t('attemptNumber', { number: getAttemptDisplayNumber(selectedAttempt) })}</span>
-                                {selectedAttempt.model_name && <span className="text-muted-foreground">{selectedAttempt.model_name}</span>}
-                                {selectedAttempt.rate_multiplier > 0 && <span className="text-muted-foreground">x{formatRateMultiplier(selectedAttempt.rate_multiplier)}</span>}
-                                {selectedAttempt.duration > 0 && <span className="tabular-nums text-muted-foreground">{formatDuration(selectedAttempt.duration)}</span>}
+                        {selectedAttempt ? <div className="flex min-h-full min-w-0 flex-col">
+                            <div className="flex shrink-0 flex-wrap items-start gap-x-3 gap-y-1 border-b border-border/70 px-3 py-3 text-xs md:px-4">
+                                <span className="shrink-0 font-mono text-muted-foreground">{t('attemptNumber', { number: getAttemptDisplayNumber(selectedAttempt) })}</span>
+                                {selectedAttempt.model_name && <span className="min-w-0 max-w-full break-words text-muted-foreground">{selectedAttempt.model_name}</span>}
+                                {selectedAttempt.rate_multiplier > 0 && <span className="shrink-0 text-muted-foreground">x{formatRateMultiplier(selectedAttempt.rate_multiplier)}</span>}
+                                {selectedAttempt.duration > 0 && <span className="shrink-0 tabular-nums text-muted-foreground">{formatDuration(selectedAttempt.duration)}</span>}
                             </div>
-                            <div id={`response-content-${log.id}`} className={cn("min-h-0 flex-1", !responseExpanded && "hidden md:block")}>
+                            <div className="min-h-0 md:flex-1">
                                 {selectedError && <div className="relative border-b border-destructive/20 bg-destructive/5 p-3"><CopyIconButton text={selectedError} className="absolute right-2 top-2 rounded-md p-1 text-destructive/60 transition-colors hover:bg-destructive/10 hover:text-destructive" copyIconClassName="size-4" checkIconClassName="size-4" /><p className="whitespace-pre-wrap wrap-break-word pr-8 text-sm leading-relaxed text-destructive">{selectedError}</p></div>}
-                                {canShowFinalResponse ? <div className="min-h-0 flex-1">{responseTruncated && <div className="px-3 pt-3"><Badge variant="outline" className="border-amber-500/40 text-xs text-amber-600 dark:text-amber-400">{t('truncated')}</Badge></div>}{responseLoading ? <div className="flex h-full items-center justify-center"><Loader2 className="size-5 animate-spin text-muted-foreground" /></div> : responseBody.error && !responseContent && !selectedIsCommitted ? <div className="flex h-full items-center justify-center px-4 text-xs text-destructive">{t('detailUnavailable')}</div> : <DeferredJsonContent content={responseContent} fallbackText={selectedIsCommitted ? t('responseStreaming') : t('noResponseContent')} />}</div> : selectedAttempt.status === 'running' ? <div className="flex min-h-0 flex-1 items-center justify-center gap-2 px-4 text-xs text-muted-foreground"><Loader2 className="size-4 animate-spin" />{t('waitingResponse')}</div> : !selectedError ? <div className="flex min-h-0 flex-1 items-center justify-center px-4 text-xs text-muted-foreground">{t('detailUnavailable')}</div> : null}
+                                {canShowFinalResponse ? <div className="min-h-0 md:flex-1">{responseTruncated && <div className="px-3 pt-3"><Badge variant="outline" className="border-amber-500/40 text-xs text-amber-600 dark:text-amber-400">{t('truncated')}</Badge></div>}{responseLoading ? <div className="flex h-full items-center justify-center"><Loader2 className="size-5 animate-spin text-muted-foreground" /></div> : responseBody.error && !responseContent && !selectedIsCommitted ? <div className="flex h-full items-center justify-center px-4 text-xs text-destructive">{t('detailUnavailable')}</div> : <DeferredJsonContent content={responseContent} fallbackText={selectedIsCommitted ? t('responseStreaming') : t('noResponseContent')} />}</div> : selectedAttempt.status === 'running' ? <div className="flex min-h-[8rem] items-center justify-center px-4 text-xs text-muted-foreground">{t('responseStreaming')}</div> : <div className="flex min-h-[8rem] items-center justify-center px-4 text-xs text-muted-foreground">{t('noResponseContent')}</div>}
                             </div>
-                        </div> : <div className="flex min-h-full flex-col">
+                        </div> : <div className="min-h-0 md:flex-1">
                             {log.error && <div className="relative border-b border-destructive/20 bg-destructive/5 p-3"><CopyIconButton text={log.error} className="absolute right-2 top-2 rounded-md p-1 text-destructive/60 transition-colors hover:bg-destructive/10 hover:text-destructive" copyIconClassName="size-4" checkIconClassName="size-4" /><p className="whitespace-pre-wrap wrap-break-word pr-8 text-sm leading-relaxed text-destructive">{log.error}</p></div>}
-                            <div id={`response-content-${log.id}`} className={cn("min-h-0 flex-1", !responseExpanded && "hidden md:block")}>
+                            <div className="min-h-0 md:flex-1">
                                 <DeferredJsonContent content={responseContent} fallbackText={isActive ? t('responseStreaming') : t('noResponseContent')} />
                             </div>
                         </div>}
@@ -519,6 +521,7 @@ export function LogCard({ log }: { log: RelayLog }) {
     );
     const requestAPIKeyName = useMemo(() => log.request_api_key_name?.trim() ?? '', [log.request_api_key_name]);
     const statusT = useTranslations('log.status');
+    const reasoningEffort = log.reasoning_effort?.trim() ?? '';
 
     const hasError = !!log.error;
     const hasMultipleAttempts = log.attempts && log.attempts.length > 1;
@@ -539,6 +542,7 @@ export function LogCard({ log }: { log: RelayLog }) {
                                 <span className="min-w-0 break-words font-semibold text-card-foreground" title={log.request_model_name}>
                                     {log.request_model_name}
                                 </span>
+                                {reasoningEffort && <span className="min-w-0 max-w-full break-words text-xs font-normal text-muted-foreground">{reasoningEffort}</span>}
                                 <ArrowRight className="size-3.5 shrink-0 text-muted-foreground/50" />
                                 {hasMultipleAttempts ? (
                                     <RetryBadgeWithTooltip
@@ -550,12 +554,12 @@ export function LogCard({ log }: { log: RelayLog }) {
                                 ) : (
                                     <Badge
                                         variant="secondary"
-                                        className="shrink-0 text-xs px-1.5 py-0"
+                                        className="min-w-0 max-w-full shrink-0 whitespace-normal px-1.5 py-0 text-xs"
                                         style={{ backgroundColor: `${brandColor}15`, color: brandColor }}
                                     >
-                                        {log.channel_name}
+                                        <span className="min-w-0 break-words">{log.channel_name}</span>
                                         {formatRateMultiplier(log.rate_multiplier) && (
-                                            <span className="ml-1 opacity-80">x{formatRateMultiplier(log.rate_multiplier)}</span>
+                                            <span className="ml-1 shrink-0 opacity-80">x{formatRateMultiplier(log.rate_multiplier)}</span>
                                         )}
                                     </Badge>
                                 )}
@@ -623,14 +627,13 @@ export function LogCard({ log }: { log: RelayLog }) {
                         </div>
                     </div>
                 </MorphingDialogTrigger>
-
                 <MorphingDialogContainer>
-                    <MorphingDialogContent className="relative flex h-full max-h-full w-full flex-col overflow-hidden rounded-3xl bg-card px-4 py-5 text-card-foreground sm:px-6 md:w-[80vw]">
+                    <MorphingDialogContent className="relative flex h-full max-h-full w-full max-w-full flex-col overflow-hidden rounded-3xl bg-card px-4 py-5 text-card-foreground sm:px-6 md:w-[80vw]">
                         <MorphingDialogClose className="top-4 right-5 text-muted-foreground hover:text-foreground transition-colors" />
-                        <MorphingDialogTitle className="flex items-center gap-2 mb-4 text-sm">
-                            <ModelIcon aria-hidden="true" className={iconClassName} width={28} height={28} />
-                            <span className="font-semibold text-card-foreground">{log.request_model_name}</span>
-                            <ArrowRight className="size-3.5 text-muted-foreground/50" />
+                        <MorphingDialogTitle className="mb-4 flex min-w-0 flex-wrap items-center gap-2 pr-10 text-sm">
+                            <ModelIcon aria-hidden="true" className={cn(iconClassName, "shrink-0")} width={28} height={28} />
+                            {reasoningEffort && <span className="min-w-0 max-w-full break-words text-xs font-normal text-muted-foreground">{reasoningEffort}</span>}
+                            <ArrowRight className="size-3.5 shrink-0 text-muted-foreground/50" />
                             {hasMultipleAttempts ? (
                                 <RetryBadgeWithTooltip
                                     channelName={log.channel_name}
@@ -641,16 +644,16 @@ export function LogCard({ log }: { log: RelayLog }) {
                             ) : (
                                 <Badge
                                     variant="secondary"
-                                    className="text-xs px-1.5 py-0"
+                                    className="min-w-0 max-w-full shrink-0 whitespace-normal px-1.5 py-0 text-xs"
                                     style={{ backgroundColor: `${brandColor}15`, color: brandColor }}
                                 >
-                                    {log.channel_name}
+                                    <span className="min-w-0 break-words">{log.channel_name}</span>
                                     {formatRateMultiplier(log.rate_multiplier) && (
-                                        <span className="ml-1 opacity-80">({t('rateMultiplier')} {formatRateMultiplier(log.rate_multiplier)})</span>
+                                        <span className="ml-1 shrink-0 opacity-80">({t('rateMultiplier')} {formatRateMultiplier(log.rate_multiplier)})</span>
                                     )}
                                 </Badge>
                             )}
-                            <span className="text-muted-foreground">{log.actual_model_name}</span>
+                            <span className="min-w-0 max-w-full break-words text-muted-foreground">{log.actual_model_name}</span>
                             {log.is_overview && log.state && (
                                 <Badge variant="outline" className="shrink-0 text-[10px] uppercase">
                                     {statusT(log.state)}
@@ -665,63 +668,63 @@ export function LogCard({ log }: { log: RelayLog }) {
                             {log.is_overview ? (
                                 <LiveOverviewDetails log={log} brandColor={brandColor} />
                             ) : (
-                                <div className="grid h-full min-h-0 grid-cols-1 gap-4 md:grid-cols-2">
-                                    <div className="flex min-h-0 flex-col overflow-hidden rounded-2xl border border-border bg-muted/30">
-                                        <div className="flex shrink-0 items-center gap-2 border-b border-border bg-muted/50 px-3 py-2.5 md:px-4 md:py-3">
-                                            <Send className="size-4 text-green-500" />
-                                            <span className="text-sm font-medium text-card-foreground">{t('requestContent')}</span>
+                                <div className="flex h-full min-h-0 min-w-0 flex-col gap-4 overflow-auto md:grid md:grid-cols-2 md:overflow-hidden">
+                                    <div className="order-2 flex min-h-0 shrink-0 min-w-0 flex-col overflow-hidden rounded-2xl border border-border bg-muted/30 md:order-none md:flex-1">
+                                        <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-border bg-muted/50 px-3 py-2.5 md:px-4 md:py-3">
+                                            <Send className="size-4 shrink-0 text-green-500" />
+                                            <span className="min-w-0 text-sm font-medium text-card-foreground">{t('requestContent')}</span>
                                             {log.request_content_truncated && (
-                                                <Badge variant="outline" className="border-amber-500/40 text-xs text-amber-600 dark:text-amber-400">
+                                                <Badge variant="outline" className="shrink-0 border-amber-500/40 text-xs text-amber-600 dark:text-amber-400">
                                                     {t('truncated')}
                                                 </Badge>
                                             )}
-                                            <Badge variant="secondary" className="ml-auto text-xs">
+                                            <Badge variant="secondary" className="ml-auto shrink-0 text-xs">
                                                 {log.input_tokens.toLocaleString()} {t('tokens')}
                                             </Badge>
                                         </div>
-                                        <div className="min-h-0 flex-1 overflow-auto">
+                                        <div className="max-h-[30dvh] overflow-auto md:min-h-0 md:flex-1 md:max-h-none">
                                             <DeferredJsonContent content={log.request_content} fallbackText={t('noRequestContent')} />
                                         </div>
                                     </div>
 
-                                    <div className="flex min-h-0 flex-col gap-4 overflow-hidden">
-                                        <section className="flex min-h-0 flex-[1.1] flex-col overflow-hidden rounded-2xl border border-border bg-muted/30">
-                                            <div className="flex shrink-0 items-center gap-2 border-b border-border bg-muted/50 px-3 py-2.5 md:px-4 md:py-3">
-                                                <RotateCw className="size-4 text-muted-foreground" />
-                                                <span className="text-sm font-medium text-card-foreground">{t('attemptHistory')}</span>
-                                                <Badge variant="secondary" className="text-xs">{orderedAttempts.length} {t('attempts')}</Badge>
+                                    <div className="contents md:flex md:min-h-0 md:flex-1 md:flex-col md:gap-4 md:overflow-hidden">
+                                        <section className="order-1 flex min-h-0 shrink-0 min-w-0 flex-col overflow-hidden rounded-2xl border border-border bg-muted/30 md:order-none md:flex-[1.1]">
+                                            <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-border bg-muted/50 px-3 py-2.5 md:px-4 md:py-3">
+                                                <RotateCw className="size-4 shrink-0 text-muted-foreground" />
+                                                <span className="min-w-0 text-sm font-medium text-card-foreground">{t('attemptHistory')}</span>
+                                                <Badge variant="secondary" className="shrink-0 text-xs">{orderedAttempts.length} {t('attempts')}</Badge>
                                             </div>
-                                            <div className="min-h-0 flex-1 overflow-auto p-2.5 md:p-3">
+                                            <div className="max-h-[30dvh] overflow-auto p-2.5 md:min-h-0 md:flex-1 md:max-h-none">
                                                 {orderedAttempts.length > 0 ? (
                                                     <div className="flex flex-col gap-2">
                                                         {orderedAttempts.map((attempt, index) => (
                                                             <div
                                                                 key={`${getAttemptOrder(attempt)}-${index}`}
                                                                 className={cn(
-                                                                    "flex flex-col gap-1.5 rounded-xl border p-2.5 text-xs",
+                                                                    "flex min-w-0 flex-col gap-1.5 rounded-xl border p-2.5 text-xs",
                                                                     attempt.status === 'success'
                                                                         ? "border-primary/20 bg-primary/5"
                                                                         : "border-destructive/20 bg-destructive/5",
                                                                 )}
                                                             >
-                                                                <div className="flex items-center gap-2">
+                                                                <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
                                                                     <span className="shrink-0 font-mono text-[10px] text-muted-foreground">
                                                                         {t('attemptNumber', { number: index + 1 })}
                                                                     </span>
                                                                     <Badge
                                                                         variant="outline"
                                                                         className={cn(
-                                                                            "border-0 px-1.5 text-[10px] font-bold uppercase",
+                                                                            "shrink-0 border-0 px-1.5 text-[10px] font-bold uppercase",
                                                                             getAttemptStatusClass(attempt.status),
                                                                         )}
                                                                     >
                                                                         {statusT(getAttemptStatusLabelKey(attempt.status))}
                                                                     </Badge>
-                                                                    <span className="font-semibold text-foreground">{attempt.channel_name}</span>
-                                                                    {attempt.model_name && <span className="truncate text-muted-foreground">({attempt.model_name})</span>}
-                                                                    {attempt.sticky && <Pin className="size-3.5 text-amber-500" />}
-                                                                    {attempt.rate_multiplier > 0 && <span className="text-muted-foreground">x{formatRateMultiplier(attempt.rate_multiplier)}</span>}
-                                                                    {attempt.duration > 0 && <span className="ml-auto tabular-nums text-muted-foreground">{formatDuration(attempt.duration)}</span>}
+                                                                    <span className="min-w-0 break-words font-semibold text-foreground">{attempt.channel_name}</span>
+                                                                    {attempt.model_name && <span className="min-w-0 max-w-full break-words text-muted-foreground">({attempt.model_name})</span>}
+                                                                    {attempt.sticky && <Pin className="size-3.5 shrink-0 text-amber-500" />}
+                                                                    {attempt.rate_multiplier > 0 && <span className="shrink-0 text-muted-foreground">x{formatRateMultiplier(attempt.rate_multiplier)}</span>}
+                                                                    {attempt.duration > 0 && <span className="shrink-0 tabular-nums text-muted-foreground">{formatDuration(attempt.duration)}</span>}
                                                                 </div>
                                                                 {attempt.msg && (
                                                                     <div className="whitespace-pre-wrap wrap-break-word border-l-2 border-destructive/30 pl-2 text-[11px] leading-relaxed text-destructive/90">
@@ -739,20 +742,20 @@ export function LogCard({ log }: { log: RelayLog }) {
                                             </div>
                                         </section>
 
-                                        <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-border bg-muted/30">
-                                            <div className="flex shrink-0 items-center gap-2 border-b border-border bg-muted/50 px-3 py-2.5 md:px-4 md:py-3">
-                                                <MessageSquare className="size-4 text-purple-500" />
-                                                <span className="text-sm font-medium text-card-foreground">{t('finalResponse')}</span>
+                                        <section className="order-3 flex min-h-0 shrink-0 min-w-0 flex-col overflow-hidden rounded-2xl border border-border bg-muted/30 md:order-none md:flex-1">
+                                            <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-border bg-muted/50 px-3 py-2.5 md:px-4 md:py-3">
+                                                <MessageSquare className="size-4 shrink-0 text-purple-500" />
+                                                <span className="min-w-0 text-sm font-medium text-card-foreground">{t('finalResponse')}</span>
                                                 {log.response_content_truncated && (
-                                                    <Badge variant="outline" className="border-amber-500/40 text-xs text-amber-600 dark:text-amber-400">
+                                                    <Badge variant="outline" className="shrink-0 border-amber-500/40 text-xs text-amber-600 dark:text-amber-400">
                                                         {t('truncated')}
                                                     </Badge>
                                                 )}
-                                                <Badge variant="secondary" className="ml-auto text-xs">
+                                                <Badge variant="secondary" className="ml-auto shrink-0 text-xs">
                                                     {log.output_tokens.toLocaleString()} {t('tokens')}
                                                 </Badge>
                                             </div>
-                                            <div className="min-h-0 flex-1 overflow-auto">
+                                            <div className="max-h-[30dvh] overflow-auto md:min-h-0 md:flex-1 md:max-h-none">
                                                 {log.error && (
                                                     <div className="relative border-b border-destructive/20 bg-destructive/5 p-3">
                                                         <CopyIconButton

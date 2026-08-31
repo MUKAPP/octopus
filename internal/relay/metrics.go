@@ -175,6 +175,9 @@ func (m *RelayMetrics) buildRelayLog(err error, duration time.Duration, attempts
 		Attempts:         append([]model.ChannelAttempt(nil), attempts...),
 		TotalAttempts:    len(attempts),
 	}
+	if m.InternalRequest != nil {
+		relayLog.ReasoningEffort = m.InternalRequest.ReasoningEffort
+	}
 
 	if apiKeyName != "" {
 		relayLog.RequestAPIKeyName = apiKeyName

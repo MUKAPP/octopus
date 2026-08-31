@@ -17,6 +17,7 @@ export interface RelayLogOverview {
     request_model: string;
     actual_model: string;
     client_protocol: string;
+    reasoning_effort?: string;
     stream: boolean;
     final_channel_name: string;
     final_rate_multiplier?: number;
@@ -135,6 +136,7 @@ export function normalizeRelayLog(value: RelayLog | RelayLogOverview | unknown):
             id: numberValue(record.id),
             time: startedAt,
             request_model_name: requestModel,
+            reasoning_effort: stringValue(record.reasoning_effort),
             request_api_key_name: stringValue(record.request_api_key_name ?? record.api_key_name) || undefined,
             channel: numberValue(record.channel ?? finalAttempt?.channel_id),
             channel_name: finalChannel,
@@ -174,7 +176,7 @@ export function normalizeRelayLog(value: RelayLog | RelayLogOverview | unknown):
             : undefined,
         state,
     );
-    return { ...old, attempts };
+    return { ...old, reasoning_effort: stringValue(record.reasoning_effort), attempts };
 }
 
 /**
@@ -220,6 +222,7 @@ export interface RelayLog {
     id: number;
     time: number;                // 时间戳
     request_model_name: string;  // 请求模型名称
+    reasoning_effort: string;    // 请求推理强度
     request_api_key_name?: string; // 请求使用的 API Key 名称
     channel: number;             // 实际使用的渠道ID
     channel_name: string;        // 渠道名称
@@ -432,11 +435,6 @@ export function useLogDetailStream(id: number, state: RequestState | undefined, 
         let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
         let reconnectAttempt = 0;
 
-        setAttempts([]);
-        setRunningAttempt(null);
-        setIsCommitted(state === 'committed' || state === 'success');
-        setIsConnected(false);
-        setError(null);
 
         const terminal = state === 'success' || state === 'failed' || state === 'canceled';
         if (!enabled || terminal) {
