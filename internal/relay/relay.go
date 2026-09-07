@@ -106,6 +106,7 @@ func newRelayRun(c *gin.Context, inboundType llm.APIFormat, inAdapter transforme
 		},
 		iter:  iter,
 		group: group,
+		tried: make(map[relaySelectionKey]struct{}),
 	}, nil
 }
 
@@ -113,40 +114,48 @@ func (r *relayRun) run() {
 	ctx := r.c.Request.Context()
 	r.registerActive()
 	var lastErr error
+	for pass := range 2 {
+		if pass == 1 && len(r.deferred) == 0 {
+			break
+		}
+		r.probe = pass == 1
+		r.iter.Rewind()
+		for r.iter.Next() {
+			r.resetCandidate()
+			for !r.candidateDone {
+				select {
+				case <-ctx.Done():
+					log.Infof("request context canceled, stopping retry")
+					r.removeActive()
+					r.metrics.Save(ctx, false, context.Canceled, r.iter.Attempts())
+					return
+				default:
+				}
 
-	for r.iter.Next() {
-		select {
-		case <-ctx.Done():
-			log.Infof("request context canceled, stopping retry")
-			r.removeActive()
-			r.metrics.Save(ctx, false, context.Canceled, r.iter.Attempts())
-			return
-		default:
-		}
+				attempt, err := r.prepareAttempt()
+				if err != nil {
+					lastErr = err
+				}
+				if attempt == nil {
+					continue
+				}
 
-		attempt, err := r.prepareAttempt()
-		if err != nil {
-			lastErr = err
-			continue
+				responseFinalized, err := attempt.run()
+				if err == nil {
+					r.removeActive()
+					r.metrics.Save(ctx, true, nil, r.iter.Attempts())
+					return
+				}
+				if responseFinalized {
+					r.removeActive()
+					r.metrics.Save(ctx, false, err, r.iter.Attempts())
+					return
+				}
+				lastErr = err
+			}
 		}
-		if attempt == nil {
-			continue
-		}
-
-		responseFinalized, err := attempt.run()
-		if err == nil {
-			r.removeActive()
-			r.metrics.Save(ctx, true, nil, r.iter.Attempts())
-			return
-		}
-		if responseFinalized {
-			r.removeActive()
-			r.metrics.Save(ctx, false, err, r.iter.Attempts())
-			return
-		}
-		lastErr = err
 	}
-
+	r.probe = false
 	if lastErr == nil {
 		lastErr = errors.New("all channels failed")
 	}
@@ -239,43 +248,75 @@ func (r *relayRun) emitAttemptsSince(start int) {
 	}
 }
 
-func (r *relayRun) prepareAttempt() (*relayAttempt, error) {
-	item := r.iter.Item()
-	channel, err := op.ChannelGet(item.ChannelID, r.c.Request.Context())
-	if err != nil {
-		log.Warnf("failed to get channel %d: %v", item.ChannelID, err)
-		start := len(r.iter.Attempts())
-		r.iter.Skip(item.ChannelID, 0, fmt.Sprintf("channel_%d", item.ChannelID), fmt.Sprintf("channel not found: %v", err))
-		r.emitAttemptsSince(start)
-		return nil, err
-	}
-	if !channel.Enabled {
-		start := len(r.iter.Attempts())
-		r.iter.Skip(channel.ID, 0, channel.Name, "channel disabled")
-		r.emitAttemptsSince(start)
-		return nil, nil
-	}
+func (r *relayRun) resetCandidate() {
+	r.candidateStarted = true
+	r.candidateItemIndex = r.iter.Index()
+	r.candidateLoaded = false
+	r.candidateDone = false
+	r.candidateKeyIndex = 0
+	r.candidateChannel = nil
+}
 
-	usedKey := channel.GetChannelKey()
-	if usedKey.ChannelKey == "" {
-		start := len(r.iter.Attempts())
-		r.iter.Skip(channel.ID, 0, channel.Name, "no available key")
-		r.emitAttemptsSince(start)
-		return nil, nil
+func (r *relayRun) hasDeferredItem(item dbmodel.GroupItem) bool {
+	for key := range r.deferred {
+		if key.channelID == item.ChannelID && key.modelName == item.ModelName {
+			return true
+		}
 	}
-	if r.iter.SkipCircuitBreak(channel.ID, usedKey.ID, channel.Name) {
-		r.emitAttemptsSince(len(r.iter.Attempts()) - 1)
-		return nil, nil
-	}
+	return false
+}
 
-	outAdapter, err := newOutbound(channel.Type, r.internalRequest, channel.GetBaseUrl(), usedKey.ChannelKey)
-	if err != nil {
-		start := len(r.iter.Attempts())
-		r.iter.Skip(channel.ID, usedKey.ID, channel.Name, err.Error())
-		r.emitAttemptsSince(start)
-		return nil, nil
+func (r *relayRun) deferSelection(key relaySelectionKey) {
+	if r.deferred == nil {
+		r.deferred = make(map[relaySelectionKey]struct{})
 	}
+	r.deferred[key] = struct{}{}
+}
 
+func (r *relayRun) markTried(key relaySelectionKey) {
+	if r.tried == nil {
+		r.tried = make(map[relaySelectionKey]struct{})
+	}
+	r.tried[key] = struct{}{}
+}
+
+func relayKeySortRank(key dbmodel.ChannelKey, nowSec int64) int {
+	if !key.Enabled || key.ChannelKey == "" {
+		return 2
+	}
+	if key.IsCoolingDown(nowSec) {
+		return 1
+	}
+	return 0
+}
+
+func sortRelayChannelKeys(keys []dbmodel.ChannelKey) {
+	nowSec := time.Now().Unix()
+	slices.SortStableFunc(keys, func(left, right dbmodel.ChannelKey) int {
+		leftRank := relayKeySortRank(left, nowSec)
+		rightRank := relayKeySortRank(right, nowSec)
+		if leftRank != rightRank {
+			if leftRank < rightRank {
+				return -1
+			}
+			return 1
+		}
+		if left.TotalCost < right.TotalCost {
+			return -1
+		}
+		if left.TotalCost > right.TotalCost {
+			return 1
+		}
+		return 0
+	})
+}
+
+func (r *relayRun) preparedAttempt(item dbmodel.GroupItem, channel *dbmodel.Channel, usedKey dbmodel.ChannelKey, outAdapter transformer.Outbound) *relayAttempt {
+	r.markTried(relaySelectionKey{
+		channelID: channel.ID,
+		keyID:     usedKey.ID,
+		modelName: item.ModelName,
+	})
 	// 每次尝试都把客户端模型改成本次候选的实际上游模型；重试时会被下一候选覆盖。
 	r.internalRequest.Model = item.ModelName
 	r.metrics.ActualModel = item.ModelName
@@ -285,13 +326,124 @@ func (r *relayRun) prepareAttempt() (*relayAttempt, error) {
 		r.metrics.RequestModel, r.group.Mode, channel.Name, item.ModelName,
 		r.iter.Index()+1, r.iter.Len(), r.iter.IsSticky())
 	op.RelayActiveUpdate(r.metrics.ID, channel.Name, item.ModelName)
-
 	return &relayAttempt{
 		relayRun:   r,
 		outAdapter: outAdapter,
 		channel:    channel,
 		usedKey:    usedKey,
-	}, nil
+	}
+}
+
+func (r *relayRun) prepareAttempt() (*relayAttempt, error) {
+	item := r.iter.Item()
+	if !r.candidateStarted || r.candidateItemIndex != r.iter.Index() {
+		r.resetCandidate()
+	}
+	if r.candidateDone {
+		return nil, nil
+	}
+	if r.probe && !r.hasDeferredItem(item) {
+		r.candidateDone = true
+		return nil, nil
+	}
+
+	if !r.candidateLoaded {
+		r.candidateLoaded = true
+		channel, err := op.ChannelGet(item.ChannelID, r.c.Request.Context())
+		if err != nil {
+			log.Warnf("failed to get channel %d: %v", item.ChannelID, err)
+			start := len(r.iter.Attempts())
+			r.iter.Skip(item.ChannelID, 0, fmt.Sprintf("channel_%d", item.ChannelID), fmt.Sprintf("channel not found: %v", err))
+			r.emitAttemptsSince(start)
+			r.candidateDone = true
+			return nil, err
+		}
+		r.candidateChannel = channel
+		if !channel.Enabled {
+			start := len(r.iter.Attempts())
+			r.iter.Skip(channel.ID, 0, channel.Name, "channel disabled")
+			r.emitAttemptsSince(start)
+			r.candidateDone = true
+			return nil, nil
+		}
+
+		sortRelayChannelKeys(channel.Keys)
+		hasKey := false
+		for _, key := range channel.Keys {
+			if key.Enabled && key.ChannelKey != "" {
+				hasKey = true
+				break
+			}
+		}
+		if !hasKey {
+			start := len(r.iter.Attempts())
+			r.iter.Skip(channel.ID, 0, channel.Name, "no available key")
+			r.emitAttemptsSince(start)
+			r.candidateDone = true
+			return nil, nil
+		}
+	}
+
+	channel := r.candidateChannel
+	nowSec := time.Now().Unix()
+	for r.candidateKeyIndex < len(channel.Keys) {
+		usedKey := channel.Keys[r.candidateKeyIndex]
+		r.candidateKeyIndex++
+		if !usedKey.Enabled || usedKey.ChannelKey == "" {
+			continue
+		}
+		selection := relaySelectionKey{
+			channelID: channel.ID,
+			keyID:     usedKey.ID,
+			modelName: item.ModelName,
+		}
+		if _, tried := r.tried[selection]; tried {
+			continue
+		}
+
+		if r.probe {
+			if _, deferred := r.deferred[selection]; !deferred {
+				continue
+			}
+		} else {
+			state, remaining := balancer.GetCircuitState(channel.ID, usedKey.ID, item.ModelName)
+			if state == balancer.StateHalfOpen || (state == balancer.StateOpen && remaining > 0) {
+				r.deferSelection(selection)
+				start := len(r.iter.Attempts())
+				r.iter.SkipCircuitBreak(channel.ID, usedKey.ID, channel.Name)
+				r.emitAttemptsSince(start)
+				continue
+			}
+			if usedKey.IsCoolingDown(nowSec) {
+				r.deferSelection(selection)
+				start := len(r.iter.Attempts())
+				r.iter.Skip(channel.ID, usedKey.ID, channel.Name, "key is in 429 cooldown")
+				r.emitAttemptsSince(start)
+				continue
+			}
+		}
+
+		// 适配器准备完成后才占用探针，避免构造失败留下无人完成的 HalfOpen。
+		outAdapter, err := newOutbound(channel.Type, r.internalRequest, channel.GetBaseUrl(), usedKey.ChannelKey)
+		if err != nil {
+			start := len(r.iter.Attempts())
+			r.iter.Skip(channel.ID, usedKey.ID, channel.Name, err.Error())
+			r.emitAttemptsSince(start)
+			continue
+		}
+		if !r.probe || !balancer.Probe(channel.ID, usedKey.ID, item.ModelName) {
+			if tripped, _ := balancer.IsTripped(channel.ID, usedKey.ID, item.ModelName); tripped {
+				r.deferSelection(selection)
+				start := len(r.iter.Attempts())
+				r.iter.SkipCircuitBreak(channel.ID, usedKey.ID, channel.Name)
+				r.emitAttemptsSince(start)
+				continue
+			}
+		}
+		return r.preparedAttempt(item, channel, usedKey, outAdapter), nil
+	}
+	r.candidateDone = true
+	return nil, nil
 }
 
 // run 统一管理一次通道尝试的完整生命周期。

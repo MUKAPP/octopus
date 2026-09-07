@@ -12,6 +12,13 @@ import (
 )
 
 type relayAttemptContextKey struct{}
+
+type relaySelectionKey struct {
+	channelID int
+	keyID     int
+	modelName string
+}
+
 type relayRun struct {
 	c               *gin.Context
 	inAdapter       transformer.Inbound
@@ -20,6 +27,17 @@ type relayRun struct {
 	metrics         *RelayMetrics
 	iter            *balancer.Iterator
 	group           dbmodel.Group
+	probe           bool
+
+	tried    map[relaySelectionKey]struct{}
+	deferred map[relaySelectionKey]struct{}
+
+	candidateStarted   bool
+	candidateItemIndex int
+	candidateLoaded    bool
+	candidateDone      bool
+	candidateKeyIndex  int
+	candidateChannel   *dbmodel.Channel
 
 	attemptCancelMu sync.Mutex
 	attemptCancel   context.CancelFunc

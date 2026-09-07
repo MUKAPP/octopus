@@ -79,6 +79,9 @@ func (it *Iterator) Index() int {
 	return it.index
 }
 
+// Rewind 重置候选位置，保留尝试记录。
+func (it *Iterator) Rewind() { it.index = -1 }
+
 // Skip 记录当前通道被跳过（通道禁用、无Key、类型不兼容等）
 func (it *Iterator) Skip(channelID, channelKeyID int, channelName, msg string) {
 	it.count++
@@ -95,11 +98,12 @@ func (it *Iterator) Skip(channelID, channelKeyID int, channelName, msg string) {
 	})
 }
 
-// SkipCircuitBreak 检查熔断状态，若已熔断自动记录（含剩余冷却时间）并返回 true
+// SkipCircuitBreak 检查熔断状态，若已熔断自动记录（含剩余冷却时间）并返回 true。
+// 状态读取不会抢占 Open -> HalfOpen 的探针；探针由调用方在准备完成后单独取得。
 func (it *Iterator) SkipCircuitBreak(channelID, channelKeyID int, channelName string) bool {
 	modelName := it.candidates[it.index].ModelName
-	tripped, remaining := IsTripped(channelID, channelKeyID, modelName)
-	if !tripped {
+	state, remaining := GetCircuitState(channelID, channelKeyID, modelName)
+	if state == StateClosed {
 		return false
 	}
 	msg := "circuit breaker tripped"

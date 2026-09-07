@@ -129,19 +129,24 @@ func (c *Channel) GetChannelKey() ChannelKey {
 	}
 
 	nowSec := time.Now().Unix()
-
 	best := ChannelKey{}
 	bestCost := 0.0
 	bestSet := false
+	fallback := ChannelKey{}
+	fallbackCost := 0.0
+	fallbackSet := false
 
 	for _, k := range c.Keys {
 		if !k.Enabled || k.ChannelKey == "" {
 			continue
 		}
-		if k.StatusCode == 429 && k.LastUseTimeStamp > 0 {
-			if nowSec-k.LastUseTimeStamp < int64(5*time.Minute/time.Second) {
-				continue
-			}
+		if !fallbackSet || k.TotalCost < fallbackCost {
+			fallback = k
+			fallbackCost = k.TotalCost
+			fallbackSet = true
+		}
+		if k.IsCoolingDown(nowSec) {
+			continue
 		}
 		if !bestSet || k.TotalCost < bestCost {
 			best = k
@@ -150,8 +155,15 @@ func (c *Channel) GetChannelKey() ChannelKey {
 		}
 	}
 
-	if !bestSet {
-		return ChannelKey{}
+	if bestSet {
+		return best
 	}
-	return best
+	return fallback
+}
+
+// IsCoolingDown 返回 key 是否处于最近一次 429 的避让期；没有替代项时允许重试。
+func (key ChannelKey) IsCoolingDown(nowSec int64) bool {
+	return key.StatusCode == 429 &&
+		key.LastUseTimeStamp > 0 &&
+		nowSec-key.LastUseTimeStamp < int64(5*time.Minute/time.Second)
 }

@@ -88,6 +88,32 @@ func GetCooldown(tripCount int) time.Duration {
 	return time.Duration(cooldown) * time.Second
 }
 
+// GetCircuitState 返回熔断器当前状态，但不会把 Open 转为 HalfOpen。
+// remaining 仅在仍处于冷却期的 Open 状态下有意义。
+func GetCircuitState(channelID, keyID int, modelName string) (state CircuitState, remaining time.Duration) {
+	if !isCircuitBreakerEnabled() {
+		globalBreaker.Clear()
+		return StateClosed, 0
+	}
+	v, ok := globalBreaker.Load(circuitKey(channelID, keyID, modelName))
+	if !ok {
+		return StateClosed, 0
+	}
+	entry := v.(*circuitEntry)
+	entry.mu.Lock()
+	defer entry.mu.Unlock()
+
+	if entry.State != StateOpen {
+		return entry.State, 0
+	}
+	cooldown := GetCooldown(entry.TripCount)
+	elapsed := time.Since(entry.LastFailureTime)
+	if elapsed >= cooldown {
+		return StateOpen, 0
+	}
+	return StateOpen, cooldown - elapsed
+}
+
 // IsTripped 检查通道是否处于熔断状态
 // 返回 tripped=true 表示该通道应被跳过，remaining 为剩余冷却时间
 func IsTripped(channelID, keyID int, modelName string) (tripped bool, remaining time.Duration) {
@@ -155,6 +181,26 @@ func RecordSuccess(channelID, keyID int, modelName string) {
 	entry.State = StateClosed
 	entry.ConsecutiveFailures = 0
 	entry.TripCount = 0
+}
+
+// Probe 将熔断器转为半开，仅允许一个请求试探。
+// 熔断器关闭时不清理已有状态，也不取得探针。
+func Probe(channelID, keyID int, modelName string) bool {
+	if !isCircuitBreakerEnabled() {
+		return false
+	}
+	v, ok := globalBreaker.Load(circuitKey(channelID, keyID, modelName))
+	if !ok {
+		return false
+	}
+	entry := v.(*circuitEntry)
+	entry.mu.Lock()
+	defer entry.mu.Unlock()
+	if entry.State != StateOpen {
+		return false
+	}
+	entry.State = StateHalfOpen
+	return true
 }
 
 // RecordFailure 记录失败，可能触发熔断
