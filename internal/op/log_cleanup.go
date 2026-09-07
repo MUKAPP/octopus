@@ -7,7 +7,6 @@ import (
 	"github.com/bestruirui/octopus/internal/db"
 	"github.com/bestruirui/octopus/internal/model"
 	"github.com/bestruirui/octopus/internal/utils/log"
-	"gorm.io/gorm"
 )
 
 const relayLogCleanupRetention = 7 * 24 * time.Hour
@@ -29,14 +28,5 @@ func RelayLogCleanupTask() {
 }
 
 func cleanupLegacyRelayLogs(ctx context.Context, cutoff time.Time) error {
-	return db.GetDB().WithContext(ctx).Connection(func(tx *gorm.DB) error {
-		result := tx.Where("time < ?", cutoff.Unix()).Delete(&model.RelayLog{})
-		if result.Error != nil {
-			return result.Error
-		}
-		if result.RowsAffected == 0 {
-			return nil
-		}
-		return db.ReclaimSQLiteFreePages(tx)
-	})
+	return db.GetDB().WithContext(ctx).Where("time < ?", cutoff.Unix()).Delete(&model.RelayLog{}).Error
 }

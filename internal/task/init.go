@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/bestruirui/octopus/internal/db"
 	"github.com/bestruirui/octopus/internal/model"
 	"github.com/bestruirui/octopus/internal/op"
 	"github.com/bestruirui/octopus/internal/price"
@@ -14,6 +15,7 @@ const (
 	TaskPriceUpdate     = "price_update"
 	TaskStatsSave       = "stats_save"
 	TaskRelayLogCleanup = "relay_log_cleanup"
+	TaskSQLiteReclaim   = "sqlite_reclaim"
 	TaskSyncLLM         = "sync_llm"
 	TaskCleanLLM        = "clean_llm"
 	TaskBaseUrlDelay    = "base_url_delay"
@@ -22,6 +24,7 @@ const (
 func Init() {
 	// 新日志只保存在内存；启动时和每天定期清理升级前遗留的数据库日志。
 	Register(TaskRelayLogCleanup, 24*time.Hour, true, op.RelayLogCleanupTask)
+	Register(TaskSQLiteReclaim, 10*time.Minute, true, db.SQLiteReclaimTask)
 	priceUpdateIntervalHours, err := op.SettingGetInt(model.SettingKeyModelInfoUpdateInterval)
 	if err != nil {
 		log.Errorf("failed to get model info update interval: %v", err)

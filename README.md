@@ -182,11 +182,12 @@ Three database types are supported:
 **SQLite Storage Notes:**
 
 - Relay request/response log content is configured in the admin panel under **Log Settings**, not in `config.json`. Each side (request and response) is limited to 256 KiB by default; saving can be disabled entirely or the limit adjusted between 1 KiB and 10 MiB.
-- A plain `DELETE` only produces reusable free pages — the database file does not shrink. Background maintenance incrementally reclaims at most 2048 pages per 10-minute cycle, but reclaiming the file space of a large existing database requires an offline compaction.
+- A plain `DELETE` only produces reusable free pages. Background maintenance runs a bounded SQLite incremental reclamation pass every 10 minutes, including when `relay_logs` is already empty; it reclaims at most 2048 pages (about 8 MiB) per pass without `VACUUM`. Reclaiming the full space of a large existing database may take many hours. It requires `auto_vacuum=2`; legacy mode `0` is handled by the offline compact-copy command.
+- Reclamation runs once on startup, has a 30-second deadline per pass, and never overlaps itself. A non-blocking PASSIVE WAL checkpoint follows each pass; active readers can delay physical shrinkage, and the WAL file is not forcibly truncated. MySQL and PostgreSQL are skipped.
 - To compact an existing SQLite database:
-  1. Stop the service, then back up `data.db`, `data.db-wal` and `data.db-shm` together.
-  2. Ensure roughly twice the current database size in free disk space for the VACUUM temporary files.
-  3. Run `octopus database compact --config <path-to-config>`.
+  1. Stop the service, then back up `data.db`, `data.db-wal` and `data.db-shm` to another location.
+  2. Ensure enough free space for the compacted copy, SQLite overhead and a safety margin. A highly sparse database can need far less space than the original file, but the required size is not fixed.
+  3. Run `octopus database compact --config <path-to-config>`. The command checkpoints the source, writes `VACUUM INTO` to a temporary sibling, runs `quick_check`, verifies `auto_vacuum=2` and `freelist_count=0`, then atomically replaces the original only after validation succeeds.
   4. Only after it succeeds, start the new version and wait for the migration to finish.
 - Never run `database compact` against a bind-mounted volume while the container is still running.
 

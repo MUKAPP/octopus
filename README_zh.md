@@ -182,11 +182,12 @@ http://localhost:5173
 **SQLite 存储说明：**
 
 - 转发日志的请求/响应正文在管理端「日志设置」中配置，而不是 `config.json`。每侧（请求、响应）默认最多 256 KiB，可以完全关闭正文保存，也可以在 1 KiB – 10 MiB 之间调整上限。
-- 普通 `DELETE` 只会产生可复用的空闲页，数据库文件不会收缩。后台维护每个 10 分钟周期最多增量回收 2048 页，但要真正回收存量库的文件空间需要离线压缩。
+- 普通 `DELETE` 只会产生可复用的空闲页。后台维护每 10 分钟独立执行一次有界 SQLite 增量回收，即使 `relay_logs` 已经为空也会继续回收；每轮最多回收 2048 页（约 8 MiB），不会执行 `VACUUM`。大型存量数据库可能需要较长时间才能完成回收。需要 `auto_vacuum=2`；旧库模式 `0` 由离线紧凑副本流程处理。
+- 服务启动时也会回收一次，每轮限时 30 秒且不会重叠执行。每轮使用不等待读者退出的 PASSIVE WAL checkpoint；活跃读事务可能延迟物理文件收缩，且不会强制截断 WAL 文件。MySQL、PostgreSQL 跳过此维护。
 - 压缩存量 SQLite 数据库的流程：
-  1. 停止服务，然后一起备份 `data.db`、`data.db-wal`、`data.db-shm`。
-  2. 预留约为当前数据库两倍的临时磁盘空间（VACUUM 临时文件）。
-  3. 运行 `octopus database compact --config <配置文件路径>`。
+  1. 停止服务，然后将 `data.db`、`data.db-wal`、`data.db-shm` 一起备份到其他位置。
+  2. 预留紧凑副本、SQLite 开销和安全余量所需的磁盘空间。高度稀疏的数据库所需空间可能远小于原文件，但无法固定保证具体大小。
+  3. 运行 `octopus database compact --config <配置文件路径>`。命令会先 checkpoint 源库，再通过 `VACUUM INTO` 写入同目录临时副本，执行 `quick_check`，验证 `auto_vacuum=2` 和 `freelist_count=0`，验证成功后才原子替换原文件。
   4. 确认成功后，再启动新版本并等待建索引完成。
 - 不要在容器运行期间对绑定卷执行 `database compact`。
 

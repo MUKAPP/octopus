@@ -18,7 +18,7 @@ var databaseCmd = &cobra.Command{
 
 var compactCmd = &cobra.Command{
 	Use:   "compact",
-	Short: "Compact a SQLite database offline (service must be stopped)",
+	Short: "Compact a SQLite database via a validated copy (service must be stopped)",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if err := conf.Load(compactConfigFile); err != nil {
 			return err
@@ -49,7 +49,7 @@ var compactCmd = &cobra.Command{
 
 func init() {
 	compactCmd.Flags().StringVar(&compactConfigFile, "config", "", "config file (default is ./data/config.json)")
-	_ = compactCmd.MarkFlagRequired("config")
+	// 空值交由 conf.Load 使用默认的 ./data/config.json；显式路径仍可覆盖默认值。
 	databaseCmd.AddCommand(compactCmd)
 	rootCmd.AddCommand(databaseCmd)
 }
