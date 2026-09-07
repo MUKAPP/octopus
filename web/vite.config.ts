@@ -1,5 +1,6 @@
 import path from 'node:path';
 import react from '@vitejs/plugin-react';
+import { compression, defineAlgorithm } from 'vite-plugin-compression2';
 import { defineConfig } from 'vite';
 
 export default defineConfig({
@@ -9,6 +10,11 @@ export default defineConfig({
       babel: {
         plugins: ['babel-plugin-react-compiler'],
       },
+    }),
+    compression({
+      algorithms: [defineAlgorithm('gzip', { level: 9 })],
+      include: /\.(html|css|js|mjs|json|svg|txt|xml)$/,
+      deleteOriginalAssets: true,
     }),
   ],
   resolve: {
