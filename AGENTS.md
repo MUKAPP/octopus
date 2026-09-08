@@ -4,7 +4,11 @@
 
 ## 仓库关系
 
-- 本仓库是 `MUKAPP/octopus` 的 fork，已在上游基础上修改部分功能；上游仓库地址为 `https://github.com/bestruirui/octopus.git`。
+- 本仓库是 `MUKAPP/octopus` 的长期 fork，主开发分支为 `dev`；不要为了对齐上游将其改名或重置为上游分支。
+- `origin` 指向本 fork：`https://github.com/MUKAPP/octopus`；`upstream` 指向原项目：`https://github.com/bestruirui/octopus.git`。
+- 上游当前主分支为 `master`，本地通过只读参考引用 `upstream/master` 跟踪；上游提交不是默认应直接合并到 `dev` 的变更。
+- 上游同步审查、已引入/未引入提交及同步批次记录维护在 `UPSTREAM_SYNC.md`；修改同步边界或处理上游提交时必须同步更新该台账。
+- 不要把“已审查”误记为“已引入”。同步应在临时 `sync/upstream-YYYY-MM-DD` 分支完成评估和验证后再合回 `dev`。
 
 ## 项目结构
 
