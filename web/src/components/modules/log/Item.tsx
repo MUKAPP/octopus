@@ -34,6 +34,21 @@ function formatTime(timestamp: number): string {
     });
 }
 
+/** 尝试的服务端开始时刻（Unix 毫秒）；缺失、零值或非法值显示占位符。 */
+function formatAttemptStartedAt(timestampMs?: number): string {
+    const placeholder = '--:--:--.---';
+    if (timestampMs === undefined || !Number.isFinite(timestampMs) || timestampMs === 0) return placeholder;
+    const date = new Date(timestampMs);
+    if (Number.isNaN(date.getTime())) return placeholder;
+    return date.toLocaleTimeString('zh-CN', {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        fractionalSecondDigits: 3,
+        hour12: false,
+    });
+}
+
 function formatRateMultiplier(rate: number): string {
     return rate > 0 ? rate.toLocaleString('zh-CN', { maximumFractionDigits: 4 }) : '';
 }
@@ -133,8 +148,9 @@ function RetryBadgeWithTooltip({ channelName, brandColor, rateMultiplier, attemp
                                             <span className="ml-1 font-normal opacity-80">({t('rateMultiplier')} {formatRateMultiplier(attempt.rate_multiplier)})</span>
                                         )}
                                     </span>
-                                    <span className="truncate text-[10px] text-muted-foreground">
-                                        {attempt.model_name} • {formatDuration(attempt.duration)}
+                                    <span className="min-w-0 break-words text-[10px] tabular-nums text-muted-foreground">
+                                        {attempt.model_name} • {formatDuration(attempt.duration)} •{' '}
+                                        <span className="shrink-0 whitespace-nowrap tabular-nums">{formatAttemptStartedAt(attempt.started_at_ms)}</span>
                                     </span>
                                 </div>
                             </div>
@@ -431,6 +447,7 @@ function LiveOverviewDetails({ log, brandColor }: { log: RelayLog; brandColor: s
                                                     {attempt.sticky && <Pin className="size-3.5 shrink-0 text-amber-500" />}
                                                     {attempt.status === 'running' && <Loader2 className="size-3.5 shrink-0 animate-spin text-muted-foreground" />}
                                                     {attempt.duration > 0 && <span className="shrink-0 tabular-nums text-muted-foreground">{formatDuration(attempt.duration)}</span>}
+                                                    <span className="shrink-0 tabular-nums text-muted-foreground">{formatAttemptStartedAt(attempt.started_at_ms)}</span>
                                                 </div>
                                                 {attempt.model_name && <span className="min-w-0 break-words pl-0.5 text-[11px] text-muted-foreground">{attempt.model_name}</span>}
                                                 <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1 pl-0.5 text-[11px] text-muted-foreground">
@@ -494,6 +511,7 @@ function LiveOverviewDetails({ log, brandColor }: { log: RelayLog; brandColor: s
                                 {selectedAttempt.model_name && <span className="min-w-0 max-w-full break-words text-muted-foreground">{selectedAttempt.model_name}</span>}
                                 {selectedAttempt.rate_multiplier > 0 && <span className="shrink-0 text-muted-foreground">x{formatRateMultiplier(selectedAttempt.rate_multiplier)}</span>}
                                 {selectedAttempt.duration > 0 && <span className="shrink-0 tabular-nums text-muted-foreground">{formatDuration(selectedAttempt.duration)}</span>}
+                                <span className="shrink-0 tabular-nums text-muted-foreground">{formatAttemptStartedAt(selectedAttempt.started_at_ms)}</span>
                             </div>
                             <div className="min-h-0 md:flex-1">
                                 {selectedError && <div className="relative border-b border-destructive/20 bg-destructive/5 p-3"><CopyIconButton text={selectedError} className="absolute right-2 top-2 rounded-md p-1 text-destructive/60 transition-colors hover:bg-destructive/10 hover:text-destructive" copyIconClassName="size-4" checkIconClassName="size-4" /><p className="whitespace-pre-wrap wrap-break-word pr-8 text-sm leading-relaxed text-destructive">{selectedError}</p></div>}
@@ -726,6 +744,7 @@ export function LogCard({ log }: { log: RelayLog }) {
                                                                     {attempt.sticky && <Pin className="size-3.5 shrink-0 text-amber-500" />}
                                                                     {attempt.rate_multiplier > 0 && <span className="shrink-0 text-muted-foreground">x{formatRateMultiplier(attempt.rate_multiplier)}</span>}
                                                                     {attempt.duration > 0 && <span className="shrink-0 tabular-nums text-muted-foreground">{formatDuration(attempt.duration)}</span>}
+                                                                    <span className="shrink-0 tabular-nums text-muted-foreground">{formatAttemptStartedAt(attempt.started_at_ms)}</span>
                                                                 </div>
                                                                 {attempt.msg && (
                                                                     <div className="whitespace-pre-wrap wrap-break-word border-l-2 border-destructive/30 pl-2 text-[11px] leading-relaxed text-destructive/90">

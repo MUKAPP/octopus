@@ -109,6 +109,7 @@ function normalizeAttempt(value: unknown, index: number, durationIsNanoseconds: 
         attempt_index: numberValue(record.attempt_index, numberValue(record.attempt_num, index + 1)),
         status,
         duration,
+        started_at_ms: record.started_at_ms == null ? undefined : numberValue(record.started_at_ms),
         sticky: record.sticky == null ? undefined : boolValue(record.sticky),
         msg: stringValue(record.msg ?? record.error),
     };
@@ -197,6 +198,7 @@ export interface ChannelAttempt {
     attempt_index?: number; // 新详情流使用的尝试序号
     status: AttemptStatus;
     duration: number;       // 耗时(毫秒)
+    started_at_ms?: number; // 服务端尝试开始时刻(Unix 毫秒)；跳过条目缺失
     sticky?: boolean;
     msg?: string;
 }

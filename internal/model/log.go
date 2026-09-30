@@ -20,6 +20,7 @@ type ChannelAttempt struct {
 	AttemptNum     int           `json:"attempt_num"`
 	Status         AttemptStatus `json:"status"`
 	Duration       int           `json:"duration"`
+	StartedAtMS    int64         `json:"started_at_ms,omitempty"` // 本次尝试的服务端开始时刻（Unix 毫秒）；跳过条目为零值
 	Sticky         bool          `json:"sticky,omitempty"`
 	Msg            string        `json:"msg,omitempty"`
 }

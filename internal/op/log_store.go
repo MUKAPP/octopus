@@ -35,6 +35,7 @@ type RelayLogAttempt struct {
 	Error          string              `json:"error,omitempty"`
 	Status         model.AttemptStatus `json:"status"`
 	Duration       int                 `json:"duration"`
+	StartedAtMS    int64               `json:"started_at_ms,omitempty"`
 	RateMultiplier float64             `json:"rate_multiplier"`
 	Sticky         bool                `json:"sticky,omitempty"`
 	AttemptNum     int                 `json:"attempt_num,omitempty"`
@@ -153,6 +154,7 @@ func relayLogAttemptFromModel(index int, attempt model.ChannelAttempt) RelayLogA
 		Error:          attempt.Msg,
 		Status:         attempt.Status,
 		Duration:       attempt.Duration,
+		StartedAtMS:    attempt.StartedAtMS,
 		RateMultiplier: attempt.RateMultiplier,
 		Sticky:         attempt.Sticky,
 		AttemptNum:     attempt.AttemptNum,
@@ -170,6 +172,7 @@ func modelAttemptFromRelay(attempt RelayLogAttempt) model.ChannelAttempt {
 		AttemptNum:     attempt.AttemptNum,
 		Status:         attempt.Status,
 		Duration:       attempt.Duration,
+		StartedAtMS:    attempt.StartedAtMS,
 		Sticky:         attempt.Sticky,
 		Msg:            attempt.Msg,
 	}
