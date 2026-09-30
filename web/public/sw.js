@@ -8,7 +8,7 @@
  * - FONT cache is version-independent (fonts persist across updates)
  */
 const CACHE_PREFIX = 'octopus';
-const CACHE_VERSION = 'v2';
+const CACHE_VERSION = 'v3';
 const CACHE_NAMES = {
     shell: `${CACHE_PREFIX}-shell-${CACHE_VERSION}`,
     static: `${CACHE_PREFIX}-static-${CACHE_VERSION}`,
