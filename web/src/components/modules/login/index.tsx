@@ -67,7 +67,7 @@ export function LoginForm({ onLoginSuccess }: { onLoginSuccess?: () => void }) {
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.3 }}
-      className="min-h-screen flex items-center justify-center px-6 text-foreground"
+      className="min-h-dvh flex items-center justify-center pl-[calc(1.5rem+var(--safe-area-left))] pr-[calc(1.5rem+var(--safe-area-right))] pt-[max(1.5rem,var(--safe-area-top))] pb-[max(1.5rem,var(--safe-area-bottom))] text-foreground"
     >
       <div className="w-full max-w-sm space-y-8">
         <header className="flex flex-col items-center gap-3">

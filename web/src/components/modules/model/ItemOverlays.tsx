@@ -99,7 +99,7 @@ export function ModelEditOverlay({
         <motion.div
             ref={setOverlayRef}
             layoutId={layoutId}
-            className="z-20 flex flex-col bg-card p-5 rounded-3xl border border-border custom-shadow"
+            className="z-20 flex flex-col bg-card p-5 rounded-3xl border border-border custom-shadow scrollbar overflow-y-auto max-h-[calc(100dvh-var(--safe-area-top)-var(--safe-area-bottom))]"
             transition={{ type: 'spring', stiffness: 400, damping: 30 }}
         >
             <h3 className="text-sm font-semibold text-card-foreground line-clamp-1 mb-3">

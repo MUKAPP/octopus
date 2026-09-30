@@ -21,11 +21,11 @@ export function NavBar() {
     const hoverIndicatorRef = useRef<HTMLSpanElement>(null);
 
     return (
-        <div className="relative z-50 md:min-h-screen">
+        <div className="relative z-50 md:min-h-full">
             <motion.nav
                 aria-label={t('ariaLabel')}
                 className={cn(
-                    "fixed bottom-[calc(1.5rem+env(safe-area-inset-bottom))] left-1/2 isolate -translate-x-1/2 flex items-center gap-1 p-3",
+                    "fixed bottom-[calc(1.5rem+var(--safe-area-bottom))] left-1/2 isolate -translate-x-1/2 flex items-center gap-1 p-3",
                     "md:sticky md:top-30 md:left-auto md:bottom-auto md:translate-x-0 md:flex-col md:gap-3",
                     "bg-sidebar text-sidebar-foreground border border-sidebar-border rounded-3xl",
                     "custom-shadow"

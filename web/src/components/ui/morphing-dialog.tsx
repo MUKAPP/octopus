@@ -428,7 +428,7 @@ function MorphingDialogOverlayLayer({
 
   return createPortal(
     <div className='pointer-events-none fixed inset-0 z-[60]'>
-      <div className='flex h-full items-center justify-center px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))]'>
+      <div className='flex h-full items-center justify-center pt-(--overlay-top) pr-(--overlay-right) pb-(--overlay-bottom) pl-(--overlay-left)'>
         <motion.div
           ref={panelRef}
           layoutId={layoutId}
@@ -480,8 +480,8 @@ function MorphingDialogContainer({ children, className, style }: MorphingDialogC
           />
           <div
             className={cn(
-              'fixed inset-0 z-50 flex min-h-0 items-center justify-center overflow-clip px-4',
-              'pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))]',
+              'fixed inset-0 z-50 flex min-h-0 items-center justify-center overflow-clip',
+              'pt-(--overlay-top) pr-(--overlay-right) pb-(--overlay-bottom) pl-(--overlay-left)',
               className
             )}
             style={style}

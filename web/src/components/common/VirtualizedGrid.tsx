@@ -157,11 +157,11 @@ export function VirtualizedGrid<T>({
                 className="scrollbar relative h-full w-full overflow-y-auto overscroll-contain rounded-t-3xl px-2"
             >
                 {isLoading && items.length === 0 ? (
-                    <div className="flex min-h-full items-center justify-center px-4 pb-[calc(6rem+env(safe-area-inset-bottom))] md:pb-4">
+                    <div className="flex min-h-full items-center justify-center px-4 pb-nav-clearance md:pb-[calc(1rem+var(--safe-area-bottom))]">
                         <Loader2 className="size-8 animate-spin text-muted-foreground" role="status" aria-label="加载中" />
                     </div>
                 ) : rowCount === 0 ? (
-                    <div className="flex min-h-full items-center justify-center px-4 pb-[calc(6rem+env(safe-area-inset-bottom))] md:pb-4">
+                    <div className="flex min-h-full items-center justify-center px-4 pb-nav-clearance md:pb-[calc(1rem+var(--safe-area-bottom))]">
                         {emptyState}
                     </div>
                 ) : (
@@ -222,7 +222,7 @@ export function VirtualizedGrid<T>({
                     </div>
                     <div
                         aria-hidden="true"
-                        className="h-[calc(6rem+env(safe-area-inset-bottom))] md:h-4"
+                        className="h-nav-clearance md:h-[calc(1rem+var(--safe-area-bottom))]"
                     />
                     </>
                 )}

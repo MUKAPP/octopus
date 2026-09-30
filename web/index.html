@@ -2,7 +2,7 @@
 <html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#eae9e3" />
     <meta name="application-name" content="Octopus" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -17,10 +17,12 @@
     <title>Octopus</title>
     <script>
       const theme = localStorage.getItem('theme');
-      document.documentElement.classList.toggle(
-        'dark',
-        theme === 'dark' ||
-          ((theme === null || theme === 'system') && window.matchMedia('(prefers-color-scheme: dark)').matches),
+      const isDark = theme === 'dark' ||
+        ((theme === null || theme === 'system') && window.matchMedia('(prefers-color-scheme: dark)').matches);
+      document.documentElement.classList.toggle('dark', isDark);
+      document.querySelector('meta[name="theme-color"]').setAttribute(
+        'content',
+        isDark ? '#413a2c' : '#eae9e3',
       );
     </script>
     <style>

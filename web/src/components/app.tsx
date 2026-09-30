@@ -143,7 +143,7 @@ export function AppContainer() {
     // 加载页面
     if (isLoading) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-background">
+            <div className="min-h-dvh flex items-center justify-center bg-background pt-(--safe-area-top) pr-(--safe-area-right) pb-(--safe-area-bottom) pl-(--safe-area-left)">
                 <Logo size={120} animate />
             </div>
         );

@@ -6,7 +6,7 @@ import { PageWrapper } from '@/components/common/PageWrapper';
 
 export function Home() {
     return (
-        <PageWrapper className="scrollbar h-full min-h-0 overflow-y-auto overscroll-contain space-y-6 pb-24 px-2 md:pb-4 rounded-t-3xl">
+        <PageWrapper className="scrollbar h-full min-h-0 overflow-y-auto overscroll-contain space-y-6 pb-nav-clearance px-2 md:pb-[calc(1rem+var(--safe-area-bottom))] rounded-t-3xl">
             <Total />
             <Activity />
             <StatsChart />

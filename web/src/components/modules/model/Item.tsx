@@ -9,6 +9,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/animate-ui
 import { ModelDeleteOverlay, ModelEditOverlay } from './ItemOverlays';
 import { cn } from '@/lib/utils';
 import { createPortal } from 'react-dom';
+import { getSafeAreaInsets, useSafeAreaInsets } from '@/hooks/use-safe-area-insets';
 
 interface ModelItemProps {
     model: LLMInfo;
@@ -17,6 +18,7 @@ interface ModelItemProps {
 
 export const ModelItem = memo(function ModelItem({ model, layout = 'grid' }: ModelItemProps) {
     const t = useTranslations('model');
+    const insets = useSafeAreaInsets();
     const isListLayout = layout === 'list';
     const [isEditOpen, setIsEditOpen] = useState(false);
     const [confirmDelete, setConfirmDelete] = useState(false);
@@ -45,16 +47,19 @@ export const ModelItem = memo(function ModelItem({ model, layout = 'grid' }: Mod
         if (!card) return;
         const rect = card.getBoundingClientRect();
         const height = editOverlayHeightRef.current;
-        const viewportHeight = window.innerHeight;
-        const maxTop = Math.max(viewportHeight - height, 0);
-        const flipUp = height > 0 && rect.top + height > viewportHeight;
+        const safeArea = getSafeAreaInsets();
+        const viewportBottom = window.innerHeight - safeArea.bottom;
+        const maxTop = Math.max(safeArea.top, viewportBottom - height);
+        const flipUp = height > 0 && rect.top + height > viewportBottom;
         const anchorTop = flipUp ? rect.bottom - height : rect.top;
-        const top = Math.min(Math.max(anchorTop, 0), maxTop);
+        const top = Math.min(Math.max(anchorTop, safeArea.top), maxTop);
+        const width = Math.min(rect.width, window.innerWidth - safeArea.left - safeArea.right);
+        const left = Math.min(Math.max(rect.left, safeArea.left), window.innerWidth - safeArea.right - width);
         setOverlayRect((prev) => {
-            if (prev && prev.top === top && prev.left === rect.left && prev.width === rect.width) {
+            if (prev && prev.top === top && prev.left === left && prev.width === width) {
                 return prev;
             }
-            return { top, left: rect.left, width: rect.width };
+            return { top, left, width };
         });
     }, []);
 
@@ -150,6 +155,10 @@ export const ModelItem = memo(function ModelItem({ model, layout = 'grid' }: Mod
             document.removeEventListener('keydown', handleKeyDown);
         };
     }, [isEditOpen, updateOverlayRect, closeEdit]);
+
+    useEffect(() => {
+        if (isEditOpen) updateOverlayRect();
+    }, [isEditOpen, insets, updateOverlayRect]);
 
     const shouldRenderEditPortal = isEditOpen || overlayRect !== null;
 

@@ -43,7 +43,7 @@ export function CreateDialogContent() {
     };
 
     return (
-        <div className="flex max-h-[calc(100dvh-2rem)] min-h-0 min-w-0 w-full flex-col md:max-w-xl">
+        <div className="flex max-h-full min-h-0 min-w-0 w-full flex-col md:max-w-xl">
             <MorphingDialogTitle className="shrink-0">
                 <header className="mb-4 flex items-center justify-between">
                     <h2 className="text-2xl font-bold text-card-foreground">{t('title')}</h2>

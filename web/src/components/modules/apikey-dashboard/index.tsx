@@ -57,7 +57,7 @@ export function APIKeyDashboard() {
 
     if (isLoading) {
         return (
-            <div className="min-h-screen flex items-center justify-center">
+            <div className="min-h-dvh flex items-center justify-center pt-(--safe-area-top) pr-(--safe-area-right) pb-(--safe-area-bottom) pl-(--safe-area-left)">
                 <Loader2 className="size-8 animate-spin text-muted-foreground" role="status" aria-label="加载中" />
             </div>
         );
@@ -65,7 +65,7 @@ export function APIKeyDashboard() {
 
     if (error || !data) {
         return (
-            <div className="min-h-screen flex items-center justify-center">
+            <div className="min-h-dvh flex items-center justify-center pt-(--safe-area-top) pr-(--safe-area-right) pb-(--safe-area-bottom) pl-(--safe-area-left)">
                 <div className="text-center space-y-4">
                     <p className="text-destructive font-medium">{t('error')}</p>
                     <Button onClick={logout} variant="outline" className="rounded-xl">
@@ -114,7 +114,7 @@ export function APIKeyDashboard() {
     };
 
     return (
-        <div className="mx-auto max-w-6xl px-3 md:px-6">
+        <div className="mx-auto max-w-6xl pt-(--safe-area-top) pb-(--safe-area-bottom) pl-[calc(0.75rem+var(--safe-area-left))] pr-[calc(0.75rem+var(--safe-area-right))] md:pl-[calc(1.5rem+var(--safe-area-left))] md:pr-[calc(1.5rem+var(--safe-area-right))]">
             {/* Header - Consistent with app.tsx */}
             <header className="my-6 flex items-center gap-2 px-2">
                 <Logo size={48} />
