@@ -37,6 +37,7 @@ export function CreateDialogContent() {
                     submitText={t('create.submit')}
                     submittingText={t('create.submitting')}
                     isSubmitting={createGroup.isPending}
+                    onCancel={() => setIsOpen(false)}
                     onSubmit={({ name, match_regex, mode, first_token_time_out, session_keep_time, members }) => {
                         const items: GroupItem[] = members.map((member, index) => ({
                             channel_id: member.channel_id,

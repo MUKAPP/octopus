@@ -334,6 +334,7 @@ export function Toolbar() {
 
                     <MorphingDialogContainer>
                         <MorphingDialogContent
+                            dismissOnClickOutside={false}
                             className={cn(
                                 'custom-shadow flex min-h-0 min-w-0 w-[calc(100dvw-2rem)] max-w-full flex-col overflow-hidden rounded-3xl bg-card px-4 py-5 text-card-foreground sm:px-6',
                                 toolbarItem === 'group'

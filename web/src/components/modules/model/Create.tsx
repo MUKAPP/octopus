@@ -115,11 +115,19 @@ export function CreateDialogContent() {
                                 />
                             </Field>
                         </div>
-                        <div className="pt-4">
+                        <div className="flex gap-2 pt-4">
+                            <Button
+                                type="button"
+                                variant="secondary"
+                                className="flex-1 rounded-xl h-11"
+                                onClick={() => setIsOpen(false)}
+                            >
+                                {t('cancel')}
+                            </Button>
                             <Button
                                 type="submit"
                                 disabled={createModel.isPending || !formData.name.trim()}
-                                className="w-full rounded-xl h-11"
+                                className="flex-1 rounded-xl h-11"
                             >
                                 {createModel.isPending ? t('submitting') : t('submit')}
                             </Button>

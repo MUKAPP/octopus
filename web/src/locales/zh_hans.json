@@ -497,6 +497,7 @@
             "output": "输出价格",
             "cacheRead": "缓存读取",
             "cacheWrite": "缓存写入",
+            "cancel": "取消",
             "submit": "创建",
             "submitting": "创建中..."
         },
@@ -632,6 +633,7 @@
         },
         "create": {
             "dialogTitle": "创建新渠道",
+            "cancel": "取消",
             "submit": "创建渠道",
             "submitting": "创建中...",
             "toast": {

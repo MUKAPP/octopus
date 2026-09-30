@@ -497,6 +497,7 @@
             "output": "Output Price",
             "cacheRead": "Cache Read",
             "cacheWrite": "Cache Write",
+            "cancel": "Cancel",
             "submit": "Create",
             "submitting": "Creating..."
         },
@@ -632,6 +633,7 @@
         },
         "create": {
             "dialogTitle": "Create New Channel",
+            "cancel": "Cancel",
             "submit": "Create Channel",
             "submitting": "Creating...",
             "toast": {

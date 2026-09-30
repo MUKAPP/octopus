@@ -123,6 +123,8 @@ export function CreateDialogContent() {
                     isPending={createChannel.isPending}
                     submitText={t('submit')}
                     pendingText={t('submitting')}
+                    onCancel={() => setIsOpen(false)}
+                    cancelText={t('cancel')}
                     idPrefix="new-channel"
                 />
             </MorphingDialogDescription>

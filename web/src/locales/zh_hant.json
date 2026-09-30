@@ -497,6 +497,7 @@
             "output": "輸出價格",
             "cacheRead": "快取讀取",
             "cacheWrite": "快取寫入",
+            "cancel": "取消",
             "submit": "建立",
             "submitting": "建立中..."
         },
@@ -632,6 +633,7 @@
         },
         "create": {
             "dialogTitle": "建立新供應源",
+            "cancel": "取消",
             "submit": "建立供應源",
             "submitting": "建立中...",
             "toast": {
