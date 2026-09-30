@@ -638,6 +638,78 @@
             "submitting": "建立中...",
             "toast": {
                 "createFailed": "建立供應源失敗"
+            },
+            "presetTitle": "服務商預設",
+            "presetHint": "預設會覆蓋類型和已提供的地址；既有名稱與金鑰保留。更換協定時請同步調整地址。",
+            "presets": {
+                "newapi": {
+                    "label": "New API",
+                    "description": "兼容多種模型服務商的統一介面"
+                },
+                "openai": {
+                    "label": "OpenAI",
+                    "description": "OpenAI 官方 API"
+                },
+                "anthropic": {
+                    "label": "Anthropic",
+                    "description": "Anthropic 官方 API"
+                },
+                "volcengine": {
+                    "label": "火山方舟",
+                    "description": "火山引擎大模型服務平台"
+                },
+                "volcengine-coding-plan": {
+                    "label": "火山方舟 Coding Plan",
+                    "description": "火山方舟編程套餐 API"
+                },
+                "deepseek": {
+                    "label": "DeepSeek",
+                    "description": "DeepSeek 官方 API"
+                },
+                "openrouter": {
+                    "label": "OpenRouter",
+                    "description": "統一存取多種模型"
+                },
+                "groq": {
+                    "label": "Groq",
+                    "description": "高速推理 API"
+                },
+                "dashscope": {
+                    "label": "通義千問",
+                    "description": "阿里雲通義千問 API"
+                },
+                "qwen-token-plan": {
+                    "label": "通義千問 Token Plan",
+                    "description": "千問 Token Plan 專屬 API"
+                },
+                "moonshot": {
+                    "label": "Moonshot",
+                    "description": "月之暗面 Kimi API"
+                },
+                "kimi-code": {
+                    "label": "Kimi Code",
+                    "description": "Kimi Code 會員訂閱 API"
+                },
+                "zhipu": {
+                    "label": "智譜 GLM",
+                    "description": "智譜 AI 大模型 API"
+                },
+                "glm-coding-plan": {
+                    "label": "智譜 GLM Coding Plan",
+                    "description": "智譜 GLM 編程套餐 API"
+                },
+                "xai": {
+                    "label": "xAI",
+                    "description": "xAI Grok API"
+                },
+                "siliconflow": {
+                    "label": "SiliconFlow",
+                    "description": "矽基流動模型 API"
+                },
+                "azure": {
+                    "label": "Azure OpenAI",
+                    "description": "Azure 託管的 OpenAI API；地址需以 /openai/v1 結尾"
+                }
             }
         },
         "form": {

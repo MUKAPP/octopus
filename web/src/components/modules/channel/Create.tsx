@@ -9,6 +9,10 @@ import { useCreateChannel, ChannelType, AutoGroupType } from '@/api/channel';
 import { useTranslations } from 'use-intl';
 import { ChannelForm, type ChannelFormData } from './Form';
 import { toast } from '@/components/common/Toast';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { Button } from '@/components/ui/button';
+import { CHANNEL_PRESETS, type ChannelPreset } from '@/lib/channel-presets';
+import { cn } from '@/lib/utils';
 
 export function CreateDialogContent() {
     const { setIsOpen } = useMorphingDialog();
@@ -33,6 +37,17 @@ export function CreateDialogContent() {
         match_regex: '',
     });
     const t = useTranslations('channel.create');
+
+    // 只填充当前草稿: 不改名称(留空时用当前语言的模板名)、不动密钥等其他字段,
+    // 且仅当模板提供地址时整组替换地址列表, 空地址保留用户已填的多地址与延迟。
+    const applyPreset = (preset: ChannelPreset) => {
+        setFormData((current) => ({
+            ...current,
+            name: current.name.trim() ? current.name : t(`presets.${preset.id}.label`),
+            type: preset.type,
+            base_urls: preset.baseUrl ? [{ url: preset.baseUrl, delay: 0 }] : current.base_urls,
+        }));
+    };
 
     const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
@@ -116,6 +131,34 @@ export function CreateDialogContent() {
                 </header>
             </MorphingDialogTitle>
             <MorphingDialogDescription disableLayoutAnimation className="flex-1 min-h-0 overflow-auto">
+                <Accordion type="single" collapsible className="mb-4 w-full border rounded-xl bg-card">
+                    <AccordionItem value="presets" className="border-none">
+                        <AccordionTrigger className="text-sm font-medium text-card-foreground py-3 px-4 hover:no-underline hover:bg-muted/30 rounded-xl transition-colors">
+                            {t('presetTitle')}
+                        </AccordionTrigger>
+                        <AccordionContent className="pt-4 px-4 pb-4 space-y-3 border-t">
+                            <p className="text-xs text-muted-foreground">{t('presetHint')}</p>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                {CHANNEL_PRESETS.map((preset) => (
+                                    <Button
+                                        key={preset.id}
+                                        type="button"
+                                        variant="outline"
+                                        disabled={createChannel.isPending}
+                                        onClick={() => applyPreset(preset)}
+                                        className="h-auto w-full justify-start gap-3 px-3 py-2 text-left whitespace-normal"
+                                    >
+                                        <preset.Icon aria-hidden className={cn('size-5 shrink-0', preset.iconClassName)} />
+                                        <span className="min-w-0">
+                                            <span className="block text-sm font-medium">{t(`presets.${preset.id}.label`)}</span>
+                                            <span className="block text-xs font-normal text-muted-foreground">{t(`presets.${preset.id}.description`)}</span>
+                                        </span>
+                                    </Button>
+                                ))}
+                            </div>
+                        </AccordionContent>
+                    </AccordionItem>
+                </Accordion>
                 <ChannelForm
                     formData={formData}
                     onFormDataChange={setFormData}

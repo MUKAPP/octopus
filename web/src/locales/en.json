@@ -638,6 +638,78 @@
             "submitting": "Creating...",
             "toast": {
                 "createFailed": "Failed to create channel"
+            },
+            "presetTitle": "Provider presets",
+            "presetHint": "Presets replace the type and provided URL while preserving existing names and keys. Adjust the URL when changing protocols.",
+            "presets": {
+                "newapi": {
+                    "label": "New API",
+                    "description": "Unified API compatible with multiple model providers"
+                },
+                "openai": {
+                    "label": "OpenAI",
+                    "description": "Official OpenAI API"
+                },
+                "anthropic": {
+                    "label": "Anthropic",
+                    "description": "Official Anthropic API"
+                },
+                "volcengine": {
+                    "label": "Volcengine Ark",
+                    "description": "Volcengine Ark model service"
+                },
+                "volcengine-coding-plan": {
+                    "label": "Volcengine Ark Coding Plan",
+                    "description": "Volcengine Ark Coding Plan API"
+                },
+                "deepseek": {
+                    "label": "DeepSeek",
+                    "description": "Official DeepSeek API"
+                },
+                "openrouter": {
+                    "label": "OpenRouter",
+                    "description": "Unified access to multiple models"
+                },
+                "groq": {
+                    "label": "Groq",
+                    "description": "High-speed inference API"
+                },
+                "dashscope": {
+                    "label": "Qwen",
+                    "description": "Alibaba Cloud Qwen API"
+                },
+                "qwen-token-plan": {
+                    "label": "Qwen Token Plan",
+                    "description": "Qwen Token Plan API"
+                },
+                "moonshot": {
+                    "label": "Moonshot",
+                    "description": "Moonshot Kimi API"
+                },
+                "kimi-code": {
+                    "label": "Kimi Code",
+                    "description": "Kimi Code subscription API"
+                },
+                "zhipu": {
+                    "label": "Zhipu GLM",
+                    "description": "Zhipu AI GLM API"
+                },
+                "glm-coding-plan": {
+                    "label": "Zhipu GLM Coding Plan",
+                    "description": "Zhipu GLM Coding Plan API"
+                },
+                "xai": {
+                    "label": "xAI",
+                    "description": "xAI Grok API"
+                },
+                "siliconflow": {
+                    "label": "SiliconFlow",
+                    "description": "SiliconFlow model API"
+                },
+                "azure": {
+                    "label": "Azure OpenAI",
+                    "description": "Azure-hosted OpenAI API; the URL must end with /openai/v1"
+                }
             }
         },
         "form": {
