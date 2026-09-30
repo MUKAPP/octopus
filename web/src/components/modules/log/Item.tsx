@@ -105,6 +105,27 @@ function getAttemptStatusClass(status: ChannelAttempt['status']): string {
 }
 
 
+function ModelMismatchBadge({ log }: { log: RelayLog }) {
+    const t = useTranslations('log.card');
+    const upstream = log.upstream_model_name;
+    const response = log.response_model_name;
+    if (!upstream || !response || upstream === response) return null;
+
+    const details = t('modelMismatchDetails', { upstream, response });
+    return (
+        <Badge
+            variant="outline"
+            className="min-w-0 max-w-full whitespace-normal break-words rounded-md border-amber-500/40 text-xs text-amber-600 dark:text-amber-400"
+            title={details}
+            aria-label={details}
+        >
+            <span className="min-w-0 break-words">
+                {t('modelMismatch')} · {t('responseModel', { model: response })}
+            </span>
+        </Badge>
+    );
+}
+
 interface RetryBadgeWithTooltipProps {
     channelName: string;
     brandColor: string;
@@ -575,9 +596,10 @@ export function LogCard({ log }: { log: RelayLog }) {
                                         )}
                                     </Badge>
                                 )}
-                                <span className="min-w-0 break-words text-muted-foreground" title={log.actual_model_name}>
-                                    {log.actual_model_name}
+                                <span className="min-w-0 break-words text-muted-foreground" title={log.upstream_model_name || log.actual_model_name}>
+                                    {log.upstream_model_name || log.actual_model_name}
                                 </span>
+                                <ModelMismatchBadge log={log} />
                                 {log.is_overview && log.state && (
                                     <Badge variant="outline" className="shrink-0 text-[10px] uppercase">
                                         {statusT(log.state)}
@@ -642,7 +664,7 @@ export function LogCard({ log }: { log: RelayLog }) {
                 <MorphingDialogContainer>
                     <MorphingDialogContent className="relative flex h-full max-h-full w-full max-w-full flex-col overflow-hidden rounded-3xl bg-card px-4 py-5 text-card-foreground sm:px-6 md:w-[80vw]">
                         <MorphingDialogClose className="top-4 right-5 text-muted-foreground hover:text-foreground transition-colors" />
-                        <MorphingDialogTitle className="mb-4 flex min-w-0 flex-wrap items-center gap-2 pr-10 text-sm">
+                        <MorphingDialogTitle className="scrollbar mb-4 flex max-h-[40%] min-w-0 shrink-0 flex-wrap items-center gap-2 overflow-y-auto pl-2 pr-10 text-sm">
                             <ModelIcon aria-hidden="true" className={cn(iconClassName, "shrink-0")} width={28} height={28} />
                             <span className="min-w-0 max-w-full break-words font-semibold text-card-foreground">{log.request_model_name}</span>
                             {reasoningEffort && <span className="min-w-0 max-w-full break-words text-xs font-normal text-muted-foreground">{reasoningEffort}</span>}
@@ -666,7 +688,8 @@ export function LogCard({ log }: { log: RelayLog }) {
                                     )}
                                 </Badge>
                             )}
-                            <span className="min-w-0 max-w-full break-words text-muted-foreground">{log.actual_model_name}</span>
+                            <span className="min-w-0 max-w-full break-words text-muted-foreground">{log.upstream_model_name || log.actual_model_name}</span>
+                            <ModelMismatchBadge log={log} />
                             {log.is_overview && log.state && (
                                 <Badge variant="outline" className="shrink-0 text-[10px] uppercase">
                                     {statusT(log.state)}

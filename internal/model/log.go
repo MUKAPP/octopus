@@ -35,6 +35,8 @@ type RelayLog struct {
 	ChannelName              string           `json:"channel_name"`                             // 渠道名称
 	RateMultiplier           float64          `json:"rate_multiplier"`                          // 当时使用的渠道倍率
 	ActualModelName          string           `json:"actual_model_name"`                        // 实际使用模型名称
+	UpstreamModelName        string           `json:"upstream_model_name,omitempty" gorm:"-"`   // 实际出站请求模型名称
+	ResponseModelName        string           `json:"response_model_name,omitempty" gorm:"-"`   // 原始响应声明模型名称
 	InputTokens              int              `json:"input_tokens"`                             // 输入Token
 	OutputTokens             int              `json:"output_tokens"`                            // 输出 Token
 	CachedTokens             *int             `json:"cached_tokens,omitempty"`                  // 缓存读取 Token；历史日志未采集时为 nil

@@ -58,6 +58,11 @@ type relayAttempt struct {
 	usedKey      dbmodel.ChannelKey
 	attemptIndex int
 
+	// 原始模型名只归属当前尝试，取消后晚到的流事件不能写入共享 metrics。
+	modelNamesMu      sync.Mutex
+	upstreamModelName string
+	responseModelName string
+
 	// responseCommitted is true once the downstream status/headers have been written.
 	responseCommitted bool
 

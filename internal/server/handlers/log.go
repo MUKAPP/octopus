@@ -260,7 +260,7 @@ func streamLogDetail(c *gin.Context) {
 						return
 					}
 				}
-			case op.RelayLogEventResponseCommitted:
+			case op.RelayLogEventOverview, op.RelayLogEventResponseCommitted:
 				if event.Overview != nil {
 					if err := writeLogEvent(c, event.Type, *event.Overview); err != nil {
 						return

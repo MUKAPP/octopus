@@ -406,6 +406,8 @@ func RelayLogStoreAttemptStarted(id int64, attemptIndex int, attempt model.Chann
 	}
 	record.overview.History[attemptIndex] = entry
 	record.overview.CurrentAttemptIndex = attemptIndex
+	record.overview.UpstreamModelName = ""
+	record.overview.ResponseModelName = ""
 	record.overview.Attempts = appendModelAttempts(record.overview.History)
 	record.overview.TotalAttempts = len(record.overview.History)
 	record.overview.ChannelId = entry.ChannelID
@@ -466,6 +468,26 @@ func RelayLogStoreAttemptFinished(id int64, attemptIndex int, attempt model.Chan
 	attemptCopy := entry
 	notifyRelayLogDetail(id, RelayLogDetailEvent{Type: RelayLogEventAttemptFinished, ID: id, Attempt: &attemptCopy})
 	notifyRelayLogOverview(snapshot)
+}
+
+// RelayLogStoreModelNames publishes raw model names owned by the current active attempt.
+func RelayLogStoreModelNames(id int64, attemptIndex int, upstreamModel, responseModel string) {
+	relayLogStore.Lock()
+	record, ok := relayLogStore.records[id]
+	if !ok || (record.overview.State != RelayLogStateRunning && record.overview.State != RelayLogStateCommitted) || record.overview.CurrentAttemptIndex != attemptIndex {
+		relayLogStore.Unlock()
+		return
+	}
+	if record.overview.UpstreamModelName == upstreamModel && record.overview.ResponseModelName == responseModel {
+		relayLogStore.Unlock()
+		return
+	}
+	record.overview.UpstreamModelName = upstreamModel
+	record.overview.ResponseModelName = responseModel
+	snapshot := relayLogStoreSnapshotLocked(record)
+	relayLogStore.Unlock()
+	notifyRelayLogOverview(snapshot)
+	notifyRelayLogDetail(id, RelayLogDetailEvent{Type: RelayLogEventOverview, ID: id, Overview: &snapshot})
 }
 
 func RelayLogStoreResponseCommitted(id int64) {

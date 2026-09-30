@@ -16,6 +16,8 @@ export interface RelayLogOverview {
     duration: number;
     request_model: string;
     actual_model: string;
+    upstream_model_name?: string;
+    response_model_name?: string;
     client_protocol: string;
     reasoning_effort?: string;
     stream: boolean;
@@ -143,6 +145,8 @@ export function normalizeRelayLog(value: RelayLog | RelayLogOverview | unknown):
             channel_name: finalChannel,
             rate_multiplier: finalRate,
             actual_model_name: actualModel,
+            upstream_model_name: stringValue(record.upstream_model_name),
+            response_model_name: stringValue(record.response_model_name),
             input_tokens: numberValue(record.input_tokens),
             output_tokens: numberValue(record.output_tokens),
             cached_tokens: cacheRead,
@@ -231,6 +235,8 @@ export interface RelayLog {
     channel_name: string;        // 渠道名称
     rate_multiplier: number;     // 当时使用的渠道倍率
     actual_model_name: string;   // 实际使用模型名称
+    upstream_model_name?: string;
+    response_model_name?: string;
     input_tokens: number;        // 输入Token
     output_tokens: number;       // 输出Token
     cached_tokens?: number;      // 缓存读取 Token；历史日志可能未采集

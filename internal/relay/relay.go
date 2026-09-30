@@ -334,6 +334,8 @@ func (r *relayRun) preparedAttempt(item dbmodel.GroupItem, channel *dbmodel.Chan
 	r.metrics.ActualModel = item.ModelName
 	r.metrics.ParamOverride = ""
 	r.metrics.ParamAppend = ""
+	r.metrics.UpstreamModel = ""
+	r.metrics.ResponseModel = ""
 	log.Infof("request model %s, mode: %d, forwarding to channel: %s model: %s (attempt %d/%d, sticky=%t)",
 		r.metrics.RequestModel, r.group.Mode, channel.Name, item.ModelName,
 		r.iter.Index()+1, r.iter.Len(), r.iter.IsSticky())
@@ -472,6 +474,10 @@ func (ra *relayAttempt) run() (bool, error) {
 	op.RelayLogStoreRegisterAttemptCancel(ra.metrics.ID, attemptIndex, cancel)
 
 	upstreamStatusCode, fwdErr := ra.forward()
+	ra.modelNamesMu.Lock()
+	ra.metrics.UpstreamModel = ra.upstreamModelName
+	ra.metrics.ResponseModel = ra.responseModelName
+	ra.modelNamesMu.Unlock()
 	if fwdErr == nil && upstreamStatusCode == 0 {
 		upstreamStatusCode = http.StatusOK
 	}
@@ -914,6 +920,7 @@ func (ra *relayAttempt) writeStreamWithHeartbeatTicker(
 // 1. 在 pipeline 发出上游请求前应用渠道参数覆盖和自定义 header；
 // 2. 在上游失败时保存 HTTP 状态码，供 key 冷却、熔断和后续选路使用；
 // 3. 在非流式响应转成 llm.Response 后记录 usage。
+// 4. 从最终出站请求和原始上游响应采集当前尝试的模型声明。
 // axonhub/llm 只提供了部分函数式 middleware 构造器，错误状态码和 llm 响应 usage 这两个回调没有公开构造器，
 // 所以这里保留一个很薄的结构体实现完整接口，而不是在 relay 主流程里重复 pipeline 的执行逻辑。
 type relayPipelineMiddleware struct {
@@ -941,7 +948,24 @@ func (m *relayPipelineMiddleware) OnOutboundRawRequest(ctx context.Context, requ
 			log.Warnf("failed to preserve DeepSeek reasoning_content: %v", err)
 		}
 	}
+	m.attempt.recordUpstreamModelName(extractUpstreamModelName(request, m.attempt.channel.Type))
 	return request, nil
+}
+
+func (m *relayPipelineMiddleware) OnOutboundRawResponse(ctx context.Context, response *httpclient.Response) (*httpclient.Response, error) {
+	if response != nil {
+		m.attempt.recordResponseModelName(response.Body, false)
+	}
+	return response, nil
+}
+
+func (m *relayPipelineMiddleware) OnOutboundRawStream(ctx context.Context, stream streams.Stream[*httpclient.StreamEvent]) (streams.Stream[*httpclient.StreamEvent], error) {
+	return streams.Map(stream, func(event *httpclient.StreamEvent) *httpclient.StreamEvent {
+		if event != nil {
+			m.attempt.recordResponseModelName(event.Data, true)
+		}
+		return event
+	}), nil
 }
 
 func (m *relayPipelineMiddleware) OnOutboundRawError(ctx context.Context, err error) {
