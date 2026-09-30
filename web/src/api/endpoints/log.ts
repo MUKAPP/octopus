@@ -150,6 +150,7 @@ export function normalizeRelayLog(value: RelayLog | RelayLogOverview | unknown):
             cache_write_tokens: numberValue(record.cache_write_tokens),
             ftut: numberValue(record.ftut ?? record.first_token_time),
             use_time: duration,
+            duration_observed_at_ms: state === 'running' || state === 'committed' ? performance.now() : undefined,
             cost: numberValue(record.total_cost ?? record.cost),
             request_content: stringValue(record.request_content ?? record.request_body),
             response_content: stringValue(record.response_content ?? record.response_body),
@@ -237,6 +238,7 @@ export interface RelayLog {
     cache_write_tokens?: number;
     ftut: number;                // 首字时间(毫秒)
     use_time: number;            // 总用时(毫秒)
+    duration_observed_at_ms?: number; // 活动快照的客户端单调观察时刻（毫秒）
     cost: number;                // 消耗费用
     request_content: string;     // 请求内容
     response_content: string;    // 响应内容
@@ -274,6 +276,18 @@ function mergeRelayLog(existing: RelayLog, incoming: RelayLog): RelayLog {
     if (existingTerminal && incomingTerminal) {
         if (existingState === 'success' && incomingState !== 'success') return existing;
         if (incomingState === 'success' && existingState !== 'success') return incoming;
+    }
+
+    // 活动快照投影到同一单调观察时刻，避免旧分页与实时流合并后倒退或重复计时。
+    if (!existingTerminal && !incomingTerminal
+        && existing.duration_observed_at_ms !== undefined
+        && incoming.duration_observed_at_ms !== undefined) {
+        const observedAt = Math.max(existing.duration_observed_at_ms, incoming.duration_observed_at_ms);
+        const elapsed = Math.max(
+            existing.use_time + observedAt - existing.duration_observed_at_ms,
+            incoming.use_time + observedAt - incoming.duration_observed_at_ms,
+        );
+        return { ...incoming, use_time: elapsed, duration_observed_at_ms: observedAt };
     }
 
     // 同一生命周期内以后收到的快照包含更完整的尝试历史和当前渠道。

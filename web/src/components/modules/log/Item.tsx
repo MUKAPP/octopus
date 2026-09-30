@@ -9,6 +9,7 @@ import { useTheme } from '@/provider/theme';
 import { type RelayLog, type ChannelAttempt, useLogDetailStream, useLogRequestBody, useLogResponseBody, useStopAttempt } from '@/api/endpoints/log';
 import { getModelIcon } from '@/lib/model-icons';
 import { formatDuration } from './format';
+import { useLiveLogDuration } from './use-live-duration';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { CopyIconButton } from '@/components/common/CopyButton';
@@ -314,16 +315,8 @@ function LiveOverviewDetails({ log, brandColor }: { log: RelayLog; brandColor: s
     const [requestExpanded, setRequestExpanded] = useState(() => typeof window !== 'undefined' && window.innerWidth < 768);
     const [attemptHistoryExpanded, setAttemptHistoryExpanded] = useState(true);
     const [responseExpanded, setResponseExpanded] = useState(true);
-    const [now, setNow] = useState(() => Date.now());
     const isActive = log.state === 'running' || log.state === 'committed';
-    const startedAt = log.started_at ? Date.parse(log.started_at) : Number.NaN;
-    const liveDuration = isActive && Number.isFinite(startedAt) ? Math.max(0, now - startedAt) : log.use_time;
-
-    useEffect(() => {
-        if (!isActive) return;
-        const timer = window.setInterval(() => setNow(Date.now()), 1000);
-        return () => window.clearInterval(timer);
-    }, [isActive]);
+    const liveDuration = useLiveLogDuration(log);
 
     const attempts = useMemo(
         () => sortAttempts(detail.attempts.length > 0 ? detail.attempts : (log.attempts ?? [])),
@@ -533,6 +526,7 @@ function LiveOverviewDetails({ log, brandColor }: { log: RelayLog; brandColor: s
 
 export function LogCard({ log }: { log: RelayLog }) {
     const t = useTranslations('log.card');
+    const liveDuration = useLiveLogDuration(log);
     const { Icon: ModelIcon, className: iconClassName, color: brandColor } = useMemo(
         () => getModelIcon(log.actual_model_name),
         [log.actual_model_name]
@@ -610,7 +604,7 @@ export function LogCard({ log }: { log: RelayLog }) {
                                 </div>
                                 <div className="flex min-w-0 items-center gap-1.5">
                                     <Cpu className="size-3.5 shrink-0 text-blue-500" />
-                                    <span className="min-w-0 truncate" title={`${t('totalTime')} ${formatDuration(log.use_time)}`}>{t('totalTime')} {formatDuration(log.use_time)}</span>
+                                    <span className="min-w-0 truncate" title={`${t('totalTime')} ${formatDuration(liveDuration)}`}>{t('totalTime')} {formatDuration(liveDuration)}</span>
                                 </div>
                                 <div className="flex min-w-0 items-center gap-1.5">
                                     <ArrowDownToLine className="size-3.5 shrink-0 text-green-500" />
@@ -630,7 +624,7 @@ export function LogCard({ log }: { log: RelayLog }) {
                                 </div>
                                 <div className="flex min-w-0 items-center gap-1.5">
                                     <Gauge className="size-3.5 shrink-0 text-rose-500" />
-                                    <span className="min-w-0 truncate" title={`${t('outputSpeed')} ${formatOutputSpeed(log.output_tokens, log.use_time, log.ftut)}`}>{t('outputSpeed')} {formatOutputSpeed(log.output_tokens, log.use_time, log.ftut)}</span>
+                                    <span className="min-w-0 truncate" title={`${t('outputSpeed')} ${formatOutputSpeed(log.output_tokens, liveDuration, log.ftut)}`}>{t('outputSpeed')} {formatOutputSpeed(log.output_tokens, liveDuration, log.ftut)}</span>
                                 </div>
                                 <div className="flex min-w-0 items-center gap-1.5">
                                     <DollarSign className="size-3.5 shrink-0 text-emerald-500" />

@@ -41,3 +41,9 @@ MorphingDialog（`src/components/ui/morphing-dialog.tsx`）的视口容器用 `o
 Popover、Select 与价格编辑通过 `src/hooks/use-safe-area-insets.ts` 共享 resize / visualViewport.resize 的数值快照。碰撞边界累加调用者原有间距；Select 原有 4px 视觉间距通过 Radix sideOffset 参与碰撞计算，不使用计算后的位移越过安全边界。价格编辑内容过高时在浮层内滚动，保存按钮仍可触达。
 
 Toast 保留调用者显式 `offset` / `mobileOffset` 的优先级。Sonner 的移动端默认样式只按左侧 offset 计算卡片宽度，因此 `globals.css` 在其 600px 移动断点内将容器宽度改为分别扣除左右 mobile offset，卡片填满该容器；不对称 cutout、left/right/center 位置均使用同一可用宽度，桌面宽度与定位不变。
+
+## 日志活动耗时
+
+`src/api/endpoints/log.ts` 仅在解码 running / committed 网络快照时记录 `performance.now()` 观察锚点，并将服务端整体 duration 从纳秒转换为毫秒。同一请求的活动快照合并先投影到共同观察时刻，避免旧分页或 SSE 导致倒退；终态直接采用服务端值，不把 UI 推算值写回。
+
+日志卡片与活动详情共用 `src/components/modules/log/use-live-duration.ts` 的单个 1 秒时钟。仅有锚点的可见活动指标订阅；页面隐藏时暂停，恢复后按单调时间差补齐，最后一个订阅卸载后清理时钟和监听。开始时刻仅用于时间展示，不参与客户端耗时计算；重试和虚拟列表重挂载不重置总耗时。
