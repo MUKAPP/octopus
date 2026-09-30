@@ -14,6 +14,7 @@ import (
 	"github.com/bestruirui/octopus/internal/server/resp"
 	"github.com/bestruirui/octopus/internal/server/router"
 	"github.com/bestruirui/octopus/internal/task"
+	"github.com/dlclark/regexp2"
 	"github.com/gin-gonic/gin"
 )
 
@@ -159,6 +160,26 @@ func fetchModel(c *gin.Context) {
 	if err != nil {
 		resp.Error(c, http.StatusInternalServerError, err.Error())
 		return
+	}
+	globalFilter, _ := op.SettingGetString(model.SettingKeyModelFilter)
+	if globalFilter != "" {
+		re, err := regexp2.Compile(globalFilter, regexp2.ECMAScript)
+		if err != nil {
+			resp.Error(c, http.StatusBadRequest, err.Error())
+			return
+		}
+		filtered := models[:0]
+		for _, name := range models {
+			matched, err := re.MatchString(name)
+			if err != nil {
+				resp.Error(c, http.StatusBadRequest, err.Error())
+				return
+			}
+			if matched {
+				filtered = append(filtered, name)
+			}
+		}
+		models = filtered
 	}
 	resp.Success(c, models)
 }

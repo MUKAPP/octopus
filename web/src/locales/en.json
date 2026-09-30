@@ -255,6 +255,11 @@
             "label": "Stats Save Interval",
             "placeholder": "Enter interval in minutes"
         },
+        "modelFilter": {
+            "label": "Global Model Filter",
+            "placeholder": "Enter filter regex",
+            "hint": "Applied only when fetching models manually, together with the channel filter (AND); empty disables it. Does not affect automatic synchronization."
+        },
         "corsAllowOrigins": {
             "label": "CORS Allowed Origins",
             "hint": "Empty = deny all, * = allow all",

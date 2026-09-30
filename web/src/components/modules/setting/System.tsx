@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslations } from 'use-intl';
-import { Monitor, Globe, Clock, Shield, HelpCircle, X } from 'lucide-react';
+import { Monitor, Globe, Clock, Shield, HelpCircle, X, Filter } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useSettingList, useSetSetting, SettingKey } from '@/api/setting';
@@ -14,17 +14,20 @@ export function SettingSystem() {
 
     const [proxyUrl, setProxyUrl] = useState('');
     const [statsSaveInterval, setStatsSaveInterval] = useState('');
+    const [modelFilter, setModelFilter] = useState('');
     const [corsAllowOrigins, setCorsAllowOrigins] = useState('');
     const [corsInputValue, setCorsInputValue] = useState('');
 
     const initialProxyUrl = useRef('');
     const initialStatsSaveInterval = useRef('');
+    const initialModelFilter = useRef('');
     const initialCorsAllowOrigins = useRef('');
 
     useEffect(() => {
         if (settings) {
             const proxy = settings.find(s => s.key === SettingKey.ProxyURL);
             const interval = settings.find(s => s.key === SettingKey.StatsSaveInterval);
+            const modelFilterSetting = settings.find(s => s.key === SettingKey.ModelFilter);
             const cors = settings.find(s => s.key === SettingKey.CORSAllowOrigins);
             if (proxy) {
                 queueMicrotask(() => setProxyUrl(proxy.value));
@@ -33,6 +36,10 @@ export function SettingSystem() {
             if (interval) {
                 queueMicrotask(() => setStatsSaveInterval(interval.value));
                 initialStatsSaveInterval.current = interval.value;
+            }
+            if (modelFilterSetting) {
+                queueMicrotask(() => setModelFilter(modelFilterSetting.value));
+                initialModelFilter.current = modelFilterSetting.value;
             }
             if (cors) {
                 queueMicrotask(() => setCorsAllowOrigins(cors.value));
@@ -51,8 +58,15 @@ export function SettingSystem() {
                     initialProxyUrl.current = value;
                 } else if (key === SettingKey.StatsSaveInterval) {
                     initialStatsSaveInterval.current = value;
+                } else if (key === SettingKey.ModelFilter) {
+                    initialModelFilter.current = value;
                 } else if (key === SettingKey.CORSAllowOrigins) {
                     initialCorsAllowOrigins.current = value;
+                }
+            },
+            onError: (error) => {
+                if (key === SettingKey.ModelFilter) {
+                    toast.error(error.message);
                 }
             }
         });
@@ -146,6 +160,38 @@ export function SettingSystem() {
                     onChange={(e) => setStatsSaveInterval(e.target.value)}
                     onBlur={() => handleSave('stats_save_interval', statsSaveInterval, initialStatsSaveInterval.current)}
                     placeholder={t('statsSaveInterval.placeholder')}
+                    className="w-48 rounded-xl"
+                />
+            </div>
+
+            {/* 全局模型过滤 */}
+            <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                    <Filter className="h-5 w-5 text-muted-foreground" />
+                    <label htmlFor="model-filter" className="text-sm font-medium">{t('modelFilter.label')}</label>
+                    <TooltipProvider>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <button
+                                    type="button"
+                                    aria-label={t('modelFilter.hint')}
+                                    className="-m-1 rounded-md p-1 text-muted-foreground outline-none transition-colors hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                                >
+                                    <HelpCircle className="size-4 cursor-help" />
+                                </button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                                {t('modelFilter.hint')}
+                            </TooltipContent>
+                        </Tooltip>
+                    </TooltipProvider>
+                </div>
+                <Input
+                    id="model-filter"
+                    value={modelFilter}
+                    onChange={(e) => setModelFilter(e.target.value)}
+                    onBlur={() => handleSave(SettingKey.ModelFilter, modelFilter, initialModelFilter.current)}
+                    placeholder={t('modelFilter.placeholder')}
                     className="w-48 rounded-xl"
                 />
             </div>

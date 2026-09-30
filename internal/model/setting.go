@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"net/url"
 	"strconv"
+
+	"github.com/dlclark/regexp2"
 )
 
 type SettingKey string
@@ -13,6 +15,7 @@ const (
 	SettingKeyStatsSaveInterval         SettingKey = "stats_save_interval"          // 将统计信息写入数据库的周期(分钟)
 	SettingKeyModelInfoUpdateInterval   SettingKey = "model_info_update_interval"   // 模型信息更新间隔(小时)
 	SettingKeySyncLLMInterval           SettingKey = "sync_llm_interval"            // LLM 同步间隔(小时)
+	SettingKeyModelFilter               SettingKey = "model_filter"                 // 全局模型过滤正则, 仅手动获取模型时生效(与渠道 match_regex 为 AND 关系). 为空不过滤
 	SettingKeyCORSAllowOrigins          SettingKey = "cors_allow_origins"           // 跨域白名单(逗号分隔, 如 "example.com,example2.com"). 为空不允许跨域, "*"允许所有来源
 	SettingKeyCircuitBreakerEnabled     SettingKey = "circuit_breaker_enabled"      // 是否启用熔断器
 	SettingKeyCircuitBreakerThreshold   SettingKey = "circuit_breaker_threshold"    // 熔断触发阈值（连续失败次数）
@@ -36,6 +39,7 @@ func DefaultSettings() []Setting {
 		{Key: SettingKeyCircuitBreakerThreshold, Value: "5"},     // 默认连续失败5次触发熔断
 		{Key: SettingKeyCircuitBreakerCooldown, Value: "60"},     // 默认基础冷却60秒
 		{Key: SettingKeyCircuitBreakerMaxCooldown, Value: "600"}, // 默认最大冷却600秒（10分钟）
+		{Key: SettingKeyModelFilter, Value: ""},                  // 全局模型过滤正则, 默认留空不过滤(仅手动获取模型时生效)
 	}
 }
 
@@ -51,6 +55,14 @@ func (s *Setting) Validate() error {
 	case SettingKeyCircuitBreakerEnabled:
 		if _, err := strconv.ParseBool(s.Value); err != nil {
 			return fmt.Errorf("circuit breaker enabled must be a boolean")
+		}
+		return nil
+	case SettingKeyModelFilter:
+		if s.Value == "" {
+			return nil
+		}
+		if _, err := regexp2.Compile(s.Value, regexp2.ECMAScript); err != nil {
+			return fmt.Errorf("model filter regex is invalid: %w", err)
 		}
 		return nil
 	case SettingKeyProxyURL:

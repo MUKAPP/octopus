@@ -15,6 +15,7 @@ export const SettingKey = {
     StatsSaveInterval: 'stats_save_interval',
     ModelInfoUpdateInterval: 'model_info_update_interval',
     SyncLLMInterval: 'sync_llm_interval',
+    ModelFilter: 'model_filter',
     CORSAllowOrigins: 'cors_allow_origins',
     CircuitBreakerEnabled: 'circuit_breaker_enabled',
     CircuitBreakerThreshold: 'circuit_breaker_threshold',

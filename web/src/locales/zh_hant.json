@@ -255,6 +255,11 @@
             "label": "統計保存週期（分鐘）",
             "placeholder": "請輸入週期（分鐘）"
         },
+        "modelFilter": {
+            "label": "全局模型過濾",
+            "placeholder": "請輸入過濾表達式",
+            "hint": "僅在手動取得模型時與供應源過濾同時生效（AND）；留空不過濾，不影響自動同步。"
+        },
         "corsAllowOrigins": {
             "label": "CORS 跨網域白名單",
             "hint": "為空禁止跨網域，* 允許所有",

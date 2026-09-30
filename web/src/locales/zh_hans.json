@@ -255,6 +255,11 @@
             "label": "统计保存周期（分钟）",
             "placeholder": "请输入周期（分钟）"
         },
+        "modelFilter": {
+            "label": "全局模型过滤",
+            "placeholder": "请输入过滤表达式",
+            "hint": "仅在手动获取模型时与渠道过滤同时生效（AND）；留空不过滤，不影响自动同步。"
+        },
         "corsAllowOrigins": {
             "label": "CORS 跨域白名单",
             "hint": "为空禁止跨域，* 允许所有",
