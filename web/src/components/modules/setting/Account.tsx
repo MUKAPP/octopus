@@ -3,6 +3,7 @@ import { useTranslations } from 'use-intl';
 import { User, KeyRound, Lock, Eye, EyeOff, Pencil, Check, X, Loader } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Input } from '@/components/ui/input';
+import { MorphingDialogOverlayLayer } from '@/components/ui/morphing-dialog';
 import { useChangeUsername, useChangePassword, useAuth } from '@/api/user';
 import { toast } from '@/components/common/Toast';
 
@@ -70,41 +71,43 @@ function UsernameForm({ onClose }: { onClose: () => void }) {
     };
 
     return (
-        <motion.form
+        <MorphingDialogOverlayLayer
             layoutId="account-username"
-            onSubmit={handleSubmit}
             transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-            className="absolute left-1/2 top-1/2 z-20 grid w-[min(420px,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 gap-2 rounded-3xl border border-border bg-card p-5"
+            onClose={() => { if (!changeUsername.isPending) onClose(); }}
+            panelClassName="w-[min(420px,calc(100vw-2rem))] p-5"
         >
-            <Input
-                type="text"
-                value={newUsername}
-                onChange={(e) => setNewUsername(e.target.value)}
-                placeholder={t('account.username.placeholder')}
-                className="h-9 text-sm rounded-xl"
-                disabled={changeUsername.isPending}
-            />
-
-            <div className="flex gap-2 pt-1">
-                <button
-                    type="button"
-                    onClick={onClose}
+            <form onSubmit={handleSubmit} className="grid gap-2">
+                <Input
+                    type="text"
+                    value={newUsername}
+                    onChange={(e) => setNewUsername(e.target.value)}
+                    placeholder={t('account.username.placeholder')}
+                    className="h-9 text-sm rounded-xl"
                     disabled={changeUsername.isPending}
-                    className="flex-1 h-9 flex items-center justify-center gap-1.5 rounded-xl bg-muted text-muted-foreground text-sm font-medium transition-all hover:bg-muted/80 active:scale-[0.98] disabled:opacity-50"
-                >
-                    <X className="size-4" />
-                    {t('account.cancel')}
-                </button>
-                <button
-                    type="submit"
-                    disabled={changeUsername.isPending || !newUsername.trim()}
-                    className="flex-1 h-9 flex items-center justify-center gap-1.5 rounded-xl bg-primary text-primary-foreground text-sm font-medium transition-all hover:bg-primary/90 active:scale-[0.98] disabled:opacity-50"
-                >
-                    {changeUsername.isPending ? <Loader className="size-4 animate-spin" /> : <Check className="size-4" />}
-                    {changeUsername.isPending ? t('account.saving') : t('account.save')}
-                </button>
-            </div>
-        </motion.form>
+                />
+
+                <div className="flex gap-2 pt-1">
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        disabled={changeUsername.isPending}
+                        className="flex-1 h-9 flex items-center justify-center gap-1.5 rounded-xl bg-muted text-muted-foreground text-sm font-medium transition-all hover:bg-muted/80 active:scale-[0.98] disabled:opacity-50"
+                    >
+                        <X className="size-4" />
+                        {t('account.cancel')}
+                    </button>
+                    <button
+                        type="submit"
+                        disabled={changeUsername.isPending || !newUsername.trim()}
+                        className="flex-1 h-9 flex items-center justify-center gap-1.5 rounded-xl bg-primary text-primary-foreground text-sm font-medium transition-all hover:bg-primary/90 active:scale-[0.98] disabled:opacity-50"
+                    >
+                        {changeUsername.isPending ? <Loader className="size-4 animate-spin" /> : <Check className="size-4" />}
+                        {changeUsername.isPending ? t('account.saving') : t('account.save')}
+                    </button>
+                </div>
+            </form>
+        </MorphingDialogOverlayLayer>
     );
 }
 
@@ -150,51 +153,53 @@ function PasswordForm({ onClose }: { onClose: () => void }) {
     };
 
     return (
-        <motion.form
+        <MorphingDialogOverlayLayer
             layoutId="account-password"
-            onSubmit={handleSubmit}
             transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-            className="absolute left-1/2 top-1/2 z-20 grid w-[min(420px,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 gap-2 rounded-3xl border border-border bg-card p-5"
+            onClose={() => { if (!changePassword.isPending) onClose(); }}
+            panelClassName="w-[min(420px,calc(100vw-2rem))] p-5"
         >
-            <PasswordInput
-                value={oldPassword}
-                onChange={setOldPassword}
-                placeholder={t('account.password.oldPlaceholder')}
-                disabled={changePassword.isPending}
-            />
-            <PasswordInput
-                value={newPassword}
-                onChange={setNewPassword}
-                placeholder={t('account.password.newPlaceholder')}
-                disabled={changePassword.isPending}
-            />
-            <PasswordInput
-                value={confirmPassword}
-                onChange={setConfirmPassword}
-                placeholder={t('account.password.confirmPlaceholder')}
-                disabled={changePassword.isPending}
-            />
-
-            <div className="flex gap-2 pt-1">
-                <button
-                    type="button"
-                    onClick={onClose}
+            <form onSubmit={handleSubmit} className="grid gap-2">
+                <PasswordInput
+                    value={oldPassword}
+                    onChange={setOldPassword}
+                    placeholder={t('account.password.oldPlaceholder')}
                     disabled={changePassword.isPending}
-                    className="flex-1 h-9 flex items-center justify-center gap-1.5 rounded-xl bg-muted text-muted-foreground text-sm font-medium transition-all hover:bg-muted/80 active:scale-[0.98] disabled:opacity-50"
-                >
-                    <X className="size-4" />
-                    {t('account.cancel')}
-                </button>
-                <button
-                    type="submit"
-                    disabled={changePassword.isPending || !oldPassword || !newPassword || !confirmPassword}
-                    className="flex-1 h-9 flex items-center justify-center gap-1.5 rounded-xl bg-primary text-primary-foreground text-sm font-medium transition-all hover:bg-primary/90 active:scale-[0.98] disabled:opacity-50"
-                >
-                    {changePassword.isPending ? <Loader className="size-4 animate-spin" /> : <Check className="size-4" />}
-                    {changePassword.isPending ? t('account.saving') : t('account.password.change')}
-                </button>
-            </div>
-        </motion.form>
+                />
+                <PasswordInput
+                    value={newPassword}
+                    onChange={setNewPassword}
+                    placeholder={t('account.password.newPlaceholder')}
+                    disabled={changePassword.isPending}
+                />
+                <PasswordInput
+                    value={confirmPassword}
+                    onChange={setConfirmPassword}
+                    placeholder={t('account.password.confirmPlaceholder')}
+                    disabled={changePassword.isPending}
+                />
+
+                <div className="flex gap-2 pt-1">
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        disabled={changePassword.isPending}
+                        className="flex-1 h-9 flex items-center justify-center gap-1.5 rounded-xl bg-muted text-muted-foreground text-sm font-medium transition-all hover:bg-muted/80 active:scale-[0.98] disabled:opacity-50"
+                    >
+                        <X className="size-4" />
+                        {t('account.cancel')}
+                    </button>
+                    <button
+                        type="submit"
+                        disabled={changePassword.isPending || !oldPassword || !newPassword || !confirmPassword}
+                        className="flex-1 h-9 flex items-center justify-center gap-1.5 rounded-xl bg-primary text-primary-foreground text-sm font-medium transition-all hover:bg-primary/90 active:scale-[0.98] disabled:opacity-50"
+                    >
+                        {changePassword.isPending ? <Loader className="size-4 animate-spin" /> : <Check className="size-4" />}
+                        {changePassword.isPending ? t('account.saving') : t('account.password.change')}
+                    </button>
+                </div>
+            </form>
+        </MorphingDialogOverlayLayer>
     );
 }
 

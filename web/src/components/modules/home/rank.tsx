@@ -65,7 +65,7 @@ export function Rank() {
             );
         }
         return (
-            <div className="space-y-3 max-h-[300px] overflow-y-auto">
+            <div className="scrollbar space-y-3 max-h-[300px] overflow-y-auto pr-2">
                 {channels.map((channel, index) => {
                     const rank = index + 1;
                     const medal = getMedalEmoji(rank);

@@ -504,7 +504,7 @@ export function ChannelForm({
                             </Button>
                         )}
                     </div>
-                    <div className="rounded-xl border border-border bg-muted/30 p-2.5 max-h-40 min-h-12 overflow-y-auto">
+                    <div className="scrollbar rounded-xl border border-border bg-muted/30 p-2.5 max-h-40 min-h-12 overflow-y-auto">
                         {(autoModels.length + customModels.length) > 0 ? (
                             <div className="flex flex-wrap gap-1.5">
                                 {autoModels.map((model) => (
@@ -655,7 +655,7 @@ export function ChannelForm({
                                 value={formData.param_override}
                                 onChange={(e) => onFormDataChange({ ...formData, param_override: e.target.value })}
                                 placeholder={t('paramOverridePlaceholder')}
-                                className="min-h-28 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                className="scrollbar scrollbar-gutter-auto min-h-28 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                             />
                         </div>
 
@@ -668,7 +668,7 @@ export function ChannelForm({
                                 value={formData.param_append}
                                 onChange={(e) => onFormDataChange({ ...formData, param_append: e.target.value })}
                                 placeholder={t('paramAppendPlaceholder')}
-                                className="min-h-28 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                className="scrollbar scrollbar-gutter-auto min-h-28 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                             />
                         </div>
                     </AccordionContent>

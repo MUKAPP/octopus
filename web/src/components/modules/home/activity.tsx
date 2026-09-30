@@ -122,7 +122,7 @@ export function Activity() {
             <div
                 ref={scrollRef}
                 onScroll={checkScroll}
-                className="overflow-x-auto p-4"
+                className="overflow-x-auto scrollbar p-4 pb-6"
                 style={{ maskImage, WebkitMaskImage: maskImage }}
             >
                 {isLoading && !statsDailyFormatted ? (

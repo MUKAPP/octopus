@@ -400,7 +400,7 @@ function LiveOverviewDetails({ log, brandColor }: { log: RelayLog; brandColor: s
 
     return (
         <div className="flex h-full min-h-0 flex-col gap-4">
-            <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-auto md:grid md:grid-cols-2 md:overflow-hidden">
+            <div className="max-md:scrollbar max-md:pr-2 flex min-h-0 flex-1 flex-col gap-4 overflow-auto md:grid md:grid-cols-2 md:overflow-hidden">
                 <div className="contents md:flex md:min-h-0 md:flex-1 md:flex-col md:overflow-hidden md:rounded-2xl md:border md:border-border md:bg-muted/30">
                     <section className={cn(
                         "order-1 flex min-h-0 shrink-0 flex-col overflow-hidden rounded-2xl border border-border bg-muted/30 md:order-none md:rounded-none md:border-0 md:bg-transparent",
@@ -429,7 +429,7 @@ function LiveOverviewDetails({ log, brandColor }: { log: RelayLog; brandColor: s
                         <div
                             id={`attempt-history-${log.id}`}
                             className={cn(
-                                "max-h-[30dvh] overflow-auto p-2.5 md:min-h-0 md:flex-1 md:max-h-none md:p-3",
+                                "scrollbar max-h-[30dvh] overflow-auto p-2.5 md:min-h-0 md:flex-1 md:max-h-none md:p-3",
                                 !attemptHistoryExpanded && "hidden md:block",
                             )}
                         >
@@ -477,7 +477,7 @@ function LiveOverviewDetails({ log, brandColor }: { log: RelayLog; brandColor: s
                             <Badge variant="secondary" className="ml-auto shrink-0 text-xs">{log.input_tokens.toLocaleString()} {t('tokens')}</Badge>
                             <ChevronDown className={cn("size-4 shrink-0 text-muted-foreground transition-transform", requestExpanded && "rotate-180")} />
                         </button>
-                        {requestExpanded && <div className="max-h-[30dvh] overflow-auto border-t border-border bg-background/20 md:min-h-0 md:flex-1 md:max-h-none">{requestBody.error && !requestContent ? <div className="flex h-full items-center justify-center px-4 py-6 text-xs text-destructive">{t('detailUnavailable')}</div> : <DeferredJsonContent content={requestContent} fallbackText={t('noRequestContent')} />}</div>}
+                        {requestExpanded && <div className="scrollbar max-h-[30dvh] overflow-auto border-t border-border bg-background/20 md:min-h-0 md:flex-1 md:max-h-none">{requestBody.error && !requestContent ? <div className="flex h-full items-center justify-center px-4 py-6 text-xs text-destructive">{t('detailUnavailable')}</div> : <DeferredJsonContent content={requestContent} fallbackText={t('noRequestContent')} />}</div>}
                     </section>
                 </div>
 
@@ -503,7 +503,7 @@ function LiveOverviewDetails({ log, brandColor }: { log: RelayLog; brandColor: s
                         <ChevronDown className={cn("ml-auto size-4 text-muted-foreground transition-transform md:hidden", responseExpanded && "rotate-180")} />
                         {runningAttempt && <button type="button" onClick={(event) => { event.stopPropagation(); void handleStop(); }} disabled={stopAttempt.isPending} className="ml-auto flex shrink-0 items-center gap-1.5 rounded-md px-2 py-1 text-xs text-destructive transition-colors hover:bg-destructive/10 disabled:opacity-50">{stopAttempt.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <Square className="size-3.5" />}{t('stopAttempt')}</button>}
                     </div>
-                    <div id={`response-panel-${log.id}`} className={cn("max-h-[30dvh] overflow-auto md:min-h-0 md:flex-1 md:max-h-none", !responseExpanded && "hidden md:block")}>
+                    <div id={`response-panel-${log.id}`} className={cn("scrollbar max-h-[30dvh] overflow-auto md:min-h-0 md:flex-1 md:max-h-none", !responseExpanded && "hidden md:block")}>
                         {stopError && <p className="border-b border-destructive/20 bg-destructive/5 px-3 py-2 text-xs text-destructive">{stopError}</p>}
                         {selectedAttempt ? <div className="flex min-h-full min-w-0 flex-col">
                             <div className="flex shrink-0 flex-wrap items-start gap-x-3 gap-y-1 border-b border-border/70 px-3 py-3 text-xs md:px-4">
@@ -687,7 +687,7 @@ export function LogCard({ log }: { log: RelayLog }) {
                             {log.is_overview ? (
                                 <LiveOverviewDetails log={log} brandColor={brandColor} />
                             ) : (
-                                <div className="flex h-full min-h-0 min-w-0 flex-col gap-4 overflow-auto md:grid md:grid-cols-2 md:overflow-hidden">
+                                <div className="max-md:scrollbar max-md:pr-2 flex h-full min-h-0 min-w-0 flex-col gap-4 overflow-auto md:grid md:grid-cols-2 md:overflow-hidden">
                                     <div className="order-2 flex min-h-0 shrink-0 min-w-0 flex-col overflow-hidden rounded-2xl border border-border bg-muted/30 md:order-none md:flex-1">
                                         <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-border bg-muted/50 px-3 py-2.5 md:px-4 md:py-3">
                                             <Send className="size-4 shrink-0 text-green-500" />
@@ -701,7 +701,7 @@ export function LogCard({ log }: { log: RelayLog }) {
                                                 {log.input_tokens.toLocaleString()} {t('tokens')}
                                             </Badge>
                                         </div>
-                                        <div className="max-h-[30dvh] overflow-auto md:min-h-0 md:flex-1 md:max-h-none">
+                                        <div className="scrollbar max-h-[30dvh] overflow-auto md:min-h-0 md:flex-1 md:max-h-none">
                                             <DeferredJsonContent content={log.request_content} fallbackText={t('noRequestContent')} />
                                         </div>
                                     </div>
@@ -713,7 +713,7 @@ export function LogCard({ log }: { log: RelayLog }) {
                                                 <span className="min-w-0 text-sm font-medium text-card-foreground">{t('attemptHistory')}</span>
                                                 <Badge variant="secondary" className="shrink-0 text-xs">{orderedAttempts.length} {t('attempts')}</Badge>
                                             </div>
-                                            <div className="max-h-[30dvh] overflow-auto p-2.5 md:min-h-0 md:flex-1 md:max-h-none">
+                                            <div className="scrollbar max-h-[30dvh] overflow-auto p-2.5 md:min-h-0 md:flex-1 md:max-h-none">
                                                 {orderedAttempts.length > 0 ? (
                                                     <div className="flex flex-col gap-2">
                                                         {orderedAttempts.map((attempt, index) => (
@@ -775,7 +775,7 @@ export function LogCard({ log }: { log: RelayLog }) {
                                                     {log.output_tokens.toLocaleString()} {t('tokens')}
                                                 </Badge>
                                             </div>
-                                            <div className="max-h-[30dvh] overflow-auto md:min-h-0 md:flex-1 md:max-h-none">
+                                            <div className="scrollbar max-h-[30dvh] overflow-auto md:min-h-0 md:flex-1 md:max-h-none">
                                                 {log.error && (
                                                     <div className="relative border-b border-destructive/20 bg-destructive/5 p-3">
                                                         <CopyIconButton

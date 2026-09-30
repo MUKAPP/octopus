@@ -11,6 +11,7 @@ import {
     MorphingDialog,
     MorphingDialogContainer,
     MorphingDialogContent,
+    MorphingDialogOverlayLayer,
     MorphingDialogTrigger,
     useMorphingDialog,
 } from '@/components/ui/morphing-dialog';
@@ -247,7 +248,7 @@ function APIKeyForm({ apiKey, isPending, submitLabel, onSubmit, onClose }: APIKe
                             align="start"
                             side="bottom"
                             sideOffset={8}
-                            className="w-fit rounded-2xl border border-border/60 shadow-xl overflow-hidden bg-card p-0"
+                            className="z-[70] w-fit max-h-(--radix-popover-content-available-height) overflow-y-auto scrollbar rounded-2xl border border-border/60 shadow-xl bg-card p-0"
                         >
                             <Calendar
                                 mode="single"
@@ -290,7 +291,7 @@ function APIKeyForm({ apiKey, isPending, submitLabel, onSubmit, onClose }: APIKe
 
             <div className="grid gap-1">
                 <div className="text-xs text-muted-foreground">{t('apiKey.form.supportedModels')}</div>
-                <div className="max-h-40 overflow-auto rounded-xl p-2">
+                <div className="max-h-40 overflow-auto rounded-xl p-2 scrollbar">
                     {groupsLoading ? (
                         <div className="flex justify-center py-2">
                             <Loader className="size-4 animate-spin" role="status" aria-label="加载中" />
@@ -377,10 +378,11 @@ function APIKeyFormOverlay({
     onClose: () => void;
 }) {
     return (
-        <motion.div
+        <MorphingDialogOverlayLayer
             layoutId={layoutId}
-            className="absolute left-1/2 top-1/2 z-20 max-h-[80dvh] w-[min(420px,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 overflow-auto rounded-3xl border border-border bg-card p-5"
             transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+            onClose={() => { if (!isPending) onClose(); }}
+            panelClassName="w-[min(420px,calc(100vw-2rem))] p-5"
         >
             <APIKeyForm
                 apiKey={apiKey}
@@ -389,7 +391,7 @@ function APIKeyFormOverlay({
                 onSubmit={onSubmit}
                 onClose={onClose}
             />
-        </motion.div>
+        </MorphingDialogOverlayLayer>
     );
 }
 
@@ -407,10 +409,11 @@ function APIKeyStatsCard({
     const stats = useMemo(() => statsList.find((s) => s.api_key_id === apiKey.id), [statsList, apiKey.id]);
 
     return (
-        <motion.div
+        <MorphingDialogOverlayLayer
             layoutId={layoutId}
-            className="absolute left-1/2 top-1/2 z-30 flex max-h-[80dvh] w-[min(320px,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 flex-col overflow-auto rounded-3xl border border-border bg-card p-5"
             transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+            onClose={onClose}
+            panelClassName="flex w-[min(320px,calc(100vw-2rem))] flex-col p-5"
         >
             <div className="flex items-center justify-between gap-2 mb-3">
                 <h3 className="text-sm font-semibold text-card-foreground line-clamp-1">
@@ -477,7 +480,7 @@ function APIKeyStatsCard({
                     </div>
                 </div>
             )}
-        </motion.div>
+        </MorphingDialogOverlayLayer>
     );
 }
 
@@ -772,7 +775,7 @@ function APIKeyDialogPanel() {
         <APIKeyPanelBase
             idPrefix="apikey-dialog"
             containerClassName="rounded-3xl border border-border bg-card p-6 space-y-5 relative w-screen max-w-full md:max-w-xl"
-            listClassName="max-h-[calc(100dvh-10rem)] space-y-2 overflow-y-auto"
+            listClassName="max-h-[calc(100dvh-10rem)] space-y-2 overflow-y-auto scrollbar pr-2"
             renderHeaderExtra={() => (
                 <button
                     type="button"
@@ -794,7 +797,7 @@ export function SettingAPIKey() {
         <APIKeyPanelBase
             idPrefix="apikey"
             containerClassName="rounded-3xl border border-border bg-card p-6 space-y-5 relative"
-            listClassName="space-y-2 h-36 overflow-y-auto"
+            listClassName="space-y-2 h-36 overflow-y-auto scrollbar pr-2"
             renderHeaderExtra={() => (
                 <MorphingDialog>
                     <MorphingDialogTrigger

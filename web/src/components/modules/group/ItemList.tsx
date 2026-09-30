@@ -301,7 +301,7 @@ export function MemberList({
 
             <div
                 className={cn(
-                    'h-full overflow-y-auto transition-opacity duration-200',
+                    'scrollbar h-full overflow-y-auto pr-2 transition-opacity duration-200',
                     isEmpty ? 'opacity-0' : 'opacity-100'
                 )}
                 ref={scrollContainerRef}

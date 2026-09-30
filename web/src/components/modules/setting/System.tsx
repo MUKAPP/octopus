@@ -240,7 +240,7 @@ export function SettingSystem() {
                             className="h-9 rounded-xl"
                             autoFocus
                         />
-                        <div className="max-h-48 space-y-1 overflow-y-auto">
+                        <div className="scrollbar max-h-48 space-y-1 overflow-y-auto pr-2">
                             {corsAllowOriginsList.length > 0 && (
                                 corsAllowOriginsList.map((origin) => (
                                     <div key={origin} className="flex items-center justify-between gap-2 rounded-xl border border-border/60 px-2 py-1">
