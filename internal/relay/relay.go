@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"maps"
 	"net/http"
+	"regexp"
 	"slices"
 	"strings"
 	"time"
@@ -31,6 +32,9 @@ import (
 const relaySSEHeartbeatInterval = 15 * time.Second
 
 var relaySSEHeartbeatComment = []byte(": ping\n\n")
+
+// clientHeaderPlaceholderPattern 匹配自定义头中的 {client_header:NAME} 占位符。
+var clientHeaderPlaceholderPattern = regexp.MustCompile(`\{client_header:[^}]+\}`)
 
 type relaySSEHeartbeatTicker interface {
 	Chan() <-chan time.Time
@@ -66,6 +70,13 @@ func Handler(inboundType llm.APIFormat) gin.HandlerFunc {
 }
 
 func newRelayRun(c *gin.Context, inboundType llm.APIFormat, inAdapter transformer.Inbound) (*relayRun, error) {
+	// 受支持的压缩编码在 parseRequest 内被解码时会就地删除共享头，需在解码前留一份原始入站头快照。
+	var clientHeaders http.Header
+	switch strings.ToLower(strings.TrimSpace(c.Request.Header.Get("Content-Encoding"))) {
+	case "gzip", "x-gzip", "deflate", "zstd":
+		clientHeaders = c.Request.Header.Clone()
+	}
+
 	internalRequest, err := parseRequest(c, inboundType, inAdapter)
 	if err != nil {
 		return nil, err
@@ -98,6 +109,7 @@ func newRelayRun(c *gin.Context, inboundType llm.APIFormat, inAdapter transforme
 		inAdapter:       inAdapter,
 		inboundType:     inboundType,
 		internalRequest: internalRequest,
+		clientHeaders:   clientHeaders,
 		metrics: &RelayMetrics{
 			APIKeyID:        apiKeyID,
 			RequestModel:    internalRequest.Model,
@@ -650,7 +662,19 @@ func (ra *relayAttempt) applyChannelRequestOptions(outboundRequest *httpclient.R
 		if outboundRequest.Headers.Get(header.HeaderKey) != "" && httpclient.IsSensitiveHeader(header.HeaderKey) {
 			continue
 		}
-		outboundRequest.Headers.Set(header.HeaderKey, header.HeaderValue)
+		if !strings.Contains(header.HeaderValue, "{client_header:") {
+			outboundRequest.Headers.Set(header.HeaderKey, header.HeaderValue)
+			continue
+		}
+		// 占位符只做单趟替换，结果不再递归解析；NAME 不 trim，沿用 http.Header.Get 的大小写不敏感与多值取首个语义。
+		value := clientHeaderPlaceholderPattern.ReplaceAllStringFunc(header.HeaderValue, func(placeholder string) string {
+			name := placeholder[len("{client_header:") : len(placeholder)-1]
+			if ra.clientHeaders != nil {
+				return ra.clientHeaders.Get(name)
+			}
+			return ra.c.Request.Header.Get(name)
+		})
+		outboundRequest.Headers.Set(header.HeaderKey, value)
 	}
 }
 

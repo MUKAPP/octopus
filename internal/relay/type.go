@@ -2,6 +2,7 @@ package relay
 
 import (
 	"context"
+	"net/http"
 	"sync"
 
 	dbmodel "github.com/bestruirui/octopus/internal/model"
@@ -28,6 +29,10 @@ type relayRun struct {
 	iter            *balancer.Iterator
 	group           dbmodel.Group
 	probe           bool
+
+	// clientHeaders 保存受支持压缩编码解码前的入站头快照，供 {client_header:NAME} 占位符使用；
+	// nil 表示普通请求，占位符直接读取现有 Gin 入站头。
+	clientHeaders http.Header
 
 	tried    map[relaySelectionKey]struct{}
 	deferred map[relaySelectionKey]struct{}
