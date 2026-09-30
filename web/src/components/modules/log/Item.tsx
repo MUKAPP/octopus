@@ -400,7 +400,7 @@ function LiveOverviewDetails({ log, brandColor }: { log: RelayLog; brandColor: s
 
     return (
         <div className="flex h-full min-h-0 flex-col gap-4">
-            <div className="max-md:scrollbar max-md:pr-2 flex min-h-0 flex-1 flex-col gap-4 overflow-auto md:grid md:grid-cols-2 md:overflow-hidden">
+            <div className="max-md:scrollbar max-md:px-2 flex min-h-0 flex-1 flex-col gap-4 overflow-auto md:grid md:grid-cols-2 md:overflow-hidden">
                 <div className="contents md:flex md:min-h-0 md:flex-1 md:flex-col md:overflow-hidden md:rounded-2xl md:border md:border-border md:bg-muted/30">
                     <section className={cn(
                         "order-1 flex min-h-0 shrink-0 flex-col overflow-hidden rounded-2xl border border-border bg-muted/30 md:order-none md:rounded-none md:border-0 md:bg-transparent",
@@ -687,7 +687,7 @@ export function LogCard({ log }: { log: RelayLog }) {
                             {log.is_overview ? (
                                 <LiveOverviewDetails log={log} brandColor={brandColor} />
                             ) : (
-                                <div className="max-md:scrollbar max-md:pr-2 flex h-full min-h-0 min-w-0 flex-col gap-4 overflow-auto md:grid md:grid-cols-2 md:overflow-hidden">
+                                <div className="max-md:scrollbar max-md:px-2 flex h-full min-h-0 min-w-0 flex-col gap-4 overflow-auto md:grid md:grid-cols-2 md:overflow-hidden">
                                     <div className="order-2 flex min-h-0 shrink-0 min-w-0 flex-col overflow-hidden rounded-2xl border border-border bg-muted/30 md:order-none md:flex-1">
                                         <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-border bg-muted/50 px-3 py-2.5 md:px-4 md:py-3">
                                             <Send className="size-4 shrink-0 text-green-500" />

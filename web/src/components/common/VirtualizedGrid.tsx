@@ -154,7 +154,7 @@ export function VirtualizedGrid<T>({
         <div className="relative h-full min-h-0 w-full">
             <div
                 ref={containerRef}
-                className="scrollbar relative h-full w-full overflow-y-auto overscroll-contain rounded-t-3xl pr-2"
+                className="scrollbar relative h-full w-full overflow-y-auto overscroll-contain rounded-t-3xl px-2"
             >
                 {isLoading && items.length === 0 ? (
                     <div className="flex min-h-full items-center justify-center px-4 pb-[calc(6rem+env(safe-area-inset-bottom))] md:pb-4">

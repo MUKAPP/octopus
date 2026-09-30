@@ -158,15 +158,14 @@ html.dark,
 /*
  * 原生滚动条默认隐藏（见下方 @layer base 的 * 规则），只有真实可滚动的容器显式
  * 挂上 .scrollbar 才恢复细条指示：scrollbar-width / scrollbar-color 供 Firefox 使用，
- * ::-webkit-scrollbar 供 Chromium/Safari 使用；scrollbar-gutter: stable 让滚动条出现
- * 与否都预留同一条槽位，避免内容左右抖动；内容间距由容器内边距单独提供。
+ * ::-webkit-scrollbar 供 Chromium/Safari 使用；scrollbar-gutter: stable both-edges
+ * 在左右对称预留槽位，保持内容居中；内容间距由容器的对称内边距单独提供。
  * 拇指与轨道用 color-mix 从主题前景色推导，自动适配亮/暗主题，无需新增色板变量。
- * 已经由外层容器提供滚动条槽位时，内层配合内置的 scrollbar-gutter-auto 关闭预留，避免叠加出双份间距。
  */
 @utility scrollbar {
   scrollbar-width: thin;
   scrollbar-color: var(--scrollbar-thumb) transparent;
-  scrollbar-gutter: stable;
+  scrollbar-gutter: stable both-edges;
 
   &::-webkit-scrollbar {
     width: var(--scrollbar-size);
@@ -190,11 +189,6 @@ html.dark,
     background-color: transparent;
   }
 
-  /* 内层滚动条不再预留槽位：与外层容器叠加时避免双份间距。用双类选择器提高
-     优先级，保证不依赖 utilities 层内的声明顺序。 */
-  &.scrollbar-gutter-auto {
-    scrollbar-gutter: auto;
-  }
 }
 
 @layer base {

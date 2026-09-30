@@ -57,7 +57,7 @@ export function CreateDialogContent() {
                     />
                 </header>
             </MorphingDialogTitle>
-            <MorphingDialogDescription className="scrollbar flex-1 min-h-0 min-w-0 overflow-y-auto overscroll-contain pr-2">
+            <MorphingDialogDescription className="scrollbar flex-1 min-h-0 min-w-0 overflow-y-auto overscroll-contain px-2">
                 <form onSubmit={handleSubmit} className="min-w-0">
                     <FieldGroup className="gap-4">
                         <Field>

@@ -130,7 +130,7 @@ export function CreateDialogContent() {
                     />
                 </header>
             </MorphingDialogTitle>
-            <MorphingDialogDescription disableLayoutAnimation className="scrollbar flex-1 min-h-0 overflow-auto pr-2">
+            <MorphingDialogDescription disableLayoutAnimation className="scrollbar flex-1 min-h-0 overflow-auto px-2">
                 <Accordion type="single" collapsible className="mb-4 w-full border rounded-xl bg-card">
                     <AccordionItem value="presets" className="border-none">
                         <AccordionTrigger className="text-sm font-medium text-card-foreground py-3 px-4 hover:no-underline hover:bg-muted/30 rounded-xl transition-colors">
