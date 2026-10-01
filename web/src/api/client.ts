@@ -1,3 +1,5 @@
+import { resolveAppURL } from '@/lib/base-url';
+
 type RequestMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
 
 export type RequestParams = Record<string, string | number | boolean>;
@@ -73,7 +75,7 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
 
     if (apiKey) headers.set('Authorization', `Bearer ${apiKey}`);
 
-    const response = await fetch(appendParams(path, options.params), {
+    const response = await fetch(resolveAppURL(appendParams(path, options.params)), {
         method: options.method ?? 'GET',
         headers,
         body,

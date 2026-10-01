@@ -3,6 +3,7 @@ import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tansta
 import { apiRequest } from '../client';
 import { logger } from '@/lib/logger';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { resolveAppURL } from '@/lib/base-url';
 
 /** 日志请求的生命周期状态。 */
 export type RequestState = 'running' | 'committed' | 'success' | 'failed' | 'canceled';
@@ -530,7 +531,7 @@ export function useLogDetailStream(id: number, state: RequestState | undefined, 
         const connect = async () => {
             if (cancelled || !enabled) return;
             try {
-                source = new EventSource(`/api/v1/log/${id}/stream`, { withCredentials: true });
+                source = new EventSource(resolveAppURL(`/api/v1/log/${id}/stream`), { withCredentials: true });
                 source.onopen = () => {
                     if (cancelled) return;
                     reconnectAttempt = 0;
@@ -732,7 +733,7 @@ export function useLogs(options: { pageSize?: number } = {}) {
         const connect = async () => {
             if (cancelled) return;
             try {
-                source = new EventSource('/api/v1/log/overview/stream', { withCredentials: true });
+                source = new EventSource(resolveAppURL('/api/v1/log/overview/stream'), { withCredentials: true });
                 overviewSourceRef.current = source;
                 source.onopen = () => {
                     if (cancelled) return;
@@ -973,7 +974,7 @@ export function useLogs(options: { pageSize?: number } = {}) {
                     return;
                 }
 
-                const eventSource = new EventSource('/api/v1/log/stream', { withCredentials: true });
+                const eventSource = new EventSource(resolveAppURL('/api/v1/log/stream'), { withCredentials: true });
                 eventSourceRef.current = eventSource;
                 // EventSource 已创建后就释放 connecting 锁；是否连上由 onopen/onerror 处理
                 connectingRef.current = false;

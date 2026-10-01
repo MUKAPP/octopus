@@ -69,3 +69,19 @@ Toast 保留调用者显式 `offset` / `mobileOffset` 的优先级。Sonner 的�
 重试提示的 `data-scrollable-tooltip` 标记仅用于保留该内容的悬停与内部滚动；离开内容、页面外部滚动或 Escape 仍关闭。未标记的提示保持原有行为。
 
 生产日志当前保存在服务进程的内存 store。修改备注后，已有记录在同一进程内刷新仍显示旧快照，新请求捕获新备注；此字段不新增数据库列，也不承诺服务重启后的历史保留。
+
+## 反向代理子目录与 PWA
+
+生产页面可以部署在 `/`、`/octopus/` 或其他应用目录。`src/lib/base-url.ts` 基于 `document.baseURI` 统一解析 API、导入导出、三条日志 SSE 和 Service Worker URL；构建资源继续使用 Vite 的相对 base。
+
+反向代理必须同时满足：
+
+- 将无末尾斜杠的入口（如 `/octopus`）308 重定向至 `/octopus/`，保留查询参数。
+- 将 `/octopus/*` 剥离目录前缀后转发为后端的 `/*`，保留 method、body、query、cookie 和 Authorization。后端仍在根路径挂载路由和嵌入资源。
+- SSE 响应不得缓冲；API 不得缓存。导出保留 Content-Disposition，认证保留 Set-Cookie。
+
+Service Worker 注册 scope 为当前应用目录。shell / static 缓存名为 `octopus-${encodeURIComponent(basePath)}-shell-v4` / `static-v4`，各目录独立；`octopus-font` 跨目录共享并保留。仅根目录的 worker 额外清理旧 `octopus-shell-v数字` / `octopus-static-v数字` 缓存，子目录不认领这些旧根缓存。
+
+“强制刷新”由主线程删除当前目录的非字体缓存，并只注销 scope 精确匹配当前目录的注册后刷新；不向可能仍控制页面的旧根 worker 发送清理消息，不删除其他目录或无关产品缓存。离线时只提供已经缓存的页面壳、静态资源和字体，未缓存的 API 仍不可用，既有认证行为不变。
+
+同 origin 下的多目录部署不隔离认证：HttpOnly cookie 仍为 Path=/，登录偏好与 localStorage 仍共享。目录缓存隔离不代表多账户或多后端实例的认证隔离。

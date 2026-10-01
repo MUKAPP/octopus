@@ -1,19 +1,20 @@
 // Service Worker for Octopus PWA
-// Vite: hashed assets under /assets/ are immutable (Cache First)
+// Vite: hashed assets under the app's assets/ directory are immutable (Cache First)
 
 /**
  * Cache naming
- * - Prefix MUST match `web/src/lib/sw.ts` (OCTOPUS_CACHE_PREFIX)
+ * - Prefix MUST match `web/src/lib/sw.ts` (getAppCachePrefix)
  * - Bump CACHE_VERSION when you change caching behavior in this file
  * - FONT cache is version-independent (fonts persist across updates)
  */
-const CACHE_PREFIX = 'octopus';
-const CACHE_VERSION = 'v3';
+const BASE_PATH = new URL(self.registration.scope).pathname;
+const CACHE_PREFIX = `octopus-${encodeURIComponent(BASE_PATH)}-`;
+const CACHE_VERSION = 'v4';
 const CACHE_NAMES = {
-    shell: `${CACHE_PREFIX}-shell-${CACHE_VERSION}`,
-    static: `${CACHE_PREFIX}-static-${CACHE_VERSION}`,
-    // Font cache is NOT versioned - persists across app updates
-    font: `${CACHE_PREFIX}-font`,
+    shell: `${CACHE_PREFIX}shell-${CACHE_VERSION}`,
+    static: `${CACHE_PREFIX}static-${CACHE_VERSION}`,
+    // Font cache is shared across app directories and persists across updates.
+    font: 'octopus-font',
 };
 
 const SW_MESSAGE_TYPE = {
@@ -24,14 +25,14 @@ const SW_MESSAGE_TYPE = {
 
 // 固定 PWA 资源；缺失时单独跳过，不应阻止 Service Worker 安装。
 const CORE_ASSETS = [
-    '/manifest.json',
-    '/favicon.ico',
-    '/apple-icon.png',
-    '/web-app-manifest-192x192.png',
-    '/web-app-manifest-512x512.png',
-    '/logo.svg',
-    '/logo-dark.svg',
-];
+    'manifest.json',
+    'favicon.ico',
+    'apple-icon.png',
+    'web-app-manifest-192x192.png',
+    'web-app-manifest-512x512.png',
+    'logo.svg',
+    'logo-dark.svg',
+].map((asset) => `${BASE_PATH}${asset}`);
 
 const STATIC_DESTINATIONS = new Set(['script', 'style', 'image', 'font', 'manifest']);
 const STATIC_RESOURCE_PATTERN = /\.(?:css|js|mjs|png|jpg|jpeg|webp|gif|svg|ico|woff2?|ttf|otf|json|webmanifest)$/i;
@@ -55,7 +56,7 @@ self.addEventListener('install', (event) => {
 self.addEventListener('activate', (event) => {
     event.waitUntil(
         (async () => {
-            // Clean up old Octopus caches (previous versions), then take control.
+            // Clean up this app directory's old caches, then take control.
             await deleteOctopusCaches({ keep: new Set(Object.values(CACHE_NAMES)) });
             await self.clients.claim();
         })()
@@ -72,6 +73,11 @@ self.addEventListener('fetch', (event) => {
         return;
     }
 
+    // 只处理当前应用目录；其他同源实例保持各自的缓存策略。
+    if (!url.pathname.startsWith(BASE_PATH)) {
+        return;
+    }
+
     // 跳过 API、Service Worker 和 Vite 开发环境资源
     if (isBypassedUrl(url)) {
         return;
@@ -83,15 +89,15 @@ self.addEventListener('fetch', (event) => {
         return;
     }
 
-    // /assets/ 资源：Cache First（带哈希，永不变）
-    if (url.pathname.startsWith('/assets/')) {
+    // 应用目录 assets/ 资源：Cache First（带哈希，永不变）
+    if (url.pathname.slice(BASE_PATH.length).startsWith('assets/')) {
         event.respondWith(cacheFirst(request, CACHE_NAMES.static));
         return;
     }
 
     // 页面导航：Network First，离线时返回缓存的首页
     if (request.mode === 'navigate') {
-        event.respondWith(networkFirst(request, CACHE_NAMES.shell, { fallbackUrl: '/' }));
+        event.respondWith(networkFirst(request, CACHE_NAMES.shell, { fallbackUrl: BASE_PATH }));
         return;
     }
 
@@ -107,17 +113,18 @@ self.addEventListener('fetch', (event) => {
 // ============ Shell precache ============
 
 /**
- * 从当前根 HTML 中提取构建入口、modulepreload、样式和 public 资源。
- * 仅保留同源静态资源；外部资源、API 与 Vite 开发资源不会被缓存。
+ * 从当前应用首页 HTML 中提取构建入口、modulepreload、样式和 public 资源。
+ * 仅保留同源应用目录内静态资源；外部资源、API 与 Vite 开发资源不会被缓存。
  */
 function extractShellAssets(html) {
     const assets = new Set(CORE_ASSETS);
 
     for (const match of html.matchAll(/\b(?:href|src)=["']([^"'#]+)["']/gi)) {
         try {
-            const url = new URL(match[1], `${self.location.origin}/`);
+            const url = new URL(match[1], self.registration.scope);
             if (
                 url.origin !== self.location.origin ||
+                !url.pathname.startsWith(BASE_PATH) ||
                 isBypassedUrl(url) ||
                 !isStaticResourceUrl(url)
             ) {
@@ -136,14 +143,14 @@ function extractShellAssets(html) {
  * 缓存首页和当前构建引用的资源。每个资源独立请求，缺失的可选资源只会被跳过。
  */
 async function cacheAppShell() {
-    const response = await fetch('/', { cache: 'no-store' });
+    const response = await fetch(BASE_PATH, { cache: 'no-store' });
     if (!response.ok) {
         return;
     }
 
     const shellCache = await caches.open(CACHE_NAMES.shell);
     const staticCache = await caches.open(CACHE_NAMES.static);
-    await shellCache.put('/', response.clone());
+    await shellCache.put(BASE_PATH, response.clone());
 
     let html = '';
     try {
@@ -159,6 +166,7 @@ async function cacheAppShell() {
                 const url = new URL(asset, self.location.origin);
                 if (
                     url.origin !== self.location.origin ||
+                    !url.pathname.startsWith(BASE_PATH) ||
                     isBypassedUrl(url) ||
                     !isStaticResourceUrl(url)
                 ) {
@@ -170,7 +178,7 @@ async function cacheAppShell() {
                     return;
                 }
 
-                const cache = url.pathname.startsWith('/assets/') ? staticCache : shellCache;
+                const cache = url.pathname.slice(BASE_PATH.length).startsWith('assets/') ? staticCache : shellCache;
                 await cache.put(url, assetResponse.clone());
             } catch {
                 // Optional PWA/public assets may not exist in every deployment.
@@ -278,7 +286,7 @@ self.addEventListener('message', (event) => {
             break;
 
         case SW_MESSAGE_TYPE.CLEAR_CACHE:
-            // Only clear Octopus caches (avoid nuking other same-origin caches).
+            // Only clear this app directory's caches (plus legacy root caches at root).
             // PRESERVE font cache - fonts should persist across updates.
             event.waitUntil(
                 (async () => {
@@ -293,15 +301,15 @@ self.addEventListener('message', (event) => {
 
 // ========= Helpers =========
 function isBypassedUrl(url) {
-    const { pathname } = url;
+    const pathname = url.pathname.slice(BASE_PATH.length);
     return (
-        pathname === '/sw.js' ||
-        pathname === '/api' ||
-        pathname.startsWith('/api/') ||
-        pathname === '/v1' ||
-        pathname.startsWith('/v1/') ||
-        pathname.startsWith('/@vite') ||
-        pathname.startsWith('/@react-refresh')
+        pathname === 'sw.js' ||
+        pathname === 'api' ||
+        pathname.startsWith('api/') ||
+        pathname === 'v1' ||
+        pathname.startsWith('v1/') ||
+        pathname.startsWith('@vite') ||
+        pathname.startsWith('@react-refresh')
     );
 }
 
@@ -311,14 +319,18 @@ function isFontUrl(url) {
 
 function isStaticResourceUrl(url, request = null) {
     return (
-        url.pathname.startsWith('/assets/') ||
+        url.pathname.slice(BASE_PATH.length).startsWith('assets/') ||
         (request && STATIC_DESTINATIONS.has(request.destination)) ||
         STATIC_RESOURCE_PATTERN.test(url.pathname)
     );
 }
 
 function isOctopusCacheName(name) {
-    return name.startsWith(`${CACHE_PREFIX}-`);
+    return (
+        name.startsWith(CACHE_PREFIX) ||
+        name === CACHE_NAMES.font ||
+        (BASE_PATH === '/' && /^octopus-(?:shell|static)-v\d+$/.test(name))
+    );
 }
 
 async function deleteOctopusCaches({ keep } = {}) {

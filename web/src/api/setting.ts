@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiRequest, ApiError } from './client';
 import { logger } from '@/lib/logger';
+import { resolveAppURL } from '@/lib/base-url';
 
 /**
  * Setting 数据
@@ -144,7 +145,7 @@ export function useExportDB() {
             params.set('include_logs', String(!!options.include_logs));
             params.set('include_stats', String(!!options.include_stats));
 
-            const res = await fetch(`/api/v1/setting/export?${params.toString()}`, {
+            const res = await fetch(resolveAppURL(`/api/v1/setting/export?${params.toString()}`), {
                 method: 'GET',
                 credentials: 'include',
             });
@@ -173,7 +174,7 @@ export function useImportDB() {
             const form = new FormData();
             form.append('file', file);
 
-            const res = await fetch('/api/v1/setting/import', {
+            const res = await fetch(resolveAppURL('/api/v1/setting/import'), {
                 method: 'POST',
                 body: form,
                 credentials: 'include',

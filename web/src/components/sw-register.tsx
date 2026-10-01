@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { SW_MESSAGE_TYPE } from '@/lib/sw';
+import { getAppBasePath, resolveAppURL } from '@/lib/base-url';
 
 // ServiceWorkerRegister 在生产环境注册并激活最新的 Service Worker。
 export function ServiceWorkerRegister() {
@@ -27,7 +28,7 @@ export function ServiceWorkerRegister() {
         navigator.serviceWorker.addEventListener('controllerchange', onControllerChange);
 
         navigator.serviceWorker
-            .register('/sw.js', { scope: '/' })
+            .register(resolveAppURL('sw.js'), { scope: getAppBasePath() })
             .then((registration) => {
                 // If an update is already waiting, activate it immediately.
                 if (registration.waiting) {

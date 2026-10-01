@@ -7,12 +7,16 @@ export const SW_MESSAGE_TYPE = {
 export type SwMessageType = (typeof SW_MESSAGE_TYPE)[keyof typeof SW_MESSAGE_TYPE];
 
 // Keep in sync with `web/public/sw.js`
-export const OCTOPUS_CACHE_PREFIX = 'octopus-';
+export function getAppCachePrefix(basePath: string): string {
+    return `octopus-${encodeURIComponent(basePath)}-`;
+}
 // Font cache is version-independent and should persist across updates
 export const OCTOPUS_FONT_CACHE_NAME = 'octopus-font';
 
-export function isOctopusCacheName(name: string) {
-    return name.startsWith(OCTOPUS_CACHE_PREFIX);
+export function isOctopusCacheName(name: string, basePath: string): boolean {
+    return name.startsWith(getAppCachePrefix(basePath))
+        || isFontCacheName(name)
+        || (basePath === '/' && /^octopus-(?:shell|static)-v\d+$/.test(name));
 }
 
 export function isFontCacheName(name: string) {

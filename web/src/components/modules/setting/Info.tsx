@@ -3,7 +3,8 @@ import { Info, Tag, Github, AlertTriangle, Download, Loader2 } from 'lucide-reac
 import { APP_VERSION, GITHUB_REPO, BINARIES_RELEASE_TAG } from '@/lib/info';
 import { useLatestInfo, useNowVersion } from '@/api/update';
 import { Button } from '@/components/ui/button';
-import { isOctopusCacheName, isFontCacheName, SW_MESSAGE_TYPE } from '@/lib/sw';
+import { getAppBasePath } from '@/lib/base-url';
+import { isOctopusCacheName, isFontCacheName } from '@/lib/sw';
 
 export function SettingInfo() {
     const t = useTranslations('setting');
@@ -21,23 +22,25 @@ export function SettingInfo() {
         && latestVersion !== backendNowVersion;
 
     const clearCacheAndReload = async () => {
-        // 通知 Service Worker 清理缓存
-        if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
-            navigator.serviceWorker.controller.postMessage({ type: SW_MESSAGE_TYPE.CLEAR_CACHE });
-        }
-        // 同时也从主线程清理（双保险），但保留字体缓存
+        const basePath = getAppBasePath();
+        // 从主线程清理当前应用目录的缓存，但保留共享字体缓存
         if ('caches' in window) {
             const names = await caches.keys();
             await Promise.all(
                 names
-                    .filter((name) => isOctopusCacheName(name) && !isFontCacheName(name))
+                    .filter((name) => isOctopusCacheName(name, basePath) && !isFontCacheName(name))
                     .map((name) => caches.delete(name))
             );
         }
-        // 注销当前 SW，下次加载会重新注册
+        // 只注销当前应用目录的 SW，下次加载会重新注册
         if ('serviceWorker' in navigator) {
             const registrations = await navigator.serviceWorker.getRegistrations();
-            await Promise.all(registrations.map((reg) => reg.unregister()));
+            const scope = new URL(basePath, window.location.origin).href;
+            await Promise.all(
+                registrations
+                    .filter((reg) => reg.scope === scope)
+                    .map((reg) => reg.unregister())
+            );
         }
         // 强制刷新（跳过缓存）
         window.location.reload();
