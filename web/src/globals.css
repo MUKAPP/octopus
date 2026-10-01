@@ -155,40 +155,67 @@ html.dark,
   --shadow-2xl: var(--shadow-2xl);
 }
 
-/*
- * 原生滚动条默认隐藏（见下方 @layer base 的 * 规则），只有真实可滚动的容器显式
- * 挂上 .scrollbar 才恢复细条指示：scrollbar-width / scrollbar-color 供 Firefox 使用，
- * ::-webkit-scrollbar 供 Chromium/Safari 使用；scrollbar-gutter: stable both-edges
- * 在左右对称预留槽位，保持内容居中；内容间距由容器的对称内边距单独提供。
- * 拇指与轨道用 color-mix 从主题前景色推导，自动适配亮/暗主题，无需新增色板变量。
- */
+/* 原生 viewport 保持原样；共享增强器在父层绘制零占位轨道。 */
 @utility scrollbar {
-  scrollbar-width: thin;
-  scrollbar-color: var(--scrollbar-thumb) transparent;
-  scrollbar-gutter: stable both-edges;
+  --overlay-scrollbar-enabled: 1;
+  scrollbar-width: none;
+  scrollbar-gutter: auto;
 
   &::-webkit-scrollbar {
-    width: var(--scrollbar-size);
-    height: var(--scrollbar-size);
+    display: none;
   }
+}
 
-  &::-webkit-scrollbar-track {
-    background-color: transparent;
+.overlay-scroll-host {
+  position: absolute;
+  margin: 0;
+  overflow: clip;
+  contain: strict;
+  pointer-events: none;
+  z-index: 20;
+}
+
+.overlay-scroll-rail {
+  position: absolute;
+  display: none;
+  pointer-events: auto;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.overlay-scroll-thumb {
+  position: absolute;
+  border-radius: 9999px;
+  background: var(--scrollbar-thumb);
+  transition: background-color 120ms ease;
+}
+
+.overlay-scroll-rail[data-axis='x'] .overlay-scroll-thumb {
+  top: 2.5px;
+  left: 0;
+}
+
+.overlay-scroll-rail[data-axis='y'] .overlay-scroll-thumb {
+  top: 0;
+  left: 2.5px;
+}
+
+.overlay-scroll-rail[data-dragging] .overlay-scroll-thumb {
+  background: var(--scrollbar-thumb-hover);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .overlay-scroll-rail:hover .overlay-scroll-thumb {
+    background: var(--scrollbar-thumb-hover);
   }
+}
 
-  &::-webkit-scrollbar-thumb {
-    background-color: var(--scrollbar-thumb);
-    border-radius: 9999px;
+@media (prefers-reduced-motion: reduce) {
+  .overlay-scroll-thumb {
+    transition: none;
   }
-
-  &::-webkit-scrollbar-thumb:hover {
-    background-color: var(--scrollbar-thumb-hover);
-  }
-
-  &::-webkit-scrollbar-corner {
-    background-color: transparent;
-  }
-
 }
 
 @utility pb-nav-clearance {
@@ -212,13 +239,13 @@ html.dark,
     --overlay-left: max(1rem, var(--safe-area-left));
     --overlay-height: calc(100dvh - var(--overlay-top) - var(--overlay-bottom));
     --overlay-width: calc(100dvw - var(--overlay-left) - var(--overlay-right));
-    --scrollbar-size: 8px;
     --scrollbar-thumb: color-mix(in oklch, var(--foreground) 30%, transparent);
     --scrollbar-thumb-hover: color-mix(in oklch, var(--foreground) 50%, transparent);
   }
 
   * {
     @apply border-border outline-ring/50;
+    --overlay-scrollbar-enabled: 0;
     scrollbar-width: none;
     -ms-overflow-style: none;
   }

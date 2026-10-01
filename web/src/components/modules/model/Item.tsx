@@ -10,6 +10,7 @@ import { ModelDeleteOverlay, ModelEditOverlay } from './ItemOverlays';
 import { cn } from '@/lib/utils';
 import { createPortal } from 'react-dom';
 import { getSafeAreaInsets, useSafeAreaInsets } from '@/hooks/use-safe-area-insets';
+import { getOverlayScrollbarViewport } from '@/lib/overlay-scrollbars';
 
 interface ModelItemProps {
     model: LLMInfo;
@@ -131,7 +132,7 @@ export const ModelItem = memo(function ModelItem({ model, layout = 'grid' }: Mod
         if (!isEditOpen) return;
 
         const handlePointerDown = (event: PointerEvent) => {
-            const target = event.target as Node | null;
+            const target = getOverlayScrollbarViewport(event.target) ?? event.target as Node | null;
             if (!target) return;
             if (editOverlayRef.current?.contains(target)) return;
             if (editButtonRef.current?.contains(target)) return;
@@ -145,13 +146,13 @@ export const ModelItem = memo(function ModelItem({ model, layout = 'grid' }: Mod
         updateOverlayRect();
         window.addEventListener('resize', updateOverlayRect);
         window.addEventListener('scroll', updateOverlayRect, true);
-        document.addEventListener('pointerdown', handlePointerDown);
+        document.addEventListener('pointerdown', handlePointerDown, true);
         document.addEventListener('keydown', handleKeyDown);
 
         return () => {
             window.removeEventListener('resize', updateOverlayRect);
             window.removeEventListener('scroll', updateOverlayRect, true);
-            document.removeEventListener('pointerdown', handlePointerDown);
+            document.removeEventListener('pointerdown', handlePointerDown, true);
             document.removeEventListener('keydown', handleKeyDown);
         };
     }, [isEditOpen, updateOverlayRect, closeEdit]);

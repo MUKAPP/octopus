@@ -5,6 +5,7 @@ import { useTranslations } from 'use-intl';
 import { Fragment } from 'react';
 import { Loader2 } from 'lucide-react';
 import dayjs from 'dayjs';
+import { getOverlayScrollbarViewport } from '@/lib/overlay-scrollbars';
 
 interface StatsDailyData {
     dateStr: string;
@@ -100,13 +101,14 @@ export function Activity() {
     useEffect(() => {
         if (!pinnedDateStr) return;
         const handlePointerDown = (event: PointerEvent) => {
-            if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+            const target = getOverlayScrollbarViewport(event.target) ?? event.target as Node | null;
+            if (containerRef.current && !containerRef.current.contains(target)) {
                 setPinnedDateStr(null);
                 hideTooltip();
             }
         };
-        document.addEventListener('pointerdown', handlePointerDown);
-        return () => document.removeEventListener('pointerdown', handlePointerDown);
+        document.addEventListener('pointerdown', handlePointerDown, true);
+        return () => document.removeEventListener('pointerdown', handlePointerDown, true);
     }, [pinnedDateStr, hideTooltip]);
 
     return (
@@ -122,7 +124,7 @@ export function Activity() {
             <div
                 ref={scrollRef}
                 onScroll={checkScroll}
-                className="overflow-x-auto scrollbar p-4 pb-6"
+                className="overflow-x-auto scrollbar p-4"
                 style={{ maskImage, WebkitMaskImage: maskImage }}
             >
                 {isLoading && !statsDailyFormatted ? (

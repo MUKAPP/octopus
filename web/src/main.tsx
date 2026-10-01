@@ -4,6 +4,7 @@ import { AppContainer } from '@/components/app';
 import { ServiceWorkerRegister } from '@/components/sw-register';
 import { TooltipProvider } from '@/components/animate-ui/components/animate/tooltip';
 import { Toaster } from '@/components/ui/sonner';
+import { OverlayScrollbars } from '@/components/common/OverlayScrollbars';
 import { LocaleProvider } from '@/provider/locale';
 import QueryProvider from '@/provider/query';
 import { ThemeProvider } from '@/provider/theme';
@@ -18,6 +19,7 @@ createRoot(document.getElementById('root')!).render(
           <TooltipProvider>
             <AppContainer />
             <Toaster />
+            <OverlayScrollbars />
           </TooltipProvider>
         </LocaleProvider>
       </QueryProvider>

@@ -1,4 +1,5 @@
 import { RefObject, useEffect } from 'react';
+import { getOverlayScrollbarViewport } from '@/lib/overlay-scrollbars';
 
 function useClickOutside<T extends HTMLElement>(
   ref: RefObject<T>,
@@ -11,6 +12,10 @@ function useClickOutside<T extends HTMLElement>(
         return;
       }
       if (!ref || !ref.current || ref.current.contains(event.target as Node)) {
+        return;
+      }
+      const scrollbarViewport = getOverlayScrollbarViewport(event.target);
+      if (scrollbarViewport && ref.current.contains(scrollbarViewport)) {
         return;
       }
 

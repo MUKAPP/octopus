@@ -25,14 +25,18 @@ pnpm build
 
 ## 滚动与浮层布局
 
-`src/globals.css` 在 `@layer base` 对 `*` 设置 `scrollbar-width: none`，原生滚动条默认全部隐藏；只有真实可滚动的容器显式加上 `.scrollbar` 才显示细条指示。`.scrollbar` 的拇指色由主题前景色经 `color-mix` 推导，亮/暗主题自动适配。`scrollbar-gutter: stable both-edges` 在左右对称预留槽位，滚动条出现与否都保持同一内容宽度与居中轴，不因右侧滚动条使布局向左偏移。
+`src/globals.css` 在 `@layer base` 对 `*` 设置 `scrollbar-width: none`，原生滚动条默认全部隐藏；只有真实可滚动的容器显式加上 `.scrollbar`，作为由增强轨道接管的标记。`src/lib/overlay-scrollbars.ts` 与 `src/components/common/OverlayScrollbars.tsx` 在 `main.tsx` 的 Provider 下安装一次，识别所有带 `.scrollbar` 的原生滚动容器，用绝对定位的轨道覆盖原生滚动条位置，同时覆盖纵向、横向以及 `textarea`。`src/globals.css` 仍提供轨道的拇指色（由主题前景色经 `color-mix` 推导，亮/暗主题自动适配），增强本身为本地实现，未引入新依赖。
+
+轨道不进入文档流、不占用布局尺寸，容器保持原有内容宽度与居中，也不需要靠预留滚动条槽位或补内边距维持对齐；容器原有的 `overflow`、`ref` / `scrollTop` / `scrollLeft` 用法不变，键盘滚动与原生 wheel、触摸滚动仍由原滚动容器处理，轨道支持真实滑块拖动与点击定位。
 
 新增滚动区域时：
 
 - 只给真正会产生滚动的容器加 `.scrollbar`（`overflow-y-auto` / `overflow-x-auto` / 会溢出的 `overflow-auto`）。
-- 不要给纯装饰性裁切容器加（`app-shell.tsx`、`channel/CardContent.tsx` 的卡片、`tabs.tsx` 的 `overflow: hidden`、`badge` / `progress` 等），`scrollbar-gutter` 在 `overflow: hidden` 下同样会占位。
-- 内容与滚动条要保持至少 8px 间距：容器没有水平内边距时补对称的 `px-2`（`p-4` / `p-5` 已足够，不必再补），避免只加 `pr-2` 导致左偏；横向滚动的容器补 `pb-2`。
-- 热力图等横向滚动区域同时保留渐隐 mask 和底部滚动条，并用底部内边距隔开内容。
+- 不要给纯装饰性裁切容器加（`app-shell.tsx`、`channel/CardContent.tsx` 的卡片、`tabs.tsx` 的 `overflow: hidden`、`badge` / `progress` 等），它们没有真实滚动条可接管。
+- 不要再为滚动条补 `px-2` / `pr-2` / `pb-2` 一类 gutter 补偿，保留容器原有业务内边距即可；轨道优先使用滚动容器自身已有的内边距，不足时再使用最近祖先既有的外侧留白，不跨越原有滚动或裁切边界。响应式标记（如 `max-md:scrollbar`）只在相应断点绘制轨道。
+- 轨道 `aria-hidden`、不设置 `tabIndex`，不新增可聚焦控件，也不改变原有焦点与 Tab 顺序。轨道按下、抬起与点击取消默认行为以保留焦点，但继续传播到文档的外点监听；监听通过 `getOverlayScrollbarViewport(eventTarget)` 判断真实归属，只把自己内部的轨道当作内点，外部轨道仍关闭浮层。Popover、Select 与菜单的轨道留在对应内容树内，保留 Radix 原有内部捕获与点击关闭机制；Ctrl＋滚轮不接管，保留浏览器缩放。
+- 轨道 host 作为父层首个绝对定位子节点，显式清零 margin，避免改变 `space-y-*` 的末子节点间距；host 恢复时保持相同插入位置。
+- 热力图等横向滚动区域同时保留渐隐 mask 和底部滚动条。
 
 MorphingDialog（`src/components/ui/morphing-dialog.tsx`）的视口容器用 `overflow-clip` 限制可见范围，避免焦点或 `scrollIntoView` 滚动容器本身。内容仍可能裁切溢出的子元素，因此浮层不要依赖绝对定位越出宿主卡片。设置中的密钥与账号表单通过 `MorphingDialogOverlayLayer` 挂到 `document.body`，由浮层自己承担视口高度约束、滚动和嵌套键盘处理；外点不丢弃草稿，提交期间禁用取消操作和 Escape 关闭。
 
