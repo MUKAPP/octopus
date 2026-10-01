@@ -474,6 +474,8 @@
             "addItem": "Add Model",
             "autoAdd": "Auto Add",
             "clear": "Clear",
+            "moveToTop": "Move to Top",
+            "moveToBottom": "Move to Bottom",
             "selectChannel": "Channel",
             "selectModel": "Model"
         },

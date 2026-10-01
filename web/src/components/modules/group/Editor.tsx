@@ -228,6 +228,7 @@ function SortSection({
                     removingIds={removingIds}
                     showWeight={showWeight}
                     showRate={showRate}
+                    showReorderActions
                     showConfirmDelete={false}
                 />
             </div>

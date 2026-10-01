@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef, useState } from 'react';
-import { Layers, GripVertical, X, Trash2 } from 'lucide-react';
+import { Layers, GripVertical, X, Trash2, ArrowUpFromLine, ArrowDownToLine } from 'lucide-react';
 import {
     DragDropContext,
     Draggable,
@@ -12,6 +12,7 @@ import { cn } from '@/lib/utils';
 import { getModelIcon } from '@/lib/model-icons';
 import type { LLMChannel } from '@/api/model';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/animate-ui/components/animate/tooltip';
+import { Button } from '@/components/ui/button';
 import { useTranslations } from 'use-intl';
 
 export interface SelectedMember extends LLMChannel {
@@ -32,7 +33,6 @@ type MemberItemDnd = {
     innerRef: DraggableProvided['innerRef'];
     draggableProps: DraggableProvided['draggableProps'];
     dragHandleProps: DraggableProvided['dragHandleProps'];
-    isDragging: boolean;
 };
 
 function MemberItem({
@@ -44,8 +44,14 @@ function MemberItem({
     showWeight = false,
     showRate = false,
     showConfirmDelete = true,
+    showReorderActions,
+    isFirst,
+    isLast,
+    onMoveToTop,
+    onMoveToBottom,
     layoutScope,
     dnd,
+    isDragging,
 }: {
     member: SelectedMember;
     onRemove: (id: string) => void;
@@ -55,9 +61,16 @@ function MemberItem({
     showWeight?: boolean;
     showRate?: boolean;
     showConfirmDelete?: boolean;
+    showReorderActions: boolean;
+    isFirst: boolean;
+    isLast: boolean;
+    onMoveToTop: () => void;
+    onMoveToBottom: () => void;
     layoutScope?: string;
+    isDragging: boolean;
     dnd: MemberItemDnd;
 }) {
+    const t = useTranslations('group');
     const { Icon: ModelIcon, className: iconClassName } = getModelIcon(member.name);
     const [confirmDelete, setConfirmDelete] = useState(false);
     const isDisabled = member.enabled === false;
@@ -75,8 +88,7 @@ function MemberItem({
             style={{
                 /* eslint-disable-next-line react-hooks/refs */
                 ...(dnd.draggableProps?.style ?? {}),
-                /* eslint-disable-next-line react-hooks/refs */
-                ...(dnd.isDragging ? { zIndex: 50, boxShadow: '0 8px 32px rgba(0,0,0,0.15)' } : null),
+                ...(isDragging ? { zIndex: 50, boxShadow: '0 8px 32px rgba(0,0,0,0.15)' } : null),
             }}
         >
             <div className={cn(
@@ -138,6 +150,35 @@ function MemberItem({
                             isDisabled && 'text-muted-foreground'
                         )}
                     />
+                )}
+
+                {showReorderActions && (
+                    <>
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon-sm"
+                            className="size-11 shrink-0 text-muted-foreground sm:size-7"
+                            onClick={onMoveToTop}
+                            disabled={isFirst || isRemoving || isDragging}
+                            title={t('form.moveToTop')}
+                            aria-label={t('form.moveToTop')}
+                        >
+                            <ArrowUpFromLine className="size-3.5" />
+                        </Button>
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon-sm"
+                            className="size-11 shrink-0 text-muted-foreground sm:size-7"
+                            onClick={onMoveToBottom}
+                            disabled={isLast || isRemoving || isDragging}
+                            title={t('form.moveToBottom')}
+                            aria-label={t('form.moveToBottom')}
+                        >
+                            <ArrowDownToLine className="size-3.5" />
+                        </Button>
+                    </>
                 )}
 
                 {(!showConfirmDelete || !confirmDelete) && (
@@ -208,6 +249,7 @@ export interface MemberListProps {
     removingIds?: Set<string>;
     showWeight?: boolean;
     showRate?: boolean;
+    showReorderActions?: boolean;
     /**
      * When true, show a confirmation overlay before removing an item.
      * When false, clicking the delete button removes the item immediately.
@@ -229,6 +271,7 @@ export function MemberList({
     removingIds = new Set(),
     showWeight = false,
     showRate = false,
+    showReorderActions = false,
     showConfirmDelete = true,
     layoutScope: externalLayoutScope,
 }: MemberListProps) {
@@ -322,12 +365,17 @@ export function MemberList({
                                 showWeight={showWeight}
                                 showRate={showRate}
                                 showConfirmDelete={showConfirmDelete}
+                                showReorderActions={showReorderActions}
+                                isFirst={rubric.source.index === 0}
+                                isLast={rubric.source.index === members.length - 1}
+                                onMoveToTop={() => onReorder(reorderList(members, rubric.source.index, 0))}
+                                onMoveToBottom={() => onReorder(reorderList(members, rubric.source.index, members.length - 1))}
                                 layoutScope={layoutScope}
+                                isDragging={snapshot.isDragging}
                                 dnd={{
                                     innerRef: draggableProvided.innerRef,
                                     draggableProps: draggableProvided.draggableProps,
                                     dragHandleProps: draggableProvided.dragHandleProps,
-                                    isDragging: snapshot.isDragging,
                                 }}
                             />
                         )}
@@ -355,12 +403,17 @@ export function MemberList({
                                                 showWeight={showWeight}
                                                 showRate={showRate}
                                                 showConfirmDelete={showConfirmDelete}
+                                                showReorderActions={showReorderActions}
+                                                isFirst={index === 0}
+                                                isLast={index === members.length - 1}
+                                                onMoveToTop={() => onReorder(reorderList(members, index, 0))}
+                                                onMoveToBottom={() => onReorder(reorderList(members, index, members.length - 1))}
                                                 layoutScope={layoutScope}
+                                                isDragging={snapshot.isDragging}
                                                 dnd={{
                                                     innerRef: draggableProvided.innerRef,
                                                     draggableProps: draggableProvided.draggableProps,
                                                     dragHandleProps: draggableProvided.dragHandleProps,
-                                                    isDragging: snapshot.isDragging,
                                                 }}
                                             />
                                         )}

@@ -474,6 +474,8 @@
             "addItem": "新增模型",
             "autoAdd": "自動新增",
             "clear": "清空",
+            "moveToTop": "移至頂部",
+            "moveToBottom": "移至底部",
             "selectChannel": "供應源",
             "selectModel": "模型"
         },
