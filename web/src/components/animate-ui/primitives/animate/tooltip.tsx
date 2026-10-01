@@ -156,12 +156,16 @@ function TooltipProvider({
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') hideImmediate();
     };
+    const onScroll = (event: Event) => {
+      if (event.target instanceof Element && event.target.closest('[data-scrollable-tooltip]')) return;
+      hideImmediate();
+    };
     window.addEventListener('keydown', onKeyDown, true);
-    window.addEventListener('scroll', hideImmediate, true);
+    window.addEventListener('scroll', onScroll, true);
     window.addEventListener('resize', hideImmediate, true);
     return () => {
       window.removeEventListener('keydown', onKeyDown, true);
-      window.removeEventListener('scroll', hideImmediate, true);
+      window.removeEventListener('scroll', onScroll, true);
       window.removeEventListener('resize', hideImmediate, true);
     };
   }, [hideImmediate]);
@@ -262,6 +266,8 @@ function TooltipPositioner({
   onExitComplete,
 }: TooltipPositionerProps) {
   const arrowRef = React.useRef<SVGSVGElement | null>(null);
+  const { showTooltip, hideTooltip } = useGlobalTooltip();
+  const scrollable = 'data-scrollable-tooltip' in data.contentProps;
 
   const { refs, x, y, strategy, context, update, isPositioned } = useFloating({
     placement: data.align === 'center' ? data.side : `${data.side}-${data.align}`,
@@ -348,6 +354,14 @@ function TooltipPositioner({
               }}
               transition={transition}
               {...data.contentProps}
+              onMouseEnter={(event: React.MouseEvent<HTMLDivElement>) => {
+                data.contentProps.onMouseEnter?.(event);
+                if (scrollable && open) showTooltip(data);
+              }}
+              onMouseLeave={(event: React.MouseEvent<HTMLDivElement>) => {
+                data.contentProps.onMouseLeave?.(event);
+                if (scrollable) hideTooltip();
+              }}
               style={{
                 position: 'relative',
                 ...(data.contentProps?.style || {}),

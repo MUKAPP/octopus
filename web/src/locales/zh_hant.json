@@ -567,6 +567,7 @@
             "retryDetails": "重試詳情",
             "attemptHistory": "嘗試歷史",
             "attemptNumber": "第 {number} 次嘗試",
+            "attemptKey": "渠道密鑰 #{id}",
             "selectedAttempt": "目前嘗試",
             "finalResponse": "最終響應",
             "noAttempts": "暫無供應源嘗試",

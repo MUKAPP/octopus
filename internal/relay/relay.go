@@ -469,7 +469,7 @@ func (ra *relayAttempt) run() (bool, error) {
 		op.RelayLogStoreClearAttemptCancel(ra.metrics.ID, attemptIndex)
 		ra.endAttemptContext()
 	}()
-	span := ra.iter.StartAttempt(ra.channel.ID, ra.usedKey.ID, ra.channel.Name)
+	span := ra.iter.StartAttempt(ra.channel.ID, ra.usedKey.ID, ra.channel.Name, strings.TrimSpace(ra.usedKey.Remark))
 	op.RelayLogStoreAttemptStarted(ra.metrics.ID, attemptIndex, span.Attempt())
 	op.RelayLogStoreRegisterAttemptCancel(ra.metrics.ID, attemptIndex, cancel)
 

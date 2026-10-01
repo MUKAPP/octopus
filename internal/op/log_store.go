@@ -27,19 +27,20 @@ const (
 // RelayLogAttempt is the stream/detail representation of a channel decision.
 // Duration is kept in milliseconds for compatibility with model.ChannelAttempt.
 type RelayLogAttempt struct {
-	AttemptIndex   int                 `json:"attempt_index"`
-	ChannelID      int                 `json:"channel_id,omitempty"`
-	ChannelKeyID   int                 `json:"channel_key_id,omitempty"`
-	ChannelName    string              `json:"channel_name"`
-	ModelName      string              `json:"model_name"`
-	Error          string              `json:"error,omitempty"`
-	Status         model.AttemptStatus `json:"status"`
-	Duration       int                 `json:"duration"`
-	StartedAtMS    int64               `json:"started_at_ms,omitempty"`
-	RateMultiplier float64             `json:"rate_multiplier"`
-	Sticky         bool                `json:"sticky,omitempty"`
-	AttemptNum     int                 `json:"attempt_num,omitempty"`
-	Msg            string              `json:"msg,omitempty"`
+	AttemptIndex     int                 `json:"attempt_index"`
+	ChannelID        int                 `json:"channel_id,omitempty"`
+	ChannelKeyID     int                 `json:"channel_key_id,omitempty"`
+	ChannelKeyRemark string              `json:"channel_key_remark,omitempty"`
+	ChannelName      string              `json:"channel_name"`
+	ModelName        string              `json:"model_name"`
+	Error            string              `json:"error,omitempty"`
+	Status           model.AttemptStatus `json:"status"`
+	Duration         int                 `json:"duration"`
+	StartedAtMS      int64               `json:"started_at_ms,omitempty"`
+	RateMultiplier   float64             `json:"rate_multiplier"`
+	Sticky           bool                `json:"sticky,omitempty"`
+	AttemptNum       int                 `json:"attempt_num,omitempty"`
+	Msg              string              `json:"msg,omitempty"`
 }
 
 // RelayLogOverview combines the current RelayLog JSON contract with the
@@ -146,35 +147,37 @@ func cloneRelayLogAttempt(attempt RelayLogAttempt) RelayLogAttempt {
 
 func relayLogAttemptFromModel(index int, attempt model.ChannelAttempt) RelayLogAttempt {
 	return RelayLogAttempt{
-		AttemptIndex:   index,
-		ChannelID:      attempt.ChannelID,
-		ChannelKeyID:   attempt.ChannelKeyID,
-		ChannelName:    attempt.ChannelName,
-		ModelName:      attempt.ModelName,
-		Error:          attempt.Msg,
-		Status:         attempt.Status,
-		Duration:       attempt.Duration,
-		StartedAtMS:    attempt.StartedAtMS,
-		RateMultiplier: attempt.RateMultiplier,
-		Sticky:         attempt.Sticky,
-		AttemptNum:     attempt.AttemptNum,
-		Msg:            attempt.Msg,
+		AttemptIndex:     index,
+		ChannelID:        attempt.ChannelID,
+		ChannelKeyID:     attempt.ChannelKeyID,
+		ChannelKeyRemark: attempt.ChannelKeyRemark,
+		ChannelName:      attempt.ChannelName,
+		ModelName:        attempt.ModelName,
+		Error:            attempt.Msg,
+		Status:           attempt.Status,
+		Duration:         attempt.Duration,
+		StartedAtMS:      attempt.StartedAtMS,
+		RateMultiplier:   attempt.RateMultiplier,
+		Sticky:           attempt.Sticky,
+		AttemptNum:       attempt.AttemptNum,
+		Msg:              attempt.Msg,
 	}
 }
 
 func modelAttemptFromRelay(attempt RelayLogAttempt) model.ChannelAttempt {
 	return model.ChannelAttempt{
-		ChannelID:      attempt.ChannelID,
-		ChannelKeyID:   attempt.ChannelKeyID,
-		ChannelName:    attempt.ChannelName,
-		ModelName:      attempt.ModelName,
-		RateMultiplier: attempt.RateMultiplier,
-		AttemptNum:     attempt.AttemptNum,
-		Status:         attempt.Status,
-		Duration:       attempt.Duration,
-		StartedAtMS:    attempt.StartedAtMS,
-		Sticky:         attempt.Sticky,
-		Msg:            attempt.Msg,
+		ChannelID:        attempt.ChannelID,
+		ChannelKeyID:     attempt.ChannelKeyID,
+		ChannelKeyRemark: attempt.ChannelKeyRemark,
+		ChannelName:      attempt.ChannelName,
+		ModelName:        attempt.ModelName,
+		RateMultiplier:   attempt.RateMultiplier,
+		AttemptNum:       attempt.AttemptNum,
+		Status:           attempt.Status,
+		Duration:         attempt.Duration,
+		StartedAtMS:      attempt.StartedAtMS,
+		Sticky:           attempt.Sticky,
+		Msg:              attempt.Msg,
 	}
 }
 

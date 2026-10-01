@@ -49,6 +49,7 @@ export interface RelayAttemptEvent {
     sticky?: boolean;
     channel_id?: number;
     channel_key_id?: number;
+    channel_key_remark?: string;
 }
 
 function asRecord(value: unknown): Record<string, unknown> | null {
@@ -104,6 +105,7 @@ function normalizeAttempt(value: unknown, index: number, durationIsNanoseconds: 
     return {
         channel_id: numberValue(record.channel_id),
         channel_key_id: record.channel_key_id == null ? undefined : numberValue(record.channel_key_id),
+        channel_key_remark: stringValue(record.channel_key_remark) || undefined,
         channel_name: stringValue(record.channel_name, '—'),
         model_name: stringValue(record.model_name),
         rate_multiplier: numberValue(record.rate_multiplier),
@@ -196,6 +198,7 @@ export type AttemptStatus = 'running' | 'success' | 'failed' | 'canceled' | 'cir
 export interface ChannelAttempt {
     channel_id: number;
     channel_key_id?: number;
+    channel_key_remark?: string;
     channel_name: string;
     model_name: string;
     rate_multiplier: number; // 当时使用的渠道倍率

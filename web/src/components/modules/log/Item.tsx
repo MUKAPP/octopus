@@ -126,6 +126,21 @@ function ModelMismatchBadge({ log }: { log: RelayLog }) {
     );
 }
 
+function ChannelKeyLabel({ attempt }: { attempt: ChannelAttempt | undefined }) {
+    const t = useTranslations('log.card');
+    const id = attempt?.channel_key_id ?? 0;
+    if (!(id > 0)) return null;
+
+    const remark = attempt?.channel_key_remark?.trim() ?? '';
+    const keyLabel = t('attemptKey', { id });
+    const label = remark ? `${keyLabel} · ${remark}` : keyLabel;
+    return (
+        <span className="min-w-0 max-w-full whitespace-normal break-words text-[11px] text-muted-foreground" title={label}>
+            {label}
+        </span>
+    );
+}
+
 interface RetryBadgeWithTooltipProps {
     channelName: string;
     brandColor: string;
@@ -153,10 +168,11 @@ function RetryBadgeWithTooltip({ channelName, brandColor, rateMultiplier, attemp
                 </Badge>
             </TooltipTrigger>
             <TooltipContent
+                data-scrollable-tooltip
                 data-attempt-state={attempts.map((attempt) => `${getAttemptOrder(attempt)}:${attempt.channel_id}:${attempt.status}:${attempt.duration}:${attempt.msg ?? ''}`).join('|')}
                 className="w-[min(22rem,calc(100vw-2rem))] min-w-0 rounded-3xl border bg-card p-2 shadow-sm"
             >
-                <div className="flex flex-col gap-1">
+                <div className="scrollbar flex max-h-[calc(50dvh-3rem-var(--safe-area-top)-var(--safe-area-bottom))] flex-col gap-1 overflow-y-auto overscroll-contain">
                     {attempts.map((attempt, idx) => (
                         <div key={idx} className="flex w-full flex-col">
                             <div className="flex min-w-0 items-center gap-2 rounded-md px-2 py-1.5 transition-colors hover:bg-muted/50">
@@ -170,6 +186,7 @@ function RetryBadgeWithTooltip({ channelName, brandColor, rateMultiplier, attemp
                                             <span className="ml-1 font-normal opacity-80">({t('rateMultiplier')} {formatRateMultiplier(attempt.rate_multiplier)})</span>
                                         )}
                                     </span>
+                                    <ChannelKeyLabel attempt={attempt} />
                                     <span className="min-w-0 break-words text-[10px] tabular-nums text-muted-foreground">
                                         {attempt.model_name} • {formatDuration(attempt.duration)} •{' '}
                                         <span className="shrink-0 whitespace-nowrap tabular-nums">{formatAttemptStartedAt(attempt.started_at_ms)}</span>
@@ -458,6 +475,7 @@ function LiveOverviewDetails({ log, brandColor }: { log: RelayLog; brandColor: s
                                                     <span className="shrink-0 font-mono text-[10px] text-muted-foreground">{t('attemptNumber', { number: getAttemptDisplayNumber(attempt) })}</span>
                                                     <Badge className={cn("shrink-0 border-0 px-1.5 text-[10px] font-bold uppercase", getAttemptStatusClass(attempt.status))}>{statusT(getAttemptStatusLabelKey(attempt.status))}</Badge>
                                                     <span className="min-w-0 break-words font-semibold text-foreground">{attempt.channel_name}</span>
+                                                    <ChannelKeyLabel attempt={attempt} />
                                                     {attempt.sticky && <Pin className="size-3.5 shrink-0 text-amber-500" />}
                                                     {attempt.status === 'running' && <Loader2 className="size-3.5 shrink-0 animate-spin text-muted-foreground" />}
                                                     {attempt.duration > 0 && <span className="shrink-0 tabular-nums text-muted-foreground">{formatDuration(attempt.duration)}</span>}
@@ -522,6 +540,7 @@ function LiveOverviewDetails({ log, brandColor }: { log: RelayLog; brandColor: s
                         {selectedAttempt ? <div className="flex min-h-full min-w-0 flex-col">
                             <div className="flex shrink-0 flex-wrap items-start gap-x-3 gap-y-1 border-b border-border/70 px-3 py-3 text-xs md:px-4">
                                 <span className="shrink-0 font-mono text-muted-foreground">{t('attemptNumber', { number: getAttemptDisplayNumber(selectedAttempt) })}</span>
+                                <ChannelKeyLabel attempt={selectedAttempt} />
                                 {selectedAttempt.model_name && <span className="min-w-0 max-w-full break-words text-muted-foreground">{selectedAttempt.model_name}</span>}
                                 {selectedAttempt.rate_multiplier > 0 && <span className="shrink-0 text-muted-foreground">x{formatRateMultiplier(selectedAttempt.rate_multiplier)}</span>}
                                 {selectedAttempt.duration > 0 && <span className="shrink-0 tabular-nums text-muted-foreground">{formatDuration(selectedAttempt.duration)}</span>}
@@ -559,6 +578,15 @@ export function LogCard({ log }: { log: RelayLog }) {
     const hasError = !!log.error;
     const hasMultipleAttempts = log.attempts && log.attempts.length > 1;
     const orderedAttempts = useMemo(() => sortAttempts(log.attempts ?? []), [log.attempts]);
+    const lastUsedKeyAttempt = useMemo(() => {
+        for (let index = orderedAttempts.length - 1; index >= 0; index--) {
+            const attempt = orderedAttempts[index];
+            if (attempt.status !== 'skipped' && attempt.status !== 'circuit_break' && (attempt.channel_key_id ?? 0) > 0) {
+                return attempt;
+            }
+        }
+        return undefined;
+    }, [orderedAttempts]);
     return (
         <TooltipProvider>
             <MorphingDialog>
@@ -596,6 +624,7 @@ export function LogCard({ log }: { log: RelayLog }) {
                                         )}
                                     </Badge>
                                 )}
+                                <ChannelKeyLabel attempt={lastUsedKeyAttempt} />
                                 <span className="min-w-0 break-words text-muted-foreground" title={log.upstream_model_name || log.actual_model_name}>
                                     {log.upstream_model_name || log.actual_model_name}
                                 </span>
@@ -757,6 +786,7 @@ export function LogCard({ log }: { log: RelayLog }) {
                                                                         {statusT(getAttemptStatusLabelKey(attempt.status))}
                                                                     </Badge>
                                                                     <span className="min-w-0 break-words font-semibold text-foreground">{attempt.channel_name}</span>
+                                                                    <ChannelKeyLabel attempt={attempt} />
                                                                     {attempt.model_name && <span className="min-w-0 max-w-full break-words text-muted-foreground">({attempt.model_name})</span>}
                                                                     {attempt.sticky && <Pin className="size-3.5 shrink-0 text-amber-500" />}
                                                                     {attempt.rate_multiplier > 0 && <span className="shrink-0 text-muted-foreground">x{formatRateMultiplier(attempt.rate_multiplier)}</span>}
