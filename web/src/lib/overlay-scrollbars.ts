@@ -27,6 +27,7 @@ type Viewport = {
   y: Rail;
   rtl: boolean;
   observed: Set<Element>;
+  hideTimer: number | undefined;
   restoreValue?: () => void;
 };
 
@@ -40,6 +41,7 @@ type Drag = {
 const owners = new WeakMap<Node, HTMLElement>();
 const HIT_SIZE = 8;
 const GAP = 2;
+const IDLE_DELAY = 1000;
 
 export function getOverlayScrollbarViewport(target: EventTarget | null): HTMLElement | null {
   if (!(target instanceof Node)) return null;
@@ -122,6 +124,17 @@ export function installOverlayScrollbars(): () => void {
     schedule();
   };
 
+  const showActivity = (viewport: Viewport) => {
+    window.clearTimeout(viewport.hideTimer);
+    viewport.x.element.dataset.active = '';
+    viewport.y.element.dataset.active = '';
+    viewport.hideTimer = window.setTimeout(() => {
+      viewport.hideTimer = undefined;
+      viewport.x.element.removeAttribute('data-active');
+      viewport.y.element.removeAttribute('data-active');
+    }, IDLE_DELAY);
+  };
+
   const readX = (viewport: Viewport, range = viewport.x.range) => {
     const value = viewport.element.scrollLeft;
     if (!viewport.rtl) return clamp(value, range);
@@ -154,6 +167,7 @@ export function installOverlayScrollbars(): () => void {
     if (previous.rail.element.hasPointerCapture(previous.pointerId)) {
       previous.rail.element.releasePointerCapture(previous.pointerId);
     }
+    showActivity(previous.viewport);
   };
 
   const moveDrag = (event: PointerEvent) => {
@@ -199,6 +213,7 @@ export function installOverlayScrollbars(): () => void {
       const coordinate = axis === 'x' ? event.clientX - rect.left : event.clientY - rect.top;
       drag = { viewport, rail, pointerId: event.pointerId, grab: onThumb && size > 0 ? clamp(coordinate / size, 1) : 0.5 };
       element.dataset.dragging = '';
+      showActivity(viewport);
       element.setPointerCapture(event.pointerId);
       if (!onThumb) moveDrag(event);
     }, { signal: events.signal });
@@ -292,7 +307,7 @@ export function installOverlayScrollbars(): () => void {
     if (viewports.has(element) || internal.has(element)) return;
     const parent = boxParent(element);
     if (!parent) return;
-    const viewport = { element, parent: acquireParent(parent), rtl: false, observed: new Set<Element>() } as Viewport;
+    const viewport = { element, parent: acquireParent(parent), rtl: false, observed: new Set<Element>(), hideTimer: undefined } as Viewport;
     viewport.x = createRail(viewport, 'x');
     viewport.y = createRail(viewport, 'y');
     viewport.parent.host.append(viewport.x.element, viewport.y.element);
@@ -322,6 +337,7 @@ export function installOverlayScrollbars(): () => void {
 
   const remove = (viewport: Viewport) => {
     if (drag?.viewport === viewport) finishDrag();
+    window.clearTimeout(viewport.hideTimer);
     viewport.restoreValue?.();
     for (const rail of [viewport.x, viewport.y]) {
       rail.events.abort();
@@ -511,6 +527,7 @@ export function installOverlayScrollbars(): () => void {
     if (event.target instanceof HTMLElement) {
       const viewport = viewports.get(event.target);
       if (viewport) {
+        showActivity(viewport);
         dirty.add(viewport);
         for (const child of viewports.values()) if (viewport.element.contains(child.element)) dirty.add(child);
         schedule();
