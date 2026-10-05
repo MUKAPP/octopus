@@ -129,16 +129,35 @@ function ModelMismatchBadge({ log }: { log: RelayLog }) {
 
     const details = t('modelMismatchDetails', { upstream, response });
     return (
-        <Badge
-            variant="outline"
-            className="min-w-0 max-w-full whitespace-normal break-words border-amber-500/40 text-xs text-amber-600 dark:text-amber-400"
-            title={details}
-            aria-label={details}
-        >
-            <span className="min-w-0 break-words">
-                {t('modelMismatch')}
-            </span>
-        </Badge>
+        <Tooltip>
+            <TooltipTrigger asChild>
+                <Badge
+                    variant="outline"
+                    className="shrink-0 cursor-help border-amber-500/40 text-[10px] text-amber-600 dark:text-amber-400"
+                    aria-label={details}
+                >
+                    {t('modelMismatch')}
+                </Badge>
+            </TooltipTrigger>
+            <TooltipContent
+                data-scrollable-tooltip
+                className="w-[min(22rem,calc(100vw-2rem))] min-w-0 rounded-3xl border bg-card p-2 shadow-sm"
+            >
+                <div className="scrollbar flex max-h-[calc(50dvh-3rem-var(--safe-area-top)-var(--safe-area-bottom))] flex-col gap-1 overflow-y-auto overscroll-contain">
+                    <div className="flex min-w-0 flex-col gap-0.5 rounded-md px-2 py-1.5">
+                        <span className="text-[10px] text-muted-foreground">{t('upstreamRequestModel')}</span>
+                        <span className="min-w-0 break-words text-xs font-semibold text-foreground">{upstream}</span>
+                    </div>
+                    <div className="flex justify-center py-0.5">
+                        <ArrowDown className="size-3 text-muted-foreground/30" />
+                    </div>
+                    <div className="flex min-w-0 flex-col gap-0.5 rounded-md px-2 py-1.5">
+                        <span className="text-[10px] text-muted-foreground">{t('responseReturnedModel')}</span>
+                        <span className="min-w-0 break-words text-xs font-semibold text-foreground">{response}</span>
+                    </div>
+                </div>
+            </TooltipContent>
+        </Tooltip>
     );
 }
 

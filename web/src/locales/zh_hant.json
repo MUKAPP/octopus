@@ -556,6 +556,8 @@
             "truncated": "內容已截斷",
             "modelMismatch": "模型不一致",
             "modelMismatchDetails": "上游請求模型：{upstream}；回應回傳模型：{response}",
+            "upstreamRequestModel": "上游請求模型",
+            "responseReturnedModel": "回應回傳模型",
             "upstreamStatus": "上游 HTTP {code}",
             "noRequestContent": "(無請求內容)",
             "noResponseContent": "(無響應內容)",
