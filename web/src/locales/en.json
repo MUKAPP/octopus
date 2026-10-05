@@ -555,7 +555,6 @@
             "responseContent": "Response Content",
             "truncated": "Content Truncated",
             "modelMismatch": "Model mismatch",
-            "responseModel": "Returned: {model}",
             "modelMismatchDetails": "Upstream request model: {upstream}; response model: {response}",
             "noRequestContent": "(No request content)",
             "noResponseContent": "(No response content)",

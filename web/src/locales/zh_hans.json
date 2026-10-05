@@ -555,7 +555,6 @@
             "responseContent": "响应内容",
             "truncated": "内容已截断",
             "modelMismatch": "模型不一致",
-            "responseModel": "返回：{model}",
             "modelMismatchDetails": "上游请求模型：{upstream}；响应返回模型：{response}",
             "noRequestContent": "(无请求内容)",
             "noResponseContent": "(无响应内容)",

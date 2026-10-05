@@ -115,23 +115,31 @@ function ModelMismatchBadge({ log }: { log: RelayLog }) {
     return (
         <Badge
             variant="outline"
-            className="min-w-0 max-w-full whitespace-normal break-words rounded-md border-amber-500/40 text-xs text-amber-600 dark:text-amber-400"
+            className="min-w-0 max-w-full whitespace-normal break-words border-amber-500/40 text-xs text-amber-600 dark:text-amber-400"
             title={details}
             aria-label={details}
         >
             <span className="min-w-0 break-words">
-                {t('modelMismatch')} · {t('responseModel', { model: response })}
+                {t('modelMismatch')}
             </span>
         </Badge>
     );
 }
 
-function ChannelKeyLabel({ attempt }: { attempt: ChannelAttempt | undefined }) {
+function ChannelKeyLabel({ attempt, nameOnly = false }: { attempt: ChannelAttempt | undefined; nameOnly?: boolean }) {
     const t = useTranslations('log.card');
     const id = attempt?.channel_key_id ?? 0;
     if (!(id > 0)) return null;
 
     const remark = attempt?.channel_key_remark?.trim() ?? '';
+    if (nameOnly) {
+        if (!remark) return null;
+        return (
+            <span className="min-w-0 max-w-full whitespace-normal break-words text-[11px] text-muted-foreground" title={remark}>
+                {remark}
+            </span>
+        );
+    }
     const keyLabel = t('attemptKey', { id });
     const label = remark ? `${keyLabel} · ${remark}` : keyLabel;
     return (
@@ -624,7 +632,7 @@ export function LogCard({ log }: { log: RelayLog }) {
                                         )}
                                     </Badge>
                                 )}
-                                <ChannelKeyLabel attempt={lastUsedKeyAttempt} />
+                                <ChannelKeyLabel attempt={lastUsedKeyAttempt} nameOnly />
                                 <span className="min-w-0 break-words text-muted-foreground" title={log.upstream_model_name || log.actual_model_name}>
                                     {log.upstream_model_name || log.actual_model_name}
                                 </span>
