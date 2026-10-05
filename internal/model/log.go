@@ -12,18 +12,19 @@ const (
 
 // ChannelAttempt 记录单次渠道尝试的决策和结果
 type ChannelAttempt struct {
-	ChannelID        int           `json:"channel_id"`
-	ChannelKeyID     int           `json:"channel_key_id,omitempty"`
-	ChannelKeyRemark string        `json:"channel_key_remark,omitempty"`
-	ChannelName      string        `json:"channel_name"`
-	ModelName        string        `json:"model_name"`
-	RateMultiplier   float64       `json:"rate_multiplier"`
-	AttemptNum       int           `json:"attempt_num"`
-	Status           AttemptStatus `json:"status"`
-	Duration         int           `json:"duration"`
-	StartedAtMS      int64         `json:"started_at_ms,omitempty"` // 本次尝试的服务端开始时刻（Unix 毫秒）；跳过条目为零值
-	Sticky           bool          `json:"sticky,omitempty"`
-	Msg              string        `json:"msg,omitempty"`
+	ChannelID          int           `json:"channel_id"`
+	ChannelKeyID       int           `json:"channel_key_id,omitempty"`
+	ChannelKeyRemark   string        `json:"channel_key_remark,omitempty"`
+	ChannelName        string        `json:"channel_name"`
+	ModelName          string        `json:"model_name"`
+	RateMultiplier     float64       `json:"rate_multiplier"`
+	AttemptNum         int           `json:"attempt_num"`
+	Status             AttemptStatus `json:"status"`
+	Duration           int           `json:"duration"`
+	StartedAtMS        int64         `json:"started_at_ms,omitempty"` // 本次尝试的服务端开始时刻（Unix 毫秒）；跳过条目为零值
+	Sticky             bool          `json:"sticky,omitempty"`
+	Msg                string        `json:"msg,omitempty"`
+	UpstreamStatusCode int           `json:"upstream_status_code,omitempty"`
 }
 
 type RelayLog struct {
@@ -38,6 +39,7 @@ type RelayLog struct {
 	ActualModelName          string           `json:"actual_model_name"`                        // 实际使用模型名称
 	UpstreamModelName        string           `json:"upstream_model_name,omitempty" gorm:"-"`   // 实际出站请求模型名称
 	ResponseModelName        string           `json:"response_model_name,omitempty" gorm:"-"`   // 原始响应声明模型名称
+	UpstreamStatusCode       int              `json:"upstream_status_code,omitempty" gorm:"-"`  // 最终实际尝试的上游 HTTP 状态码；未收到响应时为零
 	InputTokens              int              `json:"input_tokens"`                             // 输入Token
 	OutputTokens             int              `json:"output_tokens"`                            // 输出 Token
 	CachedTokens             *int             `json:"cached_tokens,omitempty"`                  // 缓存读取 Token；历史日志未采集时为 nil

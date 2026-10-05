@@ -556,6 +556,7 @@
             "truncated": "Content Truncated",
             "modelMismatch": "Model mismatch",
             "modelMismatchDetails": "Upstream request model: {upstream}; response model: {response}",
+            "upstreamStatus": "Upstream HTTP {code}",
             "noRequestContent": "(No request content)",
             "noResponseContent": "(No response content)",
             "firstTokenTime": "First Token Time",

@@ -20,6 +20,7 @@ import (
 	"github.com/bestruirui/octopus/internal/server/resp"
 	"github.com/bestruirui/octopus/internal/utils/log"
 	"github.com/bestruirui/octopus/internal/utils/snowflake"
+	"github.com/gin-contrib/sse"
 	"github.com/gin-gonic/gin"
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
@@ -159,6 +160,14 @@ func (r *relayRun) run() {
 					return
 				}
 				if responseFinalized {
+					if attempt.canWriteCommittedSSEError(ctx, err) {
+						if r.writeCommittedSSEError(ctx, err) == nil {
+							attempt.streamErrorWritten = true
+							attempt.streamTerminated = true
+						} else {
+							attempt.clientStreamWriteFailed = true
+						}
+					}
 					r.removeActive()
 					r.metrics.Save(ctx, false, err, r.iter.Attempts())
 					return
@@ -172,8 +181,8 @@ func (r *relayRun) run() {
 		lastErr = errors.New("all channels failed")
 	}
 	r.removeActive()
-	r.metrics.Save(ctx, false, lastErr, r.iter.Attempts())
 	r.writeFinalError(ctx, lastErr)
+	r.metrics.Save(ctx, false, lastErr, r.iter.Attempts())
 }
 
 // registerActive 在请求开始时登记为进行中状态；ID 同时用于最终日志，便于前端关联。
@@ -210,44 +219,73 @@ func (r *relayRun) writeFinalError(ctx context.Context, err error) {
 		log.Warnf("all channels failed after response started: %v", err)
 		return
 	}
-	if pipeline.IsUpstreamError(err) {
-		clientErr := r.inAdapter.TransformError(ctx, err)
-		if clientErr != nil && clientErr.StatusCode >= http.StatusBadRequest && clientErr.StatusCode < 600 {
-			for key, values := range clientErr.Headers {
-				for _, value := range values {
-					r.c.Header(key, value)
-				}
-			}
-			contentType := clientErr.Headers.Get("Content-Type")
-			if contentType == "" {
-				contentType = "application/json"
-			}
-			r.c.Data(clientErr.StatusCode, contentType, clientErr.Body)
-			return
-		}
+	clientErr := r.clientError(ctx, err)
+	for key, values := range clientErr.Headers {
+		r.c.Writer.Header()[key] = values
 	}
-
-	resp.Error(r.c, http.StatusFailedDependency, err.Error())
+	r.metrics.InternalResponse = clientErr.Body
+	r.c.Abort()
+	r.c.Data(clientErr.StatusCode, clientErr.Headers.Get("Content-Type"), clientErr.Body)
 }
 
-func (r *relayRun) writeCommittedSSEError(ctx context.Context, err error) {
-	var body []byte
-	if r.inAdapter != nil {
-		if clientErr := r.inAdapter.TransformError(ctx, err); clientErr != nil {
-			body = clientErr.Body
-		}
+func (r *relayRun) writeCommittedSSEError(ctx context.Context, err error) error {
+	if ctx.Err() != nil || errors.Is(err, context.Canceled) {
+		return context.Canceled
 	}
-	if len(body) == 0 {
-		body, _ = json.Marshal(map[string]any{
-			"error": map[string]string{
-				"message": err.Error(),
-				"type":    "internal_server_error",
-			},
-		})
+	detail := llm.ErrorDetail{Message: err.Error(), Type: "internal_server_error"}
+	if source := relayErrorSource(err); source != nil {
+		detail = relayClientErrorDetail(source)
 	}
-	r.c.SSEvent("error", body)
+	body := relaySSEErrorBody(r.inboundType, detail)
+	if writeErr := r.writeSSEEvent(&httpclient.StreamEvent{Type: "error", Data: body}); writeErr != nil {
+		return writeErr
+	}
+	r.metrics.InternalResponse = body
+	log.Warnf("request failed after SSE response started: %v", err)
+	return nil
+}
+
+func (ra *relayAttempt) canWriteCommittedSSEError(ctx context.Context, err error) bool {
+	return ra.responseCommitted && ra.c.Writer.Written() &&
+		strings.HasPrefix(strings.ToLower(ra.c.Writer.Header().Get("Content-Type")), "text/event-stream") &&
+		ra.streamEventWritten && !ra.streamErrorWritten && !ra.streamTerminated &&
+		!ra.clientStreamWriteFailed && ctx.Err() == nil && !errors.Is(err, context.Canceled)
+}
+
+// relaySSEWriter 补足现有 SSE encoder 对 []byte 写入错误的忽略，失败后不再写入。
+type relaySSEWriter struct {
+	gin.ResponseWriter
+	err error
+}
+
+func (w *relaySSEWriter) Write(body []byte) (int, error) {
+	if w.err != nil {
+		return 0, w.err
+	}
+	n, err := w.ResponseWriter.Write(body)
+	w.err = err
+	return n, err
+}
+
+func (w *relaySSEWriter) WriteString(body string) (int, error) {
+	if w.err != nil {
+		return 0, w.err
+	}
+	n, err := w.ResponseWriter.WriteString(body)
+	w.err = err
+	return n, err
+}
+
+func (r *relayRun) writeSSEEvent(event *httpclient.StreamEvent) error {
+	writer := relaySSEWriter{ResponseWriter: r.c.Writer}
+	if err := sse.Encode(&writer, sse.Event{Event: event.Type, Data: event.Data}); err != nil {
+		return err
+	}
+	if writer.err != nil {
+		return writer.err
+	}
 	r.c.Writer.Flush()
-	log.Warnf("all channels failed after SSE response started: %v", err)
+	return nil
 }
 
 func (r *relayRun) emitAttemptsSince(start int) {
@@ -474,6 +512,9 @@ func (ra *relayAttempt) run() (bool, error) {
 	op.RelayLogStoreRegisterAttemptCancel(ra.metrics.ID, attemptIndex, cancel)
 
 	upstreamStatusCode, fwdErr := ra.forward()
+	fwdErr = ra.normalizeUpstreamError(fwdErr)
+	observedStatusCode := int(ra.upstreamStatusCode.Load())
+	ra.metrics.UpstreamStatusCode = observedStatusCode
 	ra.modelNamesMu.Lock()
 	ra.metrics.UpstreamModel = ra.upstreamModelName
 	ra.metrics.ResponseModel = ra.responseModelName
@@ -487,7 +528,7 @@ func (ra *relayAttempt) run() (bool, error) {
 	if fwdErr == nil {
 		op.ChannelKeyUpdate(ra.usedKey, ra.metrics.Stats.InputCost+ra.metrics.Stats.OutputCost)
 
-		span.End(dbmodel.AttemptSuccess, "")
+		span.End(dbmodel.AttemptSuccess, "", observedStatusCode)
 		op.RelayLogStoreAttemptFinished(ra.metrics.ID, attemptIndex, span.Attempt())
 		op.StatsChannelUpdate(ra.channel.ID, dbmodel.StatsMetrics{
 			WaitTime:       span.Duration().Milliseconds(),
@@ -499,7 +540,7 @@ func (ra *relayAttempt) run() (bool, error) {
 	}
 
 	op.ChannelKeyUpdate(ra.usedKey, 0)
-	span.End(dbmodel.AttemptFailed, fwdErr.Error())
+	span.End(dbmodel.AttemptFailed, fwdErr.Error(), observedStatusCode)
 	op.RelayLogStoreAttemptFinished(ra.metrics.ID, attemptIndex, span.Attempt())
 	op.StatsChannelUpdate(ra.channel.ID, dbmodel.StatsMetrics{
 		WaitTime:      span.Duration().Milliseconds(),
@@ -558,10 +599,16 @@ func (ra *relayAttempt) forward() (int, error) {
 		log.Warnf("failed to get http client: %v", err)
 		return 0, err
 	}
+	// 浅拷贝共享 client，仅包裹当前尝试的 transport；保留原连接池、代理和 client 配置。
+	attemptClient := *httpClient
+	attemptClient.Transport = &relayStatusTransport{
+		base:       httpClient.Transport,
+		statusCode: &ra.upstreamStatusCode,
+	}
 
 	relayMiddleware := &relayPipelineMiddleware{attempt: ra}
 	process := func(processCtx context.Context) (*pipeline.Result, error) {
-		return pipeline.NewFactory(httpclient.NewHttpClientWithClient(httpClient)).
+		return pipeline.NewFactory(httpclient.NewHttpClientWithClient(&attemptClient)).
 			Pipeline(
 				&parsedRequestInbound{Inbound: ra.inAdapter, request: ra.internalRequest},
 				ra.outAdapter,
@@ -694,6 +741,19 @@ func (ra *relayAttempt) writeSSEHeartbeat() error {
 
 func isRelayStreamDone(data []byte) bool {
 	return len(data) > 0 && bytes.Equal(bytes.TrimSpace(data), []byte("[DONE]"))
+}
+
+func isRelayStreamTerminal(event *httpclient.StreamEvent) bool {
+	if isRelayStreamDone(event.Data) || event.Type == "message_stop" || event.Type == "response.completed" {
+		return true
+	}
+	if event.Type == "" && (bytes.Contains(event.Data, []byte(`"message_stop"`)) || bytes.Contains(event.Data, []byte(`"response.completed"`))) {
+		var payload struct {
+			Type string `json:"type"`
+		}
+		return json.Unmarshal(event.Data, &payload) == nil && (payload.Type == "message_stop" || payload.Type == "response.completed")
+	}
+	return false
 }
 
 func isRelayStreamEventContent(data []byte) bool {
@@ -883,7 +943,30 @@ func (ra *relayAttempt) writeStreamWithHeartbeatTicker(
 				return fmt.Errorf("failed to read stream event: %w", r.err)
 			}
 
-			if r.event == nil || len(r.event.Data) == 0 {
+			if r.event == nil {
+				continue
+			}
+			if failureEvent, failureErr := ra.streamFailure(r.event); failureErr != nil {
+				if ctx.Err() != nil {
+					_ = clientStream.Close()
+					return ra.normalizeUpstreamError(ctx.Err())
+				}
+				if ra.streamTerminated || ra.streamErrorWritten || ra.clientStreamWriteFailed {
+					_ = clientStream.Close()
+					return failureErr
+				}
+				if err := ra.writeSSEEvent(failureEvent); err != nil {
+					ra.clientStreamWriteFailed = true
+					_ = clientStream.Close()
+					return fmt.Errorf("failed to write stream error event: %w", err)
+				}
+				ra.metrics.InternalResponse = failureEvent.Data
+				ra.streamErrorWritten = true
+				ra.streamTerminated = true
+				_ = clientStream.Close()
+				return failureErr
+			}
+			if len(r.event.Data) == 0 {
 				continue
 			}
 			// 终止帧仍需原样透传并参与最终聚合，但不能被当作首个模型内容事件。
@@ -904,12 +987,15 @@ func (ra *relayAttempt) writeStreamWithHeartbeatTicker(
 				}
 			}
 
-			ra.c.SSEvent(r.event.Type, r.event.Data)
-			ra.c.Writer.Flush()
-			switch {
-			case hasContent:
+			if err := ra.writeSSEEvent(r.event); err != nil {
+				ra.clientStreamWriteFailed = true
+				_ = clientStream.Close()
+				return fmt.Errorf("failed to write stream event: %w", err)
+			}
+			if hasContent {
 				ra.streamEventWritten = true
-			case isRelayStreamDone(r.event.Data):
+			}
+			if isRelayStreamTerminal(r.event) {
 				ra.streamTerminated = true
 			}
 		}
@@ -955,17 +1041,68 @@ func (m *relayPipelineMiddleware) OnOutboundRawRequest(ctx context.Context, requ
 func (m *relayPipelineMiddleware) OnOutboundRawResponse(ctx context.Context, response *httpclient.Response) (*httpclient.Response, error) {
 	if response != nil {
 		m.attempt.recordResponseModelName(response.Body, false)
+		// 普通成功响应只查找字节标记；明确错误候选才进行 JSON 解码。
+		if bytes.Contains(response.Body, []byte(`"error"`)) || bytes.Contains(response.Body, []byte(`"errors"`)) || bytes.Contains(response.Body, []byte(`"response.failed"`)) {
+			if detail, explicit := decodeRelayErrorDetail(response.Body, response.Headers, ""); explicit {
+				source := &relayUpstreamError{
+					protocol:   m.attempt.outAdapter.APIFormat(),
+					statusCode: response.StatusCode,
+					body:       response.Body,
+					headers:    response.Headers,
+					detail:     detail,
+				}
+				m.upstreamStatusCode = response.StatusCode
+				m.attempt.captureUpstreamError(source)
+				return nil, pipeline.WrapUpstreamError(source)
+			}
+			if m.attempt.outAdapter.APIFormat() == llm.APIFormatOpenAIChatCompletion {
+				if body, changed := relayBodyWithoutEmptyError(response.Body); changed {
+					converterResponse := *response
+					converterResponse.Body = body
+					return &converterResponse, nil
+				}
+			}
+		}
 	}
 	return response, nil
 }
 
 func (m *relayPipelineMiddleware) OnOutboundRawStream(ctx context.Context, stream streams.Stream[*httpclient.StreamEvent]) (streams.Stream[*httpclient.StreamEvent], error) {
-	return streams.Map(stream, func(event *httpclient.StreamEvent) *httpclient.StreamEvent {
-		if event != nil {
-			m.attempt.recordResponseModelName(event.Data, true)
+	return streams.NoNil(streams.MapErr(stream, func(event *httpclient.StreamEvent) (*httpclient.StreamEvent, error) {
+		if event == nil {
+			return nil, nil
 		}
-		return event
-	}), nil
+		m.attempt.recordResponseModelName(event.Data, true)
+		explicit := event.Type == "error" || event.Type == "response.failed"
+		var detail llm.ErrorDetail
+		if explicit || bytes.Contains(event.Data, []byte(`"error"`)) || bytes.Contains(event.Data, []byte(`"errors"`)) || bytes.Contains(event.Data, []byte(`"response.failed"`)) {
+			var payloadError bool
+			detail, payloadError = decodeRelayErrorDetail(event.Data, nil, event.Type)
+			explicit = explicit || payloadError
+			if !explicit && m.attempt.outAdapter.APIFormat() == llm.APIFormatOpenAIChatCompletion {
+				if body, changed := relayBodyWithoutEmptyError(event.Data); changed {
+					converterEvent := *event
+					converterEvent.Data = body
+					return &converterEvent, nil
+				}
+			}
+		}
+		if !explicit {
+			return event, nil
+		}
+		if len(bytes.TrimSpace(event.Data)) == 0 {
+			detail = llm.ErrorDetail{Message: "upstream stream error", Type: "stream_error"}
+		}
+		source := &relayUpstreamError{
+			protocol:   m.attempt.outAdapter.APIFormat(),
+			statusCode: int(m.attempt.upstreamStatusCode.Load()),
+			body:       event.Data,
+			detail:     detail,
+			stream:     true,
+		}
+		m.attempt.captureUpstreamError(source)
+		return nil, source
+	})), nil
 }
 
 func (m *relayPipelineMiddleware) OnOutboundRawError(ctx context.Context, err error) {
@@ -973,11 +1110,22 @@ func (m *relayPipelineMiddleware) OnOutboundRawError(ctx context.Context, err er
 	if errors.As(err, &upstreamErr) {
 		// pipeline 会把上游错误转换成统一错误返回；这里在转换前记录原始 HTTP 状态码，用于渠道 key 的后续调度决策。
 		m.upstreamStatusCode = upstreamErr.StatusCode
+		m.attempt.captureUpstreamError(&relayUpstreamError{
+			cause:      err,
+			protocol:   m.attempt.outAdapter.APIFormat(),
+			statusCode: upstreamErr.StatusCode,
+			body:       upstreamErr.Body,
+			headers:    upstreamErr.Headers,
+			detail:     parseRelayErrorDetail(upstreamErr.Body, upstreamErr.Headers),
+		})
 	}
 }
 
 func (m *relayPipelineMiddleware) OnOutboundLlmResponse(ctx context.Context, response *llm.Response) (*llm.Response, error) {
 	if response != nil {
+		if response.Error != nil {
+			return nil, pipeline.WrapUpstreamError(response.Error)
+		}
 		// 非流式 usage 已由 outbound transformer 标准化到 llm.Response；流式 usage 在最终聚合时记录，避免重复计数。
 		m.attempt.metrics.RecordUsage(response.Usage)
 	}

@@ -104,6 +104,22 @@ function getAttemptStatusClass(status: ChannelAttempt['status']): string {
     }
 }
 
+function UpstreamStatusBadge({ code }: { code?: number }) {
+    const t = useTranslations('log.card');
+    if (code === undefined || !(code > 0)) return null;
+
+    const label = t('upstreamStatus', { code });
+    return (
+        <Badge
+            variant="outline"
+            className="shrink-0 border-destructive/40 text-[10px] tabular-nums text-destructive"
+            aria-label={label}
+        >
+            {label}
+        </Badge>
+    );
+}
+
 
 function ModelMismatchBadge({ log }: { log: RelayLog }) {
     const t = useTranslations('log.card');
@@ -177,7 +193,7 @@ function RetryBadgeWithTooltip({ channelName, brandColor, rateMultiplier, attemp
             </TooltipTrigger>
             <TooltipContent
                 data-scrollable-tooltip
-                data-attempt-state={attempts.map((attempt) => `${getAttemptOrder(attempt)}:${attempt.channel_id}:${attempt.status}:${attempt.duration}:${attempt.msg ?? ''}`).join('|')}
+                data-attempt-state={attempts.map((attempt) => `${getAttemptOrder(attempt)}:${attempt.channel_id}:${attempt.status}:${attempt.duration}:${attempt.upstream_status_code ?? ''}:${attempt.msg ?? ''}`).join('|')}
                 className="w-[min(22rem,calc(100vw-2rem))] min-w-0 rounded-3xl border bg-card p-2 shadow-sm"
             >
                 <div className="scrollbar flex max-h-[calc(50dvh-3rem-var(--safe-area-top)-var(--safe-area-bottom))] flex-col gap-1 overflow-y-auto overscroll-contain">
@@ -195,10 +211,12 @@ function RetryBadgeWithTooltip({ channelName, brandColor, rateMultiplier, attemp
                                         )}
                                     </span>
                                     <ChannelKeyLabel attempt={attempt} />
-                                    <span className="min-w-0 break-words text-[10px] tabular-nums text-muted-foreground">
-                                        {attempt.model_name} • {formatDuration(attempt.duration)} •{' '}
-                                        <span className="shrink-0 whitespace-nowrap tabular-nums">{formatAttemptStartedAt(attempt.started_at_ms)}</span>
-                                    </span>
+                                    <div className="flex min-w-0 flex-wrap items-center gap-x-1 gap-y-1 text-[10px] tabular-nums text-muted-foreground">
+                                        <span className="min-w-0 break-words">{attempt.model_name} • {formatDuration(attempt.duration)} •{' '}
+                                            <span className="shrink-0 whitespace-nowrap tabular-nums">{formatAttemptStartedAt(attempt.started_at_ms)}</span>
+                                        </span>
+                                        {(attempt.status === 'failed' || attempt.status === 'canceled') && <UpstreamStatusBadge code={attempt.upstream_status_code} />}
+                                    </div>
                                 </div>
                             </div>
                             {idx < attempts.length - 1 && (
@@ -365,9 +383,16 @@ function LiveOverviewDetails({ log, brandColor }: { log: RelayLog; brandColor: s
     const liveDuration = useLiveLogDuration(log);
 
     const attempts = useMemo(
-        () => sortAttempts(detail.attempts.length > 0 ? detail.attempts : (log.attempts ?? [])),
-        [detail.attempts, log.attempts],
+        () => sortAttempts(!isActive && log.attempts?.length ? log.attempts : detail.attempts.length > 0 ? detail.attempts : (log.attempts ?? [])),
+        [detail.attempts, isActive, log.attempts],
     );
+    const finalActualAttempt = useMemo(() => {
+        for (let index = attempts.length - 1; index >= 0; index--) {
+            const attempt = attempts[index];
+            if (attempt.status !== 'skipped' && attempt.status !== 'circuit_break') return attempt;
+        }
+        return undefined;
+    }, [attempts]);
     const runningAttempt = detail.runningAttempt ?? attempts.find((attempt) => attempt.status === 'running');
 
     useEffect(() => {
@@ -381,16 +406,18 @@ function LiveOverviewDetails({ log, brandColor }: { log: RelayLog; brandColor: s
                 : attempts.find((attempt) => getAttemptOrder(attempt) === current);
             if (manualAttemptSelectionRef.current && currentAttempt) return current;
             const lastSuccessfulAttempt = [...attempts].reverse().find((attempt) => attempt.status === 'success');
-            const preferredAttempt = lastSuccessfulAttempt ?? attempts[attempts.length - 1];
+            const preferredAttempt = lastSuccessfulAttempt ?? finalActualAttempt ?? attempts[attempts.length - 1];
             return preferredAttempt ? getAttemptOrder(preferredAttempt) : null;
         });
-    }, [attempts, isOpen]);
+    }, [attempts, finalActualAttempt, isOpen]);
 
 
-    const selectedAttempt = attempts.find((attempt) => getAttemptOrder(attempt) === selectedAttemptIndex) ?? attempts[attempts.length - 1];
+    const selectedAttempt = attempts.find((attempt) => getAttemptOrder(attempt) === selectedAttemptIndex) ?? finalActualAttempt ?? attempts[attempts.length - 1];
     const selectedIsSuccessful = selectedAttempt?.status === 'success';
     const selectedIsCommitted = selectedAttempt?.status === 'running' && (detail.isCommitted || log.state === 'committed');
-    const canShowFinalResponse = selectedAttempt ? selectedIsSuccessful || selectedIsCommitted : detail.isCommitted || log.state === 'success' || log.state === 'committed';
+    const selectedIsFinalAttempt = selectedAttempt !== undefined && selectedAttempt === finalActualAttempt;
+    const selectedHasFinalFailure = selectedIsFinalAttempt && (log.state === 'failed' || log.state === 'canceled');
+    const canShowFinalResponse = selectedAttempt ? selectedIsSuccessful || selectedIsCommitted || selectedHasFinalFailure : detail.isCommitted || log.state === 'success' || log.state === 'committed';
     const requestBody = useLogRequestBody(log.id, log.started_at, isOpen && requestExpanded);
     const responseBody = useLogResponseBody(log.id, log.started_at, isOpen && canShowFinalResponse);
     const requestContent = requestBody.data?.content ?? log.request_content;
@@ -435,7 +462,9 @@ function LiveOverviewDetails({ log, brandColor }: { log: RelayLog; brandColor: s
         setRequestExpanded((expanded) => !expanded);
     };
 
-    const selectedError = selectedAttempt && selectedAttempt.status !== 'success' ? selectedAttempt.msg || log.error : undefined;
+    const selectedError = selectedAttempt && selectedAttempt.status !== 'success'
+        ? selectedAttempt.msg || (selectedIsFinalAttempt ? log.error : undefined)
+        : undefined;
 
     return (
         <div className="flex h-full min-h-0 flex-col gap-4">
@@ -482,6 +511,7 @@ function LiveOverviewDetails({ log, brandColor }: { log: RelayLog; brandColor: s
                                                 <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
                                                     <span className="shrink-0 font-mono text-[10px] text-muted-foreground">{t('attemptNumber', { number: getAttemptDisplayNumber(attempt) })}</span>
                                                     <Badge className={cn("shrink-0 border-0 px-1.5 text-[10px] font-bold uppercase", getAttemptStatusClass(attempt.status))}>{statusT(getAttemptStatusLabelKey(attempt.status))}</Badge>
+                                                    {(attempt.status === 'failed' || attempt.status === 'canceled') && <UpstreamStatusBadge code={attempt.upstream_status_code} />}
                                                     <span className="min-w-0 break-words font-semibold text-foreground">{attempt.channel_name}</span>
                                                     <ChannelKeyLabel attempt={attempt} />
                                                     {attempt.sticky && <Pin className="size-3.5 shrink-0 text-amber-500" />}
@@ -492,7 +522,7 @@ function LiveOverviewDetails({ log, brandColor }: { log: RelayLog; brandColor: s
                                                 {attempt.model_name && <span className="min-w-0 break-words pl-0.5 text-[11px] text-muted-foreground">{attempt.model_name}</span>}
                                                 <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1 pl-0.5 text-[11px] text-muted-foreground">
                                                     {attempt.rate_multiplier > 0 && <span className="shrink-0">x{formatRateMultiplier(attempt.rate_multiplier)}</span>}
-                                                    {attempt.msg && <span className="min-w-0 basis-full break-words text-destructive/90">{attempt.msg}</span>}
+                                                    {attempt.msg && <span className="min-w-0 basis-full whitespace-pre-wrap break-words text-destructive/90">{attempt.msg}</span>}
                                                 </div>
                                             </button>
                                         );
@@ -540,6 +570,7 @@ function LiveOverviewDetails({ log, brandColor }: { log: RelayLog; brandColor: s
                         <MessageSquare className="size-4 shrink-0 text-purple-500" />
                         <span className="min-w-0 text-sm font-medium text-card-foreground">{t('selectedAttempt')}</span>
                         {selectedAttempt && <Badge className={cn("shrink-0 border-0 px-1.5 text-[10px] font-bold uppercase", getAttemptStatusClass(selectedAttempt.status))}>{statusT(getAttemptStatusLabelKey(selectedAttempt.status))}</Badge>}
+                        {(selectedAttempt?.status === 'failed' || selectedAttempt?.status === 'canceled') && <UpstreamStatusBadge code={selectedAttempt.upstream_status_code} />}
                         <ChevronDown className={cn("ml-auto size-4 text-muted-foreground transition-transform md:hidden", responseExpanded && "rotate-180")} />
                         {runningAttempt && <button type="button" onClick={(event) => { event.stopPropagation(); void handleStop(); }} disabled={stopAttempt.isPending} className="ml-auto flex shrink-0 items-center gap-1.5 rounded-md px-2 py-1 text-xs text-destructive transition-colors hover:bg-destructive/10 disabled:opacity-50">{stopAttempt.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <Square className="size-3.5" />}{t('stopAttempt')}</button>}
                     </div>
@@ -584,6 +615,8 @@ export function LogCard({ log }: { log: RelayLog }) {
     const reasoningEffort = log.reasoning_effort?.trim() ?? '';
 
     const hasError = !!log.error;
+    const requestState = log.state ?? (hasError ? 'failed' : 'success');
+    const showRequestUpstreamStatus = requestState === 'failed' || requestState === 'canceled';
     const hasMultipleAttempts = log.attempts && log.attempts.length > 1;
     const orderedAttempts = useMemo(() => sortAttempts(log.attempts ?? []), [log.attempts]);
     const lastUsedKeyAttempt = useMemo(() => {
@@ -642,6 +675,7 @@ export function LogCard({ log }: { log: RelayLog }) {
                                         {statusT(log.state)}
                                     </Badge>
                                 )}
+                                {showRequestUpstreamStatus && <UpstreamStatusBadge code={log.upstream_status_code} />}
                                 {log.attempts?.some(a => a.sticky) && (
                                     <Pin className="size-3.5 shrink-0 text-amber-500" />
                                 )}
@@ -732,6 +766,7 @@ export function LogCard({ log }: { log: RelayLog }) {
                                     {statusT(log.state)}
                                 </Badge>
                             )}
+                            {showRequestUpstreamStatus && <UpstreamStatusBadge code={log.upstream_status_code} />}
                             {log.attempts?.some(a => a.sticky) && (
                                 <Pin className="size-3.5 shrink-0 text-amber-500" />
                             )}
@@ -793,6 +828,7 @@ export function LogCard({ log }: { log: RelayLog }) {
                                                                     >
                                                                         {statusT(getAttemptStatusLabelKey(attempt.status))}
                                                                     </Badge>
+                                                                    {(attempt.status === 'failed' || attempt.status === 'canceled') && <UpstreamStatusBadge code={attempt.upstream_status_code} />}
                                                                     <span className="min-w-0 break-words font-semibold text-foreground">{attempt.channel_name}</span>
                                                                     <ChannelKeyLabel attempt={attempt} />
                                                                     {attempt.model_name && <span className="min-w-0 max-w-full break-words text-muted-foreground">({attempt.model_name})</span>}

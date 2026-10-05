@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"sync"
+	"sync/atomic"
 
 	dbmodel "github.com/bestruirui/octopus/internal/model"
 	"github.com/bestruirui/octopus/internal/relay/balancer"
@@ -63,11 +64,17 @@ type relayAttempt struct {
 	upstreamModelName string
 	responseModelName string
 
+	// 原始 HTTP 响应和错误只归属当前尝试，避免取消后的晚到响应污染下一次尝试。
+	upstreamStatusCode atomic.Int32
+	upstreamErrorMu    sync.Mutex
+	upstreamError      *relayUpstreamError
+
 	// responseCommitted is true once the downstream status/headers have been written.
 	responseCommitted bool
 
 	// streamEventWritten 表示至少一个真实模型事件已经写入客户端。
 	streamEventWritten bool
+	streamErrorWritten bool
 
 	// streamTerminated 表示终止帧已经写入客户端；它不计入首 token。
 	streamTerminated        bool

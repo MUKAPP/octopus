@@ -19,6 +19,7 @@ export interface RelayLogOverview {
     actual_model: string;
     upstream_model_name?: string;
     response_model_name?: string;
+    upstream_status_code?: number;
     client_protocol: string;
     reasoning_effort?: string;
     stream: boolean;
@@ -44,6 +45,7 @@ export interface RelayAttemptEvent {
     channel_name: string;
     model_name: string;
     error?: string;
+    upstream_status_code?: number;
     status?: string;
     duration?: number;
     rate_multiplier?: number;
@@ -117,6 +119,7 @@ function normalizeAttempt(value: unknown, index: number, durationIsNanoseconds: 
         started_at_ms: record.started_at_ms == null ? undefined : numberValue(record.started_at_ms),
         sticky: record.sticky == null ? undefined : boolValue(record.sticky),
         msg: stringValue(record.msg ?? record.error),
+        upstream_status_code: numberValue(record.upstream_status_code) || undefined,
     };
 }
 
@@ -150,6 +153,7 @@ export function normalizeRelayLog(value: RelayLog | RelayLogOverview | unknown):
             actual_model_name: actualModel,
             upstream_model_name: stringValue(record.upstream_model_name),
             response_model_name: stringValue(record.response_model_name),
+            upstream_status_code: numberValue(record.upstream_status_code) || undefined,
             input_tokens: numberValue(record.input_tokens),
             output_tokens: numberValue(record.output_tokens),
             cached_tokens: cacheRead,
@@ -185,7 +189,12 @@ export function normalizeRelayLog(value: RelayLog | RelayLogOverview | unknown):
             : undefined,
         state,
     );
-    return { ...old, reasoning_effort: stringValue(record.reasoning_effort), attempts };
+    return {
+        ...old,
+        reasoning_effort: stringValue(record.reasoning_effort),
+        upstream_status_code: numberValue(record.upstream_status_code) || undefined,
+        attempts,
+    };
 }
 
 /**
@@ -210,6 +219,7 @@ export interface ChannelAttempt {
     started_at_ms?: number; // 服务端尝试开始时刻(Unix 毫秒)；跳过条目缺失
     sticky?: boolean;
     msg?: string;
+    upstream_status_code?: number;
 }
 function terminalAttemptStatus(state: RequestState): AttemptStatus | undefined {
     switch (state) {
@@ -241,6 +251,7 @@ export interface RelayLog {
     actual_model_name: string;   // 实际使用模型名称
     upstream_model_name?: string;
     response_model_name?: string;
+    upstream_status_code?: number;
     input_tokens: number;        // 输入Token
     output_tokens: number;       // 输出Token
     cached_tokens?: number;      // 缓存读取 Token；历史日志可能未采集

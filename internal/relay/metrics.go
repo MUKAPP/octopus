@@ -30,12 +30,13 @@ type RelayMetrics struct {
 	InternalResponse []byte
 
 	// 统计指标
-	ActualModel      string
-	Stats            model.StatsMetrics
-	UpstreamModel    string
-	ResponseModel    string
-	CachedTokens     int64
-	CacheWriteTokens int64
+	ActualModel        string
+	Stats              model.StatsMetrics
+	UpstreamModel      string
+	ResponseModel      string
+	UpstreamStatusCode int
+	CachedTokens       int64
+	CacheWriteTokens   int64
 
 	// 参数覆盖 / 参数追加
 	ParamOverride string
@@ -165,19 +166,20 @@ func finalChannel(attempts []model.ChannelAttempt) (int, string, float64) {
 func (m *RelayMetrics) buildRelayLog(err error, duration time.Duration, attempts []model.ChannelAttempt, channelID int, channelName string, rateMultiplier float64, apiKeyName string) model.RelayLog {
 	cachedTokens := int(m.CachedTokens)
 	relayLog := model.RelayLog{
-		ID:                m.ID,
-		Time:              m.StartTime.Unix(),
-		RequestModelName:  m.RequestModel,
-		ChannelName:       channelName,
-		ChannelId:         channelID,
-		RateMultiplier:    rateMultiplier,
-		ActualModelName:   m.ActualModel,
-		UpstreamModelName: m.UpstreamModel,
-		ResponseModelName: m.ResponseModel,
-		UseTime:           int(duration.Milliseconds()),
-		CachedTokens:      &cachedTokens,
-		Attempts:          append([]model.ChannelAttempt(nil), attempts...),
-		TotalAttempts:     len(attempts),
+		ID:                 m.ID,
+		Time:               m.StartTime.Unix(),
+		RequestModelName:   m.RequestModel,
+		ChannelName:        channelName,
+		ChannelId:          channelID,
+		RateMultiplier:     rateMultiplier,
+		ActualModelName:    m.ActualModel,
+		UpstreamModelName:  m.UpstreamModel,
+		ResponseModelName:  m.ResponseModel,
+		UpstreamStatusCode: m.UpstreamStatusCode,
+		UseTime:            int(duration.Milliseconds()),
+		CachedTokens:       &cachedTokens,
+		Attempts:           append([]model.ChannelAttempt(nil), attempts...),
+		TotalAttempts:      len(attempts),
 	}
 	if m.InternalRequest != nil {
 		relayLog.ReasoningEffort = m.InternalRequest.ReasoningEffort
