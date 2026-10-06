@@ -66,8 +66,33 @@ func Handler(inboundType llm.APIFormat) gin.HandlerFunc {
 		if err != nil {
 			return
 		}
+		id := c.GetInt("api_key_id")
+		key, err := op.APIKeyAcquire(id, c.Request.Context())
+		if err != nil {
+			if !errors.Is(err, context.Canceled) && !errors.Is(err, context.DeadlineExceeded) {
+				resp.Error(c, http.StatusUnauthorized, err.Error())
+			}
+			c.Abort()
+			return
+		}
+		defer op.APIKeyRelease(id)
+		c.Set("supported_models", key.SupportedModels)
+		if err := validateSupportedModel(c, run.internalRequest.Model); err != nil {
+			return
+		}
 		run.run()
 	}
+}
+
+func validateSupportedModel(c *gin.Context, requestedModel string) error {
+	if supportedModels := c.GetString("supported_models"); supportedModels != "" {
+		if !slices.Contains(strings.Split(supportedModels, ","), requestedModel) {
+			err := errors.New("model not supported")
+			resp.Error(c, http.StatusBadRequest, err.Error())
+			return err
+		}
+	}
+	return nil
 }
 
 func newRelayRun(c *gin.Context, inboundType llm.APIFormat, inAdapter transformer.Inbound) (*relayRun, error) {
@@ -83,12 +108,8 @@ func newRelayRun(c *gin.Context, inboundType llm.APIFormat, inAdapter transforme
 		return nil, err
 	}
 
-	if supportedModels := c.GetString("supported_models"); supportedModels != "" {
-		if !slices.Contains(strings.Split(supportedModels, ","), internalRequest.Model) {
-			err := errors.New("model not supported")
-			resp.Error(c, http.StatusBadRequest, err.Error())
-			return nil, err
-		}
+	if err := validateSupportedModel(c, internalRequest.Model); err != nil {
+		return nil, err
 	}
 
 	group, err := op.GroupGetEnabledMap(internalRequest.Model, c.Request.Context())

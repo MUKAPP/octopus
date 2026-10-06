@@ -93,6 +93,12 @@ func DBImportIncremental(ctx context.Context, dump *model.DBDump) (*model.DBImpo
 	if dump.Version != 0 && dump.Version != dbDumpVersion {
 		return nil, fmt.Errorf("unsupported dump version: %d", dump.Version)
 	}
+	for i := range dump.APIKeys {
+		key := &dump.APIKeys[i]
+		if err := key.Validate(); err != nil {
+			return nil, fmt.Errorf("validate api_key %d: %w", key.ID, err)
+		}
+	}
 
 	conn := db.GetDB().WithContext(ctx)
 	res := &model.DBImportResult{RowsAffected: map[string]int64{}}

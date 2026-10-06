@@ -53,6 +53,10 @@ func createAPIKey(c *gin.Context) {
 		resp.Error(c, http.StatusBadRequest, resp.ErrInvalidJSON)
 		return
 	}
+	if err := req.Validate(); err != nil {
+		resp.Error(c, http.StatusBadRequest, err.Error())
+		return
+	}
 	if strings.TrimSpace(req.APIKey) == "" {
 		req.APIKey = auth.GenerateAPIKey()
 	}
@@ -76,6 +80,10 @@ func updateAPIKey(c *gin.Context) {
 	var req model.APIKey
 	if err := c.ShouldBindJSON(&req); err != nil {
 		resp.Error(c, http.StatusBadRequest, resp.ErrInvalidJSON)
+		return
+	}
+	if err := req.Validate(); err != nil {
+		resp.Error(c, http.StatusBadRequest, err.Error())
 		return
 	}
 	if err := op.APIKeyUpdate(&req, c.Request.Context()); err != nil {

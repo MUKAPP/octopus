@@ -334,6 +334,14 @@ Manage model pricing information in the system.
 
 Global system configuration.
 
+**API Key Concurrency:**
+
+Set **Max Concurrency** when creating or editing an API key in Settings. The `max_concurrency` field accepts non-negative integers; `0`, an empty form input, or an omitted field means unlimited. Existing keys and older backups default to `0` automatically.
+
+The limit is per key ID and per Octopus process, shared across all forwarding endpoints and models—not across replicas. Excess requests wait FIFO on their existing HTTP connections without a 429 response or a separate queue timeout; client cancellation and existing connection/proxy deadlines still apply. Streaming requests hold a slot until the stream ends, and retries keep the same slot. Key login/stats and `/v1/models` do not queue.
+
+Changes take effect immediately: increasing the limit or setting it to `0` admits waiting requests; decreasing it does not cancel requests already admitted. Disabling or deleting a key, or changing its expiry to the past, rejects its waiting requests with 401. Natural expiry is checked when waiters wake, and model permissions are checked again before forwarding.
+
 **Statistics Save Interval (minutes):**
 
 Since the program handles numerous statistics, writing to the database on every request would impact read/write performance. The program uses this strategy:

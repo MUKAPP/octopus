@@ -16,7 +16,7 @@ func APIKeyCreate(key *model.APIKey, ctx context.Context) error {
 	if err := db.GetDB().WithContext(ctx).Create(key).Error; err != nil {
 		return fmt.Errorf("failed to create API key: %w", err)
 	}
-	apiKeyCache.Set(key.ID, *key)
+	apiKeyPublish(*key)
 	apiKeyIDMap.Set(key.APIKey, key.ID)
 	return nil
 }
@@ -36,7 +36,7 @@ func APIKeyUpdate(key *model.APIKey, ctx context.Context) error {
 		apiKeyIDMap.Del(existing.APIKey)
 		apiKeyIDMap.Set(key.APIKey, key.ID)
 	}
-	apiKeyCache.Set(key.ID, *key)
+	apiKeyPublish(*key)
 	return nil
 }
 
@@ -78,7 +78,7 @@ func APIKeyDelete(id int, ctx context.Context) error {
 	if result.Error != nil {
 		return fmt.Errorf("failed to delete API key: %w", result.Error)
 	}
-	apiKeyCache.Del(k.ID)
+	apiKeyForget(k.ID)
 	apiKeyIDMap.Del(k.APIKey)
 	return nil
 }
@@ -89,7 +89,7 @@ func apiKeyRefreshCache(ctx context.Context) error {
 		return err
 	}
 	for _, apiKey := range apiKeys {
-		apiKeyCache.Set(apiKey.ID, apiKey)
+		apiKeyPublish(apiKey)
 		apiKeyIDMap.Set(apiKey.APIKey, apiKey.ID)
 	}
 	return nil

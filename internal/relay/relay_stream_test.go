@@ -511,7 +511,7 @@ func (fixture *relayGatewayHarness) startStreamRequest(t *testing.T, format llm.
 	}
 	router := gin.New()
 	router.POST(path, func(c *gin.Context) {
-		c.Set("api_key_id", 0)
+		c.Set("api_key_id", fixture.apiKey.ID)
 		c.Next()
 	}, Handler(format))
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)

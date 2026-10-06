@@ -90,11 +90,16 @@ function APIKeyForm({ apiKey, isPending, submitLabel, onSubmit, onClose }: APIKe
         enabled: apiKey?.enabled ?? true,
         expire_at: apiKey?.expire_at,
         max_cost: apiKey?.max_cost,
+        max_concurrency: apiKey?.max_concurrency ?? 0,
         supported_models: apiKey?.supported_models,
     }));
     const [maxCostInput, setMaxCostInput] = useState(() =>
         apiKey?.max_cost != null ? String(apiKey.max_cost) : ''
     );
+    const [maxConcurrencyInput, setMaxConcurrencyInput] = useState(() =>
+        apiKey?.max_concurrency ? String(apiKey.max_concurrency) : ''
+    );
+    const maxConcurrencyId = useId();
     const [expireTime, setExpireTime] = useState(() => {
         if (apiKey?.expire_at) {
             const d = new Date(apiKey.expire_at * 1000);
@@ -114,6 +119,7 @@ function APIKeyForm({ apiKey, isPending, submitLabel, onSubmit, onClose }: APIKe
     const expireDate = parseExpireDate(form.expire_at);
     const neverExpire = !form.expire_at;
     const isUnlimitedCost = maxCostInput.trim() === '';
+    const isUnlimitedConcurrency = maxConcurrencyInput.trim() === '' || Number(maxConcurrencyInput) === 0;
 
     const expireLabel = neverExpire
         ? t('apiKey.form.neverExpire')
@@ -162,11 +168,23 @@ function APIKeyForm({ apiKey, isPending, submitLabel, onSubmit, onClose }: APIKe
         updateForm({ max_cost: undefined });
     }, [updateForm]);
 
+    const handleMaxConcurrencyChange = useCallback((val: string) => {
+        setMaxConcurrencyInput(val);
+    }, []);
+
+    const handleClearMaxConcurrency = useCallback(() => {
+        setMaxConcurrencyInput('');
+        updateForm({ max_concurrency: 0 });
+    }, [updateForm]);
+
     const handleSubmit = useCallback((e: React.FormEvent) => {
         e.preventDefault();
         if (!form.name.trim()) return;
-        onSubmit(form);
-    }, [form, onSubmit]);
+        const trimmed = maxConcurrencyInput.trim();
+        const maxConcurrency = trimmed === '' ? 0 : Number(trimmed);
+        if (!Number.isSafeInteger(maxConcurrency) || maxConcurrency < 0) return;
+        onSubmit({ ...form, max_concurrency: maxConcurrency });
+    }, [form, maxConcurrencyInput, onSubmit]);
 
     return (
         <form onSubmit={handleSubmit} className="grid gap-2">
@@ -225,6 +243,40 @@ function APIKeyForm({ apiKey, isPending, submitLabel, onSubmit, onClose }: APIKe
                         {t('apiKey.form.unlimited')}
                     </button>
                 </div>
+            </div>
+
+            <div className="grid gap-1 text-xs text-muted-foreground">
+                <label htmlFor={maxConcurrencyId}>{t('apiKey.form.maxConcurrency')}</label>
+                <div className="flex items-center gap-2">
+                    <Input
+                        id={maxConcurrencyId}
+                        type="number"
+                        inputMode="numeric"
+                        min={0}
+                        step={1}
+                        max={Number.MAX_SAFE_INTEGER}
+                        value={maxConcurrencyInput}
+                        onChange={(e) => handleMaxConcurrencyChange(e.target.value)}
+                        className="h-9 text-sm rounded-xl flex-1"
+                        disabled={isPending}
+                    />
+                    <button
+                        type="button"
+                        onClick={handleClearMaxConcurrency}
+                        disabled={isPending}
+                        aria-pressed={isUnlimitedConcurrency}
+                        className={cn(
+                            'h-9 px-3 rounded-xl border text-sm transition-colors shrink-0',
+                            isUnlimitedConcurrency
+                                ? 'bg-primary text-primary-foreground border-primary/30'
+                                : 'border-border bg-muted/20 text-foreground hover:bg-muted/30',
+                            isPending && 'opacity-50 cursor-not-allowed'
+                        )}
+                    >
+                        {t('apiKey.form.unlimited')}
+                    </button>
+                </div>
+                <div className="text-[11px] text-muted-foreground/80">{t('apiKey.form.maxConcurrencyHint')}</div>
             </div>
 
             <div className="grid gap-1 text-xs text-muted-foreground">

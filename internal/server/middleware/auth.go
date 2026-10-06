@@ -3,7 +3,6 @@ package middleware
 import (
 	"net/http"
 	"strings"
-	"time"
 
 	"github.com/bestruirui/octopus/internal/op"
 	"github.com/bestruirui/octopus/internal/server/auth"
@@ -60,19 +59,8 @@ func APIKeyAuth() gin.HandlerFunc {
 			c.Abort()
 			return
 		}
-		if !apiKeyObj.Enabled {
-			resp.Error(c, http.StatusUnauthorized, "API key is disabled")
-			c.Abort()
-			return
-		}
-		if apiKeyObj.ExpireAt > 0 && apiKeyObj.ExpireAt < time.Now().Unix() {
-			resp.Error(c, http.StatusUnauthorized, "API key has expired")
-			c.Abort()
-			return
-		}
-		statsAPIKey := op.StatsAPIKeyGet(apiKeyObj.ID)
-		if apiKeyObj.MaxCost > 0 && apiKeyObj.MaxCost < statsAPIKey.StatsMetrics.OutputCost+statsAPIKey.StatsMetrics.InputCost {
-			resp.Error(c, http.StatusUnauthorized, "API key has reached the max cost")
+		if err := op.APIKeyValidateAccess(apiKeyObj); err != nil {
+			resp.Error(c, http.StatusUnauthorized, err.Error())
 			c.Abort()
 			return
 		}

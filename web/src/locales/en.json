@@ -318,6 +318,8 @@
                 "valuePlaceholder": "Leave empty to generate",
                 "maxCost": "Max Cost",
                 "maxCostPlaceholder": "Enter amount",
+                "maxConcurrency": "Max Concurrency",
+                "maxConcurrencyHint": "0 or empty means unlimited. Requests over the limit wait for a slot.",
                 "unlimited": "Unlimited",
                 "expireAt": "Expire Date",
                 "selectDate": "Select date",

@@ -272,6 +272,7 @@ type relayGatewayHarness struct {
 	requestModel string
 	channel      model.Channel
 	group        model.Group
+	apiKey       model.APIKey
 	upstream     *httptest.Server
 }
 
@@ -311,6 +312,11 @@ func newRelayGatewayHarness(t *testing.T, outboundType llm.APIFormat, upstreamHa
 				t.Errorf("清理测试渠道失败：%v", err)
 			}
 		}
+		if fixture.apiKey.ID != 0 {
+			if err := op.APIKeyDelete(fixture.apiKey.ID, ctx); err != nil {
+				t.Errorf("清理测试密钥失败：%v", err)
+			}
+		}
 		for _, stats := range []any{
 			&model.StatsTotal{}, &model.StatsDaily{}, &model.StatsHourly{},
 			&model.StatsChannel{}, &model.StatsModel{}, &model.StatsAPIKey{}, &model.StatsUsage{},
@@ -323,6 +329,16 @@ func newRelayGatewayHarness(t *testing.T, outboundType llm.APIFormat, upstreamHa
 			t.Errorf("清理测试缓存失败：%v", err)
 		}
 	})
+
+	fixture.apiKey = model.APIKey{
+		Name:           fixture.requestModel + "-key",
+		APIKey:         "fixture-" + fixture.requestModel,
+		Enabled:        true,
+		MaxConcurrency: 0,
+	}
+	if err := op.APIKeyCreate(&fixture.apiKey, context.Background()); err != nil {
+		t.Fatalf("创建测试密钥失败：%v", err)
+	}
 
 	upstream := httptest.NewServer(upstreamHandler)
 	t.Cleanup(upstream.Close)
@@ -357,9 +373,9 @@ func newRelayGatewayHarness(t *testing.T, outboundType llm.APIFormat, upstreamHa
 func (fixture *relayGatewayHarness) request(t *testing.T, inboundType llm.APIFormat, path, body string) (*httptest.ResponseRecorder, op.RelayLogOverview) {
 	t.Helper()
 	router := gin.New()
-	// 鉴权中间件不属于此回归范围；Handler 使用与既有 relay fixture 相同的上下文身份。
+	// 鉴权中间件不属于此回归范围；上下文使用持久化 fixture 密钥的真实身份。
 	router.POST(path, func(c *gin.Context) {
-		c.Set("api_key_id", 0)
+		c.Set("api_key_id", fixture.apiKey.ID)
 		c.Next()
 	}, Handler(inboundType))
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)

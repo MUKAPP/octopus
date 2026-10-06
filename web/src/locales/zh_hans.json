@@ -318,6 +318,8 @@
                 "valuePlaceholder": "留空自动生成",
                 "maxCost": "最大金额",
                 "maxCostPlaceholder": "请输入金额",
+                "maxConcurrency": "并发上限",
+                "maxConcurrencyHint": "0 或留空表示不限，超过上限的请求将等待空位。",
                 "unlimited": "无限制",
                 "expireAt": "过期日期",
                 "selectDate": "选择日期",
