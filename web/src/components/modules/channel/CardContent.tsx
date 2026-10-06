@@ -59,7 +59,7 @@ export function CardContent({ channel, stats }: { channel: Channel; stats: Stats
         custom_model: channel.custom_model,
         proxy: channel.proxy,
         auto_sync: channel.auto_sync,
-        rate_multiplier: channel.rate_multiplier || 1,
+        rate_multiplier: channel.rate_multiplier ?? 1,
         priority: channel.priority ?? 0,
         auto_group: channel.auto_group,
         match_regex: channel.match_regex ?? '',
@@ -491,6 +491,7 @@ export function CardContent({ channel, stats }: { channel: Channel; stats: Stats
                                 onCancel={() => setIsEditing(false)}
                                 cancelText={t('actions.cancel')}
                                 idPrefix="channel"
+                                allowZeroRateMultiplier
                             />
                         </TabsContent>
                     </TabsContents>

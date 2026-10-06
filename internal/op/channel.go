@@ -209,9 +209,9 @@ func ChannelUpdate(req *model.ChannelUpdateRequest, ctx context.Context) (*model
 		updates.AutoSync = *req.AutoSync
 	}
 	if req.RateMultiplier != nil {
-		if *req.RateMultiplier <= 0 {
+		if *req.RateMultiplier < 0 {
 			tx.Rollback()
-			return nil, fmt.Errorf("倍率必须大于 0")
+			return nil, fmt.Errorf("倍率不能小于 0")
 		}
 		selectFields = append(selectFields, "rate_multiplier")
 		updates.RateMultiplier = *req.RateMultiplier

@@ -55,7 +55,7 @@ func GroupGetEnabledMap(name string, ctx context.Context) (model.Group, error) {
 			continue
 		}
 		item.RateMultiplier = channel.RateMultiplier
-		if item.RateMultiplier <= 0 {
+		if item.RateMultiplier < 0 {
 			item.RateMultiplier = 1
 		}
 		item.ChannelPriority = channel.Priority

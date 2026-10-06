@@ -135,7 +135,7 @@ function MemberItem({
 
                 {showRate && (
                     <span className="shrink-0 text-xs font-medium tabular-nums text-foreground">
-                        ×{member.rate_multiplier || 1}
+                        ×{member.rate_multiplier ?? 1}
                     </span>
                 )}
 

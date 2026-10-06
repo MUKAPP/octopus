@@ -51,7 +51,7 @@ function formatAttemptStartedAt(timestampMs?: number): string {
 }
 
 function formatRateMultiplier(rate: number): string {
-    return rate > 0 ? rate.toLocaleString('zh-CN', { maximumFractionDigits: 4 }) : '';
+    return rate >= 0 ? rate.toLocaleString('zh-CN', { maximumFractionDigits: 4 }) : '';
 }
 
 function formatCacheRate(cachedTokens: number | undefined, inputTokens: number): string {
@@ -371,7 +371,7 @@ function LogMetrics({ log, brandColor, totalTime = log.use_time }: { log: RelayL
                 <ArrowDownToLine className="size-3.5 shrink-0 text-cyan-500" />
                 <span className="min-w-0 truncate" title={cacheRateLabel}>{cacheRateLabel}</span>
             </div>
-            {log.rate_multiplier > 0 && (
+            {log.channel > 0 && log.rate_multiplier >= 0 && (
                 <div className="flex min-w-0 items-center gap-1.5">
                     <span className="min-w-0 truncate" title={rateLabel}>{t('rateMultiplier')}: {rateLabel}</span>
                 </div>
@@ -540,7 +540,7 @@ function LiveOverviewDetails({ log, brandColor }: { log: RelayLog; brandColor: s
                                                 </div>
                                                 {attempt.model_name && <span className="min-w-0 break-words pl-0.5 text-[11px] text-muted-foreground">{attempt.model_name}</span>}
                                                 <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1 pl-0.5 text-[11px] text-muted-foreground">
-                                                    {attempt.rate_multiplier > 0 && <span className="shrink-0">x{formatRateMultiplier(attempt.rate_multiplier)}</span>}
+                                                    {attempt.rate_multiplier >= 0 && <span className="shrink-0">x{formatRateMultiplier(attempt.rate_multiplier)}</span>}
                                                     {attempt.msg && <span className="min-w-0 basis-full whitespace-pre-wrap break-words text-destructive/90">{attempt.msg}</span>}
                                                 </div>
                                             </button>
@@ -600,7 +600,7 @@ function LiveOverviewDetails({ log, brandColor }: { log: RelayLog; brandColor: s
                                 <span className="shrink-0 font-mono text-muted-foreground">{t('attemptNumber', { number: getAttemptDisplayNumber(selectedAttempt) })}</span>
                                 <ChannelKeyLabel attempt={selectedAttempt} />
                                 {selectedAttempt.model_name && <span className="min-w-0 max-w-full break-words text-muted-foreground">{selectedAttempt.model_name}</span>}
-                                {selectedAttempt.rate_multiplier > 0 && <span className="shrink-0 text-muted-foreground">x{formatRateMultiplier(selectedAttempt.rate_multiplier)}</span>}
+                                {selectedAttempt.rate_multiplier >= 0 && <span className="shrink-0 text-muted-foreground">x{formatRateMultiplier(selectedAttempt.rate_multiplier)}</span>}
                                 {selectedAttempt.duration > 0 && <span className="shrink-0 tabular-nums text-muted-foreground">{formatDuration(selectedAttempt.duration)}</span>}
                                 <span className="shrink-0 tabular-nums text-muted-foreground">{formatAttemptStartedAt(selectedAttempt.started_at_ms)}</span>
                             </div>
@@ -679,7 +679,7 @@ export function LogCard({ log }: { log: RelayLog }) {
                                         style={{ backgroundColor: `${brandColor}15`, color: brandColor }}
                                     >
                                         <span className="min-w-0 break-words">{log.channel_name}</span>
-                                        {formatRateMultiplier(log.rate_multiplier) && (
+                                        {log.channel > 0 && formatRateMultiplier(log.rate_multiplier) && (
                                             <span className="ml-1 shrink-0 opacity-80">x{formatRateMultiplier(log.rate_multiplier)}</span>
                                         )}
                                     </Badge>
@@ -773,7 +773,7 @@ export function LogCard({ log }: { log: RelayLog }) {
                                     style={{ backgroundColor: `${brandColor}15`, color: brandColor }}
                                 >
                                     <span className="min-w-0 break-words">{log.channel_name}</span>
-                                    {formatRateMultiplier(log.rate_multiplier) && (
+                                    {log.channel > 0 && formatRateMultiplier(log.rate_multiplier) && (
                                         <span className="ml-1 shrink-0 opacity-80">({t('rateMultiplier')} {formatRateMultiplier(log.rate_multiplier)})</span>
                                     )}
                                 </Badge>
@@ -852,7 +852,7 @@ export function LogCard({ log }: { log: RelayLog }) {
                                                                     <ChannelKeyLabel attempt={attempt} />
                                                                     {attempt.model_name && <span className="min-w-0 max-w-full break-words text-muted-foreground">({attempt.model_name})</span>}
                                                                     {attempt.sticky && <Pin className="size-3.5 shrink-0 text-amber-500" />}
-                                                                    {attempt.rate_multiplier > 0 && <span className="shrink-0 text-muted-foreground">x{formatRateMultiplier(attempt.rate_multiplier)}</span>}
+                                                                    {attempt.rate_multiplier >= 0 && <span className="shrink-0 text-muted-foreground">x{formatRateMultiplier(attempt.rate_multiplier)}</span>}
                                                                     {attempt.duration > 0 && <span className="shrink-0 tabular-nums text-muted-foreground">{formatDuration(attempt.duration)}</span>}
                                                                     <span className="shrink-0 tabular-nums text-muted-foreground">{formatAttemptStartedAt(attempt.started_at_ms)}</span>
                                                                 </div>

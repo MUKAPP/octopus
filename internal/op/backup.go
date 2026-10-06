@@ -13,6 +13,12 @@ import (
 
 const dbDumpVersion = 1
 
+// 显式指针保留合法的零倍率，避免 Channel 的 GORM default:1 在导入时替换零值。
+type channelImportRow struct {
+	*model.Channel
+	RateMultiplier *float64 `gorm:"column:rate_multiplier"`
+}
+
 func DBExportAll(ctx context.Context, includeLogs, includeStats bool) (*model.DBDump, error) {
 	conn := db.GetDB().WithContext(ctx)
 
@@ -129,7 +135,14 @@ func DBImportIncremental(ctx context.Context, dump *model.DBDump) (*model.DBImpo
 
 	err := conn.Transaction(func(tx *gorm.DB) error {
 		// base tables
-		if n, err := createDoNothing(tx, dump.Channels); err != nil {
+		channels := make([]channelImportRow, len(dump.Channels))
+		for i := range dump.Channels {
+			channels[i] = channelImportRow{
+				Channel:        &dump.Channels[i],
+				RateMultiplier: &dump.Channels[i].RateMultiplier,
+			}
+		}
+		if n, err := createDoNothing(tx.Table("channels"), channels); err != nil {
 			return fmt.Errorf("import channels: %w", err)
 		} else {
 			res.RowsAffected["channels"] = n

@@ -16,7 +16,7 @@ func TestRatePriorityCandidatesSortByRateThenChannelAndGroupPriority(t *testing.
 	}
 
 	got := (&RatePriority{}).Candidates(items)
-	wantIDs := []int{5, 3, 2, 4, 1}
+	wantIDs := []int{4, 5, 3, 2, 1}
 	for i, wantID := range wantIDs {
 		if got[i].ID != wantID {
 			t.Fatalf("第 %d 个候选渠道不符合预期：got %d, want %d", i, got[i].ID, wantID)

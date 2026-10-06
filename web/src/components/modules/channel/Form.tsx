@@ -55,6 +55,8 @@ export interface ChannelFormProps {
     onCancel?: () => void;
     cancelText?: string;
     idPrefix?: string;
+    /** 编辑入口允许倍率为 0，默认（创建入口）仍要求大于 0。 */
+    allowZeroRateMultiplier?: boolean;
 }
 
 import {
@@ -74,6 +76,7 @@ export function ChannelForm({
     onCancel,
     cancelText,
     idPrefix = 'channel',
+    allowZeroRateMultiplier = false,
 }: ChannelFormProps) {
     const t = useTranslations('channel.form');
 
@@ -125,17 +128,18 @@ export function ChannelForm({
 
     const isValidRateMultiplierDraft = (raw: string) => /^\d*\.?\d*$/.test(raw);
 
-    const parsePositiveRateMultiplier = (raw: string): number | null => {
+    const parseRateMultiplier = (raw: string): number | null => {
         if (raw.trim() === '') return null;
         const value = Number.parseFloat(raw);
-        if (!Number.isFinite(value) || value <= 0) return null;
+        if (!Number.isFinite(value) || value < 0) return null;
+        if (!allowZeroRateMultiplier && value === 0) return null;
         return value;
     };
 
     const handleRateMultiplierChange = (raw: string) => {
         if (raw !== '' && !isValidRateMultiplierDraft(raw)) return;
         setRateMultiplierDraft(raw);
-        const value = parsePositiveRateMultiplier(raw);
+        const value = parseRateMultiplier(raw);
         if (value !== null && value !== formData.rate_multiplier) {
             onFormDataChange({ ...formData, rate_multiplier: value });
         }
@@ -143,8 +147,12 @@ export function ChannelForm({
 
     const handleRateMultiplierBlur = () => {
         rateMultiplierFocusedRef.current = false;
-        const value = parsePositiveRateMultiplier(rateMultiplierDraft);
-        const normalized = value ?? (formData.rate_multiplier > 0 ? formData.rate_multiplier : 1);
+        const value = parseRateMultiplier(rateMultiplierDraft);
+        // 空值回退到当前合法值（编辑态合法的 0 保留为 0），否则回到 1。
+        const normalized =
+            value ?? (formData.rate_multiplier > 0 || (allowZeroRateMultiplier && formData.rate_multiplier === 0)
+                ? formData.rate_multiplier
+                : 1);
         setRateMultiplierDraft(String(normalized));
         if (normalized !== formData.rate_multiplier) {
             onFormDataChange({ ...formData, rate_multiplier: normalized });

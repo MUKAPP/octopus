@@ -89,7 +89,7 @@ export function GroupCard({ group }: { group: Group }) {
     const rateByKey = useMemo(() => {
         const map = new Map<string, number>();
         modelChannels.forEach((mc) => {
-            map.set(modelChannelKey(mc.channel_id, mc.name), mc.rate_multiplier || 1);
+            map.set(modelChannelKey(mc.channel_id, mc.name), mc.rate_multiplier ?? 1);
         });
         return map;
     }, [modelChannels]);

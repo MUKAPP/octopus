@@ -98,7 +98,7 @@ func (b *RatePriority) Candidates(items []model.GroupItem) []model.GroupItem {
 }
 
 func normalizedRateMultiplier(rate float64) float64 {
-	if rate <= 0 {
+	if rate < 0 {
 		return 1
 	}
 	return rate

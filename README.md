@@ -305,6 +305,8 @@ Groups aggregate multiple channels into a unified external model name.
 
 Channel multipliers and priorities can be configured in channel settings. Channel priority defaults to `0` and only breaks ties between equal multipliers in Rate Priority mode; lower values run first. When automatic synchronization is enabled, Sub2API channels also fetch the effective multiplier for the selected API key; failures preserve the existing value. The channel list marks successfully synchronized multipliers inside the rate capsule; manually changing the multiplier clears that marker.
 
+Editing a channel accepts a multiplier of `0` or any positive value; negative values are rejected. In Rate Priority mode, `0` sorts before positive multipliers and remains `0` in group/log displays and backup export/import. New channels still default to `1`. Multipliers control selection and are recorded in logs; usage costs continue to use local model pricing, so setting a multiplier to `0` does not make billed usage free.
+
 > 💡 **Example**: Create a group named `gpt-4o`, add multiple providers' GPT-4o channels to it, then access all channels via a unified `model: gpt-4o`.
 
 ---
