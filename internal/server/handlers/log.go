@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/bestruirui/octopus/internal/model"
 	"github.com/bestruirui/octopus/internal/op"
 	"github.com/bestruirui/octopus/internal/server/middleware"
 	"github.com/bestruirui/octopus/internal/server/resp"
@@ -134,6 +135,10 @@ func responseBody(c *gin.Context) {
 		return
 	}
 	response := gin.H{"body": body.Content, "content": body.Content, "truncated": body.Truncated}
+	response["images"] = body.Images
+	if body.Images == nil {
+		response["images"] = []model.RelayLogImage{}
+	}
 	if body.Preview != nil {
 		response["preview"] = body.Preview
 	}

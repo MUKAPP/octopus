@@ -1,12 +1,12 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
-import { AlertTriangle, Braces, Check, Copy, Download, FileText, Loader2 } from 'lucide-react';
+import { AlertTriangle, Braces, Check, ChevronDown, Copy, Download, FileText, Loader2 } from 'lucide-react';
 import JsonView from '@uiw/react-json-view';
 import { githubDarkTheme } from '@uiw/react-json-view/githubDark';
 import { githubLightTheme } from '@uiw/react-json-view/githubLight';
 import { useCopyToClipboard } from '@uidotdev/usehooks';
 import { useLocale, useTranslations } from 'use-intl';
-import type { LogContentOmission, LogContentPreview } from '@/api/endpoints/log';
+import type { LogContentOmission, LogContentPreview, LogResponseImage } from '@/api/endpoints/log';
 import { useTheme } from '@/provider/theme';
 import { useMorphingDialog } from '@/components/ui/morphing-dialog';
 import { toast } from '@/components/common/Toast';
@@ -124,6 +124,72 @@ function LogLossNotice({ preview, truncated }: { preview?: LogContentPreview; tr
 
 type BodyView = 'tree' | 'text';
 
+/**
+ * 单张生成图片：加载失败时在同位置显示错误文案，其他图片仍可查看。
+ * 仅按索引作 key，不把可能很大的 Base64 源放进 key 或复制到其他状态。
+ */
+function GeneratedImage({ src, number }: { src: string; number: number }) {
+    const t = useTranslations('log.card');
+    const [failedSrc, setFailedSrc] = useState<string | null>(null);
+
+    if (failedSrc === src) {
+        return (
+            <p className="px-3 py-6 text-center text-xs text-destructive">
+                {t('imageLoadFailed')}
+            </p>
+        );
+    }
+
+    return (
+        <img
+            src={src}
+            alt={t('generatedImage', { number })}
+            loading="lazy"
+            decoding="async"
+            referrerPolicy="no-referrer"
+            onError={() => setFailedSrc(src)}
+            onLoad={() => setFailedSrc(null)}
+            className="mx-auto max-h-[40dvh] w-full object-contain"
+        />
+    );
+}
+
+/**
+ * 生成图片预览区：独立折叠状态，默认展开；收起时保留已加载的图片节点。
+ */
+function LogImagePreview({ images }: { images: readonly LogResponseImage[] }) {
+    const t = useTranslations('log.card');
+    const [expanded, setExpanded] = useState(true);
+    const panelId = useId();
+
+    return (
+        <div className="flex min-w-0 flex-col border-b border-border/70">
+            <button
+                type="button"
+                aria-expanded={expanded}
+                aria-controls={panelId}
+                aria-label={expanded ? t('collapseImages') : t('expandImages')}
+                onClick={() => setExpanded((value) => !value)}
+                className="flex w-full min-w-0 flex-wrap items-center gap-2 px-3 py-2 text-left hover:bg-muted md:px-4"
+            >
+                <span className="min-w-0 text-xs font-medium text-foreground">
+                    {t('generatedImages', { count: images.length })}
+                </span>
+                <ChevronDown className={cn('ml-auto size-4 shrink-0 text-muted-foreground', expanded && 'rotate-180')} />
+            </button>
+            <div
+                id={panelId}
+                hidden={!expanded}
+                className="flex flex-col gap-3 border-t border-border/70 bg-background/20 p-3 md:p-4"
+            >
+                {images.map((image, index) => (
+                    <GeneratedImage key={index} src={image.src} number={index + 1} />
+                ))}
+            </div>
+        </div>
+    );
+}
+
 export interface LogBodyContentProps {
     /** 已保存的正文；undefined 或空串表示尚未加载或不存在。 */
     content: string | undefined;
@@ -135,6 +201,8 @@ export interface LogBodyContentProps {
     fallbackText: string;
     /** 复制/下载已保存内容时的标识；省略时不提供这两个操作。 */
     storedLabel?: string;
+    /** 生成图片预览；仅响应侧传入，请求侧不展示生成结果。 */
+    images?: readonly LogResponseImage[];
 }
 
 /**
@@ -147,6 +215,7 @@ export function LogBodyContent({
     truncated,
     fallbackText,
     storedLabel,
+    images,
 }: LogBodyContentProps) {
     const { resolvedTheme } = useTheme();
     const { isOpen } = useMorphingDialog();
@@ -299,6 +368,7 @@ export function LogBodyContent({
                     )}
                 </div>
             )}
+            {shouldRender && images && images.length > 0 && <LogImagePreview images={images} />}
             {!content ? (
                 <pre className="p-4 text-xs leading-relaxed whitespace-pre-wrap wrap-break-word text-muted-foreground">
                     {fallbackText}

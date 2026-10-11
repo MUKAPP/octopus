@@ -463,20 +463,35 @@ export function useStopAttempt() {
     });
 }
 
+export interface LogResponseImage {
+    src: string;
+}
+
 export interface RelayLogBody {
     content?: string;
     truncated?: boolean;
     preview?: LogContentPreview;
+    images?: LogResponseImage[];
 }
 
 function normalizeLogBody(value: unknown): RelayLogBody {
-    if (typeof value === 'string') return { content: value };
+    if (typeof value === 'string') return { content: value, images: [] };
     const record = asRecord(value) ?? {};
     const content = record.content ?? record.body;
+    const images: LogResponseImage[] = [];
+    if (Array.isArray(record.images)) {
+        for (const image of record.images) {
+            const item = asRecord(image);
+            if (item && typeof item.src === 'string' && item.src.length > 0) {
+                images.push({ src: item.src });
+            }
+        }
+    }
     return {
         content: content == null ? undefined : String(content),
         truncated: record.truncated === true,
         preview: normalizeContentPreview(record.preview),
+        images,
     };
 }
 

@@ -204,6 +204,8 @@ func (m *RelayMetrics) buildRelayLog(err error, duration time.Duration, attempts
 	if requestBytes := m.requestContent(); requestBytes != nil {
 		relayLog.RequestContent = string(requestBytes)
 	}
+	// 大图在正文裁剪前单独保留，正文仍按原上限和损失规则保存。
+	relayLog.ResponseImages = extractRelayLogImages(m.InternalRequest, m.InternalResponse)
 	relayLog.ResponseContent, relayLog.ResponseContentTruncated, relayLog.ResponseContentPreview = buildRelayLogContent(m.InternalResponse, responseLogMaxBytes)
 	if err != nil {
 		relayLog.Error = err.Error()

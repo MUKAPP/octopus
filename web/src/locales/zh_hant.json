@@ -610,7 +610,12 @@
             "viewStoredText": "已儲存文字",
             "copySaved": "複製已儲存內容",
             "downloadSaved": "下載已儲存內容",
-            "downloadFailed": "下載失敗"
+            "downloadFailed": "下載失敗",
+            "generatedImages": "生成圖片（{count}）",
+            "generatedImage": "生成圖片 {number}",
+            "expandImages": "展開圖片",
+            "collapseImages": "收起圖片",
+            "imageLoadFailed": "圖片載入失敗，連結可能已失效或圖片資料無效。"
         }
     },
     "channel": {

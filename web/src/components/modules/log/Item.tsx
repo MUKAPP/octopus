@@ -525,12 +525,12 @@ function LiveOverviewDetails({ log, brandColor }: { log: RelayLog; brandColor: s
                             </div>
                             <div className="min-h-0 md:flex-1">
                                 {selectedError && <div className="relative border-b border-destructive/20 bg-destructive/5 p-3"><CopyIconButton text={selectedError} className="absolute right-2 top-2 rounded-md p-1 text-destructive/60 transition-colors hover:bg-destructive/10 hover:text-destructive" copyIconClassName="size-4" checkIconClassName="size-4" /><p className="whitespace-pre-wrap wrap-break-word pr-8 text-sm leading-relaxed text-destructive">{selectedError}</p></div>}
-                                {canShowFinalResponse ? <div className="min-h-0 md:flex-1">{responseTruncated && !responsePreview && <div className="px-3 pt-3"><Badge variant="outline" className="border-amber-500/40 text-xs text-amber-600 dark:text-amber-400">{t('truncated')}</Badge></div>}{responseLoading ? <div className="flex h-full items-center justify-center"><Loader2 className="size-5 animate-spin text-muted-foreground" /></div> : responseBody.error && !responseContent && !selectedIsCommitted ? <div className="flex h-full items-center justify-center px-4 text-xs text-destructive">{t('detailUnavailable')}</div> : <LogBodyContent content={responseContent} preview={responsePreview} truncated={responseTruncated} fallbackText={selectedIsCommitted ? t('responseStreaming') : t('noResponseContent')} storedLabel={storedResponseLabel} />}</div> : selectedAttempt.status === 'running' ? <div className="flex min-h-[8rem] items-center justify-center px-4 text-xs text-muted-foreground">{t('responseStreaming')}</div> : <div className="flex min-h-[8rem] items-center justify-center px-4 text-xs text-muted-foreground">{t('noResponseContent')}</div>}
+                                {canShowFinalResponse ? <div className="min-h-0 md:flex-1">{responseTruncated && !responsePreview && <div className="px-3 pt-3"><Badge variant="outline" className="border-amber-500/40 text-xs text-amber-600 dark:text-amber-400">{t('truncated')}</Badge></div>}{responseLoading ? <div className="flex h-full items-center justify-center"><Loader2 className="size-5 animate-spin text-muted-foreground" /></div> : responseBody.error && !responseContent && !selectedIsCommitted ? <div className="flex h-full items-center justify-center px-4 text-xs text-destructive">{t('detailUnavailable')}</div> : <LogBodyContent content={responseContent} preview={responsePreview} truncated={responseTruncated} fallbackText={selectedIsCommitted ? t('responseStreaming') : t('noResponseContent')} storedLabel={storedResponseLabel} images={responseBody.data?.images} />}</div> : selectedAttempt.status === 'running' ? <div className="flex min-h-[8rem] items-center justify-center px-4 text-xs text-muted-foreground">{t('responseStreaming')}</div> : <div className="flex min-h-[8rem] items-center justify-center px-4 text-xs text-muted-foreground">{t('noResponseContent')}</div>}
                             </div>
                         </div> : <div className="min-h-0 md:flex-1">
                             {log.error && <div className="relative border-b border-destructive/20 bg-destructive/5 p-3"><CopyIconButton text={log.error} className="absolute right-2 top-2 rounded-md p-1 text-destructive/60 transition-colors hover:bg-destructive/10 hover:text-destructive" copyIconClassName="size-4" checkIconClassName="size-4" /><p className="whitespace-pre-wrap wrap-break-word pr-8 text-sm leading-relaxed text-destructive">{log.error}</p></div>}
                             <div className="min-h-0 md:flex-1">
-                                <LogBodyContent content={responseContent} preview={responsePreview} truncated={responseTruncated} fallbackText={isActive ? t('responseStreaming') : t('noResponseContent')} storedLabel={storedResponseLabel} />
+                                <LogBodyContent content={responseContent} preview={responsePreview} truncated={responseTruncated} fallbackText={isActive ? t('responseStreaming') : t('noResponseContent')} storedLabel={storedResponseLabel} images={responseBody.data?.images} />
                             </div>
                         </div>}
                     </div>
@@ -541,6 +541,36 @@ function LiveOverviewDetails({ log, brandColor }: { log: RelayLog; brandColor: s
     );
 }
 
+/**
+ * 旧布局的响应正文：按需通过鉴权正文 API 取得正文与生成图片，
+ * 失败时沿用日志快照正文，正文与快照都缺失时复用既有的不可用占位。
+ */
+function LegacyResponseBody({ log }: { log: RelayLog }) {
+    const t = useTranslations('log.card');
+    const { isOpen } = useMorphingDialog();
+    const isActive = log.state === 'running' || log.state === 'committed';
+    const responseBody = useLogResponseBody(log.id, log.started_at, isOpen && !isActive);
+    const content = responseBody.data?.content ?? log.response_content;
+    const preview = responseBody.data?.preview ?? log.response_content_preview;
+    const truncated = responseBody.data?.truncated ?? log.response_content_truncated;
+    const storedLabel = isActive ? undefined : `octopus-log-${log.id}-response`;
+
+    if (responseBody.error && !content) {
+        return <div className="flex h-full items-center justify-center px-4 text-xs text-destructive">{t('detailUnavailable')}</div>;
+    }
+
+    return (
+        <LogBodyContent
+            content={content}
+            preview={preview}
+            truncated={truncated}
+            fallbackText={t('noResponseContent')}
+            storedLabel={storedLabel}
+            images={responseBody.data?.images}
+        />
+    );
+}
+
 export function LogCard({ log }: { log: RelayLog }) {
     const t = useTranslations('log.card');
     const liveDuration = useLiveLogDuration(log);
@@ -548,6 +578,7 @@ export function LogCard({ log }: { log: RelayLog }) {
         () => getModelIcon(log.actual_model_name),
         [log.actual_model_name]
     );
+
     const requestAPIKeyName = useMemo(() => log.request_api_key_name?.trim() ?? '', [log.request_api_key_name]);
     const statusT = useTranslations('log.status');
     const reasoningEffort = log.reasoning_effort?.trim() ?? '';
@@ -819,7 +850,7 @@ export function LogCard({ log }: { log: RelayLog }) {
                                                         </p>
                                                     </div>
                                                 )}
-                                                <LogBodyContent content={log.response_content} preview={log.response_content_preview} truncated={log.response_content_truncated} fallbackText={t('noResponseContent')} storedLabel={isActive ? undefined : `octopus-log-${log.id}-response`} />
+                                                <LegacyResponseBody log={log} />
                                             </div>
                                         </section>
                                     </div>

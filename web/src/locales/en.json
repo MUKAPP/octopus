@@ -610,7 +610,12 @@
             "viewStoredText": "Stored text",
             "copySaved": "Copy stored content",
             "downloadSaved": "Download stored content",
-            "downloadFailed": "Download failed"
+            "downloadFailed": "Download failed",
+            "generatedImages": "Generated images ({count})",
+            "generatedImage": "Generated image {number}",
+            "expandImages": "Expand images",
+            "collapseImages": "Collapse images",
+            "imageLoadFailed": "Unable to load image. The link may have expired or the image data may be invalid."
         }
     },
     "channel": {

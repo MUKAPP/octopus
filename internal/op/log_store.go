@@ -112,6 +112,8 @@ type relayLogStoreRecord struct {
 	cancel      context.CancelFunc
 	cancelIndex int
 	committed   bool
+	// responseImages 只保存响应图片源；不进入 overview、订阅快照或列表，仅由正文按需接口读取。
+	responseImages []model.RelayLogImage
 }
 
 var relayLogStore = struct {
@@ -131,6 +133,15 @@ func cloneChannelAttempts(attempts []model.ChannelAttempt) []model.ChannelAttemp
 		return nil
 	}
 	return append([]model.ChannelAttempt(nil), attempts...)
+}
+
+// cloneRelayLogImages 只复制图片条目切片，隔离调用方对切片的修改；
+// src 是不可变字符串，直接共享其底层数据，不复制大段 Base64 内容。
+func cloneRelayLogImages(images []model.RelayLogImage) []model.RelayLogImage {
+	if len(images) == 0 {
+		return nil
+	}
+	return append([]model.RelayLogImage(nil), images...)
 }
 
 func cloneRelayLog(log model.RelayLog) model.RelayLog {
@@ -538,9 +549,16 @@ func RelayLogStoreComplete(id int64, state RelayLogState, log model.RelayLog, er
 	relayLogStore.Lock()
 	record, ok := relayLogStore.records[id]
 	if !ok {
-		started := time.Now()
-		record = &relayLogStoreRecord{overview: relayLogOverviewFromModel(log, state, started, "", false), cancelIndex: -1}
+		record = &relayLogStoreRecord{cancelIndex: -1}
 		relayLogStore.records[id] = record
+	}
+	// 图片不进入 overview、订阅快照或列表，只在 store 内部随 record 生命周期保留；
+	// 条目切片复制一次以隔离调用方后续修改，字符串内容本身不可变、不复制。
+	record.responseImages = cloneRelayLogImages(log.ResponseImages)
+	log.ResponseImages = nil
+	if !ok {
+		started := time.Now()
+		record.overview = relayLogOverviewFromModel(log, state, started, "", false)
 	}
 	previousState := record.overview.State
 	log = cloneRelayLog(log)
@@ -703,6 +721,7 @@ func RelayLogStoreBody(id int64, response bool) (model.RelayLogBody, bool) {
 			Content:   record.overview.ResponseContent,
 			Truncated: record.overview.ResponseContentTruncated,
 			Preview:   cloneContentPreview(record.overview.ResponseContentPreview),
+			Images:    cloneRelayLogImages(record.responseImages),
 		}
 		relayLogStore.RUnlock()
 		return body, true

@@ -610,7 +610,12 @@
             "viewStoredText": "已保存文本",
             "copySaved": "复制已保存内容",
             "downloadSaved": "下载已保存内容",
-            "downloadFailed": "下载失败"
+            "downloadFailed": "下载失败",
+            "generatedImages": "生成图片（{count}）",
+            "generatedImage": "生成图片 {number}",
+            "expandImages": "展开图片",
+            "collapseImages": "收起图片",
+            "imageLoadFailed": "图片加载失败，链接可能已失效或图片数据无效。"
         }
     },
     "channel": {
