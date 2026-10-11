@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
-import { AlertTriangle, Braces, Check, ChevronDown, Copy, Download, FileText, Loader2 } from 'lucide-react';
+import { AlertTriangle, Braces, Check, ChevronDown, Copy, Download, ExternalLink, FileText, Loader2, X } from 'lucide-react';
 import JsonView from '@uiw/react-json-view';
 import { githubDarkTheme } from '@uiw/react-json-view/githubDark';
 import { githubLightTheme } from '@uiw/react-json-view/githubLight';
 import { useLocale, useTranslations } from 'use-intl';
 import type { LogContentOmission, LogContentPreview, LogResponseImage } from '@/api/endpoints/log';
+import { fetchLogImage } from '@/api/endpoints/log';
 import { useTheme } from '@/provider/theme';
-import { useMorphingDialog } from '@/components/ui/morphing-dialog';
+import { MorphingDialogOverlayLayer, useMorphingDialog } from '@/components/ui/morphing-dialog';
 import { toast } from '@/components/common/Toast';
 import { cn } from '@/lib/utils';
 
@@ -146,33 +147,139 @@ function copyTextWithExecCommand(text: string, restoreFocus: () => void): boolea
     }
 }
 
-/**
- * 单张生成图片：加载失败时在同位置显示错误文案，其他图片仍可查看。
- * 仅按索引作 key，不把可能很大的 Base64 源放进 key 或复制到其他状态。
- */
+const imageFileExtensions: Record<string, string> = {
+    'image/png': 'png',
+    'image/jpeg': 'jpg',
+    'image/webp': 'webp',
+    'image/gif': 'gif',
+    'image/avif': 'avif',
+    'image/svg+xml': 'svg',
+};
+
+/** 单张生成图片：独立放大与保存原图，关闭图片不会关闭日志详情。 */
 function GeneratedImage({ src, number }: { src: string; number: number }) {
     const t = useTranslations('log.card');
     const [failedSrc, setFailedSrc] = useState<string | null>(null);
+    const [viewerOpen, setViewerOpen] = useState(false);
+    const [saving, setSaving] = useState(false);
+    const viewerId = useId();
+    const failed = failedSrc === src;
+    const closeViewer = useCallback(() => setViewerOpen(false), []);
 
-    if (failedSrc === src) {
-        return (
-            <p className="px-3 py-6 text-center text-xs text-destructive">
-                {t('imageLoadFailed')}
-            </p>
-        );
-    }
+    const handleSave = async () => {
+        setSaving(true);
+        try {
+            const blob = await fetchLogImage(src);
+            const extension = imageFileExtensions[blob.type];
+            const url = URL.createObjectURL(blob);
+            const anchor = document.createElement('a');
+            try {
+                anchor.href = url;
+                anchor.download = `octopus-image-${number}${extension ? `.${extension}` : ''}`;
+                document.body.appendChild(anchor);
+                anchor.click();
+            } finally {
+                anchor.remove();
+                URL.revokeObjectURL(url);
+            }
+        } catch {
+            toast.error(t('imageSaveFailed'), { description: t('imageSaveFailedHint') });
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const imageActions = (
+        <div className="ml-auto flex shrink-0 items-center gap-2">
+            <button
+                type="button"
+                onClick={() => void handleSave()}
+                disabled={saving || failed}
+                aria-busy={saving}
+                className="flex min-h-11 touch-manipulation select-none items-center gap-1.5 rounded-md px-3 text-xs hover:bg-muted/50 focus-visible:outline-2 focus-visible:outline-ring active:bg-muted/50 disabled:opacity-50"
+            >
+                {saving ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : <Download className="size-4" aria-hidden="true" />}
+                {t('saveImage')}
+            </button>
+            <a
+                href={src}
+                target="_blank"
+                rel="noopener noreferrer"
+                referrerPolicy="no-referrer"
+                className="flex min-h-11 touch-manipulation select-none items-center gap-1.5 rounded-md px-3 text-xs hover:bg-muted/50 focus-visible:outline-2 focus-visible:outline-ring active:bg-muted/50"
+            >
+                <ExternalLink className="size-4" aria-hidden="true" />
+                {t('openOriginalImage')}
+            </a>
+        </div>
+    );
 
     return (
-        <img
-            src={src}
-            alt={t('generatedImage', { number })}
-            loading="lazy"
-            decoding="async"
-            referrerPolicy="no-referrer"
-            onError={() => setFailedSrc(src)}
-            onLoad={() => setFailedSrc(null)}
-            className="mx-auto max-h-[40dvh] w-full object-contain"
-        />
+        <div className="flex min-w-0 flex-col gap-1">
+            {failed ? (
+                <p className="px-3 py-6 text-center text-xs text-destructive">{t('imageLoadFailed')}</p>
+            ) : (
+                <button
+                    type="button"
+                    aria-label={t('zoomImage', { number })}
+                    onClick={(event) => { event.currentTarget.focus(); setViewerOpen(true); }}
+                    className="block w-full cursor-zoom-in touch-manipulation rounded-md focus-visible:outline-2 focus-visible:outline-ring"
+                >
+                    <img
+                        src={src}
+                        alt={t('generatedImage', { number })}
+                        loading="lazy"
+                        decoding="async"
+                        draggable={false}
+                        referrerPolicy="no-referrer"
+                        onError={() => setFailedSrc(src)}
+                        onLoad={() => setFailedSrc(null)}
+                        className="mx-auto max-h-[40dvh] w-full object-contain"
+                    />
+                </button>
+            )}
+            {imageActions}
+            {viewerOpen && (
+                <MorphingDialogOverlayLayer
+                    layoutId={viewerId}
+                    transition={{ duration: 0 }}
+                    onClose={closeViewer}
+                    panelClassName="h-full w-full rounded-none border-0 bg-background"
+                >
+                    <div role="dialog" aria-modal="true" aria-label={t('generatedImage', { number })} className="flex h-full min-h-0 flex-col">
+                        <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-border px-3 py-2">
+                            <button
+                                type="button"
+                                onClick={closeViewer}
+                                aria-label={t('closeImage')}
+                                className="flex size-11 shrink-0 touch-manipulation items-center justify-center rounded-md hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring active:bg-muted"
+                            >
+                                <X className="size-5" aria-hidden="true" />
+                            </button>
+                            <span className="min-w-0 flex-1 text-sm">{t('generatedImage', { number })}</span>
+                            {imageActions}
+                        </div>
+                        <div
+                            onClick={(event) => { if (event.target === event.currentTarget) closeViewer(); }}
+                            className="flex min-h-0 flex-1 items-center justify-center overflow-auto overscroll-contain p-4"
+                        >
+                            {failed ? (
+                                <p className="text-center text-sm text-destructive">{t('imageLoadFailed')}</p>
+                            ) : (
+                                <img
+                                    src={src}
+                                    alt={t('generatedImage', { number })}
+                                    decoding="async"
+                                    referrerPolicy="no-referrer"
+                                    onError={() => setFailedSrc(src)}
+                                    className="max-h-full max-w-full object-contain"
+                                />
+                            )}
+                        </div>
+                    </div>
+                </MorphingDialogOverlayLayer>
+            )}
+        </div>
     );
 }
 

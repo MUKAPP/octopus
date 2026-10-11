@@ -1,6 +1,6 @@
 import type { InfiniteData } from '@tanstack/react-query';
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { apiRequest } from '../client';
+import { apiRequest, ApiError } from '../client';
 import { logger } from '@/lib/logger';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { resolveAppURL } from '@/lib/base-url';
@@ -461,6 +461,13 @@ export function useStopAttempt() {
         mutationFn: ({ requestId, attemptIndex }: { requestId: number; attemptIndex: number }) =>
             apiRequest<null>(`/api/v1/log/${requestId}/${attemptIndex}/stop`, { method: 'POST' }),
     });
+}
+
+/** 图片 src 已按部署目录解析；同源携带 Cookie，远程不携带应用凭据或 Referer。 */
+export async function fetchLogImage(src: string): Promise<Blob> {
+    const response = await fetch(src, { credentials: 'same-origin', referrerPolicy: 'no-referrer' });
+    if (!response.ok) throw new ApiError(response.status, response.statusText);
+    return response.blob();
 }
 
 export interface LogResponseImage {

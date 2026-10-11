@@ -616,7 +616,13 @@
             "generatedImage": "Generated image {number}",
             "expandImages": "Expand images",
             "collapseImages": "Collapse images",
-            "imageLoadFailed": "Unable to load image. The link may have expired or the image data may be invalid."
+            "imageLoadFailed": "Unable to load image. The link may have expired or the image data may be invalid.",
+            "zoomImage": "Enlarge image {number}",
+            "closeImage": "Close image",
+            "saveImage": "Save image",
+            "openOriginalImage": "Open original image",
+            "imageSaveFailed": "Unable to save image",
+            "imageSaveFailedHint": "The link may have expired or the remote server may not allow direct downloads. Open the original image to save it."
         }
     },
     "channel": {

@@ -616,7 +616,13 @@
             "generatedImage": "生成圖片 {number}",
             "expandImages": "展開圖片",
             "collapseImages": "收起圖片",
-            "imageLoadFailed": "圖片載入失敗，連結可能已失效或圖片資料無效。"
+            "imageLoadFailed": "圖片載入失敗，連結可能已失效或圖片資料無效。",
+            "zoomImage": "放大圖片 {number}",
+            "closeImage": "關閉圖片",
+            "saveImage": "儲存圖片",
+            "openOriginalImage": "開啟原圖",
+            "imageSaveFailed": "圖片儲存失敗",
+            "imageSaveFailedHint": "連結可能已失效，或遠端伺服器不允許直接下載。可開啟原圖後儲存。"
         }
     },
     "channel": {
