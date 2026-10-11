@@ -82,7 +82,8 @@ interface APIKeyFormProps {
 
 function APIKeyForm({ apiKey, isPending, submitLabel, onSubmit, onClose }: APIKeyFormProps) {
     const t = useTranslations('setting');
-    const { data: groups = [], isLoading: groupsLoading } = useGroupList();
+    const { data: groups, isLoading: groupsLoading, error: groupsError } = useGroupList();
+    const groupsReady = groups !== undefined && !groupsError;
 
     const [form, setForm] = useState<APIKeyFormData>(() => ({
         name: apiKey?.name ?? '',
@@ -100,6 +101,9 @@ function APIKeyForm({ apiKey, isPending, submitLabel, onSubmit, onClose }: APIKe
         apiKey?.max_concurrency ? String(apiKey.max_concurrency) : ''
     );
     const maxConcurrencyId = useId();
+    const modelsLabelId = useId();
+    const modelsHintId = useId();
+    const modelsStatusId = useId();
     const [expireTime, setExpireTime] = useState(() => {
         if (apiKey?.expire_at) {
             const d = new Date(apiKey.expire_at * 1000);
@@ -112,9 +116,26 @@ function APIKeyForm({ apiKey, isPending, submitLabel, onSubmit, onClose }: APIKe
     const [expireOpen, setExpireOpen] = useState(false);
 
     const availableModels = useMemo(() => {
-        const names = groups.map((g) => g.name).filter(Boolean);
+        const names = (groups ?? []).map((g) => g.name).filter(Boolean);
         return Array.from(new Set(names)).sort((a, b) => a.localeCompare(b));
     }, [groups]);
+    const savedModels = useMemo(() =>
+        apiKey?.supported_models?.split(',').filter(Boolean) ?? [],
+    [apiKey?.supported_models]);
+    const selectedModels = useMemo(() =>
+        form.supported_models?.split(',').filter(Boolean) ?? [],
+    [form.supported_models]);
+    const modelOptions = useMemo(() => {
+        const availableNames = new Set(availableModels);
+        return Array.from(new Set([...availableModels, ...savedModels, ...selectedModels]))
+            .sort((a, b) => a.localeCompare(b))
+            .map((name) => ({
+                name,
+                checked: hasModel(form.supported_models, name),
+                unavailable: groupsReady && !availableNames.has(name),
+            }));
+    }, [availableModels, savedModels, selectedModels, form.supported_models, groupsReady]);
+    const hasUnavailableModels = modelOptions.some(({ checked, unavailable }) => checked && unavailable);
 
     const expireDate = parseExpireDate(form.expire_at);
     const neverExpire = !form.expire_at;
@@ -187,7 +208,7 @@ function APIKeyForm({ apiKey, isPending, submitLabel, onSubmit, onClose }: APIKe
     }, [form, maxConcurrencyInput, onSubmit]);
 
     return (
-        <form onSubmit={handleSubmit} className="grid gap-2">
+        <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-2">
             <label className="grid gap-1 text-xs text-muted-foreground">
                 {t('apiKey.form.name')}
                 <Input
@@ -341,45 +362,63 @@ function APIKeyForm({ apiKey, isPending, submitLabel, onSubmit, onClose }: APIKe
                 </div>
             </div>
 
-            <div className="grid gap-1">
-                <div className="text-xs text-muted-foreground">{t('apiKey.form.supportedModels')}</div>
+            <div
+                className="grid gap-1"
+                role="group"
+                aria-labelledby={modelsLabelId}
+                aria-describedby={`${modelsHintId}${groupsError || hasUnavailableModels ? ` ${modelsStatusId}` : ''}`}
+            >
+                <div id={modelsLabelId} className="text-xs text-muted-foreground">{t('apiKey.form.supportedModels')}</div>
                 <div className="max-h-40 overflow-auto rounded-xl p-2 scrollbar">
-                    {groupsLoading ? (
+                    {(groupsLoading || groups === undefined) && !groupsError && (
                         <div className="flex justify-center py-2">
-                            <Loader className="size-4 animate-spin" role="status" aria-label="加载中" />
+                            <Loader className="size-4 animate-spin" role="status" aria-label={t('apiKey.form.modelsLoading')} />
                         </div>
-                    ) : availableModels.length === 0 ? (
+                    )}
+                    {groupsReady && modelOptions.length === 0 ? (
                         <div className="text-xs text-muted-foreground py-2 text-center">
                             {t('apiKey.form.noModels')}
                         </div>
                     ) : (
                         <div className="flex flex-wrap gap-2">
-                            {availableModels.map((m) => {
-                                const checked = hasModel(form.supported_models, m);
-                                return (
-                                    <button
-                                        key={m}
-                                        type="button"
-                                        disabled={isPending}
-                                        onClick={() => updateForm({ supported_models: toggleModel(form.supported_models, m) })}
-                                        className="text-left disabled:opacity-50"
+                            {modelOptions.map(({ name, checked, unavailable }) => (
+                                <button
+                                    key={name}
+                                    type="button"
+                                    disabled={isPending || !groupsReady}
+                                    aria-pressed={checked}
+                                    onClick={() => updateForm({ supported_models: toggleModel(form.supported_models, name) })}
+                                    className="max-w-full text-left disabled:opacity-50"
+                                >
+                                    <Badge
+                                        variant={unavailable ? 'outline' : checked ? 'default' : 'outline'}
+                                        className={cn(
+                                            'max-w-full whitespace-normal cursor-pointer select-none',
+                                            unavailable
+                                                ? 'border-amber-500/40 text-amber-600 dark:text-amber-400'
+                                                : !checked && 'bg-background/40 hover:bg-background/70',
+                                            unavailable && checked && 'bg-amber-500/10'
+                                        )}
                                     >
-                                        <Badge
-                                            variant={checked ? 'default' : 'outline'}
-                                            className={cn(
-                                                'cursor-pointer select-none',
-                                                !checked && 'bg-background/40 hover:bg-background/70'
-                                            )}
-                                        >
-                                            {m}
-                                        </Badge>
-                                    </button>
-                                );
-                            })}
+                                        {unavailable && checked && <Check className="size-3 shrink-0" aria-hidden="true" />}
+                                        <span className="min-w-0 break-all whitespace-pre-wrap">{name}</span>
+                                        {unavailable && <span className="shrink-0">{t('apiKey.form.unavailableModel')}</span>}
+                                    </Badge>
+                                </button>
+                            ))}
                         </div>
                     )}
                 </div>
-                <div className="text-[11px] text-muted-foreground/80">{t('apiKey.form.modelsHint')}</div>
+                {groupsError ? (
+                    <div id={modelsStatusId} role="alert" className="text-[11px] text-destructive">
+                        {t('apiKey.form.modelsLoadFailed')}
+                    </div>
+                ) : hasUnavailableModels && (
+                    <div id={modelsStatusId} role="status" className="text-[11px] text-amber-600 dark:text-amber-400">
+                        {t('apiKey.form.unavailableModelsHint')}
+                    </div>
+                )}
+                <div id={modelsHintId} className="text-[11px] text-muted-foreground/80">{t('apiKey.form.modelsHint')}</div>
             </div>
 
             <div className="flex items-center justify-between pt-1">
