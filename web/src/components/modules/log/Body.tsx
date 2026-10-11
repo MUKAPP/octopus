@@ -53,7 +53,7 @@ const OMISSION_KIND_KEYS = {
 } as const;
 
 /**
- * 有损预览提示：展示原始/保存大小、截断原因与被省略字段的路径与字节/数量信息。
+ * 部分响应提示：默认只展示简短说明，大小、原因和省略字段通过详情展开。
  * 缺少保存元数据的旧记录返回 null，由正文面板沿用原有的截断徽标。
  */
 function LogLossNotice({ preview, truncated }: { preview?: LogContentPreview; truncated?: boolean }) {
@@ -82,41 +82,44 @@ function LogLossNotice({ preview, truncated }: { preview?: LogContentPreview; tr
                 <AlertTriangle className="size-3.5 shrink-0 text-amber-600 dark:text-amber-400" aria-hidden="true" />
                 <span className="font-medium text-amber-700 dark:text-amber-300">{t('lossyPreview')}</span>
             </div>
-            <p className="min-w-0 break-words tabular-nums text-muted-foreground">
-                {t('originalSize')} {formatBytes(preview.original_bytes, locale)}
-                {' · '}
-                {t('storedSize')} {formatBytes(preview.stored_bytes, locale)}
-                {reason && <>{' · '}{reason}</>}
-            </p>
-            <p className="min-w-0 break-words text-muted-foreground">{t('fullTextNotKept')}</p>
-            {(omissions.length > 0 || omittedDetails > 0) && (
-                <div className="flex flex-col gap-1">
-                    <span className="text-muted-foreground">{t('omittedFields')}</span>
-                    {omissions.length > 0 && (
-                        <ul className="scrollbar flex max-h-32 flex-col gap-1 overflow-y-auto overscroll-contain pr-1">
-                            {omissions.map((omission) => (
-                                <li
-                                    key={`${omission.path}-${omission.kind}`}
-                                    className="flex min-w-0 flex-wrap items-baseline gap-x-1.5 gap-y-0.5"
-                                >
-                                    <code className="min-w-0 break-all rounded bg-muted px-1 py-0.5 font-mono text-[11px] text-foreground">
-                                        {omission.path === '' ? t('rootPath') : omission.path}
-                                    </code>
-                                    <span className="shrink-0 text-muted-foreground">{t(OMISSION_KIND_KEYS[omission.kind])}</span>
-                                    <span className="min-w-0 break-words tabular-nums text-muted-foreground">
-                                        {omission.original_items !== undefined || omission.stored_items !== undefined
-                                            ? `${formatCount(omission.original_items ?? 0, locale)} → ${formatCount(omission.stored_items ?? 0, locale)} ${t('itemsUnit')}`
-                                            : `${formatBytes(omission.original_bytes ?? 0, locale)} → ${formatBytes(omission.stored_bytes ?? 0, locale)}`}
-                                    </span>
-                                </li>
-                            ))}
-                        </ul>
-                    )}
-                    {omittedDetails > 0 && (
-                        <span className="text-muted-foreground">{t('omittedDetailsMore', { count: omittedDetails })}</span>
-                    )}
-                </div>
-            )}
+            <p className="min-w-0 break-words text-muted-foreground">{t('partialContentHint')}</p>
+            <details className="min-w-0 text-muted-foreground">
+                <summary className="cursor-pointer rounded-sm hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring">{t('previewDetails')}</summary>
+                <p className="mt-1.5 min-w-0 break-words tabular-nums text-muted-foreground">
+                    {t('originalSize')} {formatBytes(preview.original_bytes, locale)}
+                    {' · '}
+                    {t('storedSize')} {formatBytes(preview.stored_bytes, locale)}
+                    {reason && <>{' · '}{reason}</>}
+                </p>
+                {(omissions.length > 0 || omittedDetails > 0) && (
+                    <div className="mt-1.5 flex flex-col gap-1">
+                        <span className="text-muted-foreground">{t('omittedFields')}</span>
+                        {omissions.length > 0 && (
+                            <ul className="scrollbar flex max-h-32 flex-col gap-1 overflow-y-auto overscroll-contain pr-1">
+                                {omissions.map((omission) => (
+                                    <li
+                                        key={`${omission.path}-${omission.kind}`}
+                                        className="flex min-w-0 flex-wrap items-baseline gap-x-1.5 gap-y-0.5"
+                                    >
+                                        <code className="min-w-0 break-all rounded bg-muted px-1 py-0.5 font-mono text-[11px] text-foreground">
+                                            {omission.path === '' ? t('rootPath') : omission.path}
+                                        </code>
+                                        <span className="shrink-0 text-muted-foreground">{t(OMISSION_KIND_KEYS[omission.kind])}</span>
+                                        <span className="min-w-0 break-words tabular-nums text-muted-foreground">
+                                            {omission.original_items !== undefined || omission.stored_items !== undefined
+                                                ? `${formatCount(omission.original_items ?? 0, locale)} → ${formatCount(omission.stored_items ?? 0, locale)} ${t('itemsUnit')}`
+                                                : `${formatBytes(omission.original_bytes ?? 0, locale)} → ${formatBytes(omission.stored_bytes ?? 0, locale)}`}
+                                        </span>
+                                    </li>
+                                ))}
+                            </ul>
+                        )}
+                        {omittedDetails > 0 && (
+                            <span className="text-muted-foreground">{t('omittedDetailsMore', { count: omittedDetails })}</span>
+                        )}
+                    </div>
+                )}
+            </details>
         </div>
     );
 }
@@ -225,8 +228,8 @@ export interface LogBodyContentProps {
 }
 
 /**
- * 请求/响应/实时/历史共用的正文视图：保存元数据提示、树视图与已保存文本切换、
- * 复制与下载已保存内容。结构化预览与已保存文本都不代表原始全文。
+ * 请求/响应/实时/历史共用的正文视图：保存元数据提示、树视图与文本视图切换，
+ * 复制与下载当前正文。有损时各视图和导出内容都不代表原始全文。
  */
 export function LogBodyContent({
     content,
@@ -351,7 +354,7 @@ export function LogBodyContent({
                             <button
                                 type="button"
                                 aria-pressed={activeView === 'text'}
-                                aria-label={t('viewStoredText')}
+                                aria-label={t('viewText')}
                                 onClick={() => setView('text')}
                                 className={cn(
                                     'flex items-center gap-1 rounded-md px-1.5 py-1 text-[11px] transition-colors',
@@ -361,7 +364,7 @@ export function LogBodyContent({
                                 )}
                             >
                                 <FileText className="size-3.5 shrink-0" aria-hidden="true" />
-                                {t('viewStoredText')}
+                                {t('viewText')}
                             </button>
                         </div>
                     )}
@@ -371,8 +374,8 @@ export function LogBodyContent({
                                 type="button"
                                 ref={copyButtonRef}
                                 onClick={() => void handleCopy()}
-                                aria-label={t('copySaved')}
-                                title={t('copySaved')}
+                                aria-label={t('copyContent')}
+                                title={t('copyContent')}
                                 className="flex items-center gap-1 rounded-md px-1.5 py-1 text-[11px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                             >
                                 <AnimatePresence mode="wait" initial={false}>
@@ -386,17 +389,17 @@ export function LogBodyContent({
                                         </motion.span>
                                     )}
                                 </AnimatePresence>
-                                {t('copySaved')}
+                                {t('copyContent')}
                             </button>
                             <button
                                 type="button"
                                 onClick={handleDownload}
-                                aria-label={t('downloadSaved')}
-                                title={t('downloadSaved')}
+                                aria-label={t('downloadContent')}
+                                title={t('downloadContent')}
                                 className="flex items-center gap-1 rounded-md px-1.5 py-1 text-[11px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                             >
                                 <Download className="size-3.5 shrink-0" aria-hidden="true" />
-                                {t('downloadSaved')}
+                                {t('downloadContent')}
                             </button>
                         </div>
                     )}
