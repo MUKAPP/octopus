@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
-import { AnimatePresence, motion } from 'motion/react';
+import { createPortal } from 'react-dom';
+import { AnimatePresence, MotionConfig, motion, type Transition } from 'motion/react';
 import { AlertTriangle, Braces, Check, ChevronDown, Copy, Download, ExternalLink, FileText, Loader2, X } from 'lucide-react';
 import JsonView from '@uiw/react-json-view';
 import { githubDarkTheme } from '@uiw/react-json-view/githubDark';
@@ -11,6 +12,7 @@ import { useTheme } from '@/provider/theme';
 import { MorphingDialogOverlayLayer, useMorphingDialog } from '@/components/ui/morphing-dialog';
 import { toast } from '@/components/common/Toast';
 import { cn } from '@/lib/utils';
+import { EASING, REDUCED_MOTION_TRANSITION } from '@/lib/animations/fluid-transitions';
 
 /** 树视图默认展开到该层级，更深的节点折叠并可逐个展开。 */
 const initialExpandLevel = 2;
@@ -156,15 +158,40 @@ const imageFileExtensions: Record<string, string> = {
     'image/svg+xml': 'svg',
 };
 
+const imageViewerSpring = { type: 'spring', stiffness: 400, damping: 30 } as const;
+
 /** 单张生成图片：独立放大与保存原图，关闭图片不会关闭日志详情。 */
 function GeneratedImage({ src, number }: { src: string; number: number }) {
     const t = useTranslations('log.card');
     const [failedSrc, setFailedSrc] = useState<string | null>(null);
     const [viewerOpen, setViewerOpen] = useState(false);
     const [saving, setSaving] = useState(false);
+    const [instantMotion, setInstantMotion] = useState(false);
+    const [shouldReduceMotion, setShouldReduceMotion] = useState(() =>
+        window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    );
     const viewerId = useId();
     const failed = failedSrc === src;
-    const closeViewer = useCallback(() => setViewerOpen(false), []);
+    const disableMorph = shouldReduceMotion || instantMotion;
+    // 保持缩略图身份稳定；即时路径使用独立目标，避免共享投影的首帧闪跳。
+    const viewerLayoutId = disableMorph ? `${viewerId}-static` : viewerId;
+    const viewerTransition: Transition = disableMorph ? { duration: 0 } : imageViewerSpring;
+    const backdropTransition: Transition = instantMotion
+        ? { duration: 0 }
+        : shouldReduceMotion ? REDUCED_MOTION_TRANSITION : { duration: 0.2, ease: EASING.easeOutExpo };
+    const closeViewer = useCallback((instant = false) => {
+        setInstantMotion((current) => current || instant);
+        setViewerOpen(false);
+    }, []);
+
+    useEffect(() => {
+        const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+        const handleChange = (event: MediaQueryListEvent) => {
+            setShouldReduceMotion(event.matches);
+        };
+        mediaQuery.addEventListener('change', handleChange);
+        return () => mediaQuery.removeEventListener('change', handleChange);
+    }, []);
 
     const handleSave = async () => {
         setSaving(true);
@@ -190,42 +217,53 @@ function GeneratedImage({ src, number }: { src: string; number: number }) {
     };
 
     const imageActions = (
-        <div className="ml-auto flex shrink-0 items-center gap-2">
-            <button
-                type="button"
-                onClick={() => void handleSave()}
-                disabled={saving || failed}
-                aria-busy={saving}
-                className="flex min-h-11 touch-manipulation select-none items-center gap-1.5 rounded-md px-3 text-xs hover:bg-muted/50 focus-visible:outline-2 focus-visible:outline-ring active:bg-muted/50 disabled:opacity-50"
-            >
-                {saving ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : <Download className="size-4" aria-hidden="true" />}
-                {t('saveImage')}
-            </button>
+        <div className="flex min-w-0 flex-wrap items-center justify-end gap-2">
             <a
                 href={src}
                 target="_blank"
                 rel="noopener noreferrer"
                 referrerPolicy="no-referrer"
-                className="flex min-h-11 touch-manipulation select-none items-center gap-1.5 rounded-md px-3 text-xs hover:bg-muted/50 focus-visible:outline-2 focus-visible:outline-ring active:bg-muted/50"
+                className="flex min-h-11 touch-manipulation select-none items-center justify-center gap-1.5 rounded-xl bg-muted px-4 text-sm font-medium text-muted-foreground transition-[background-color,color,transform] duration-150 hover:bg-muted/80 hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring active:scale-[0.98] motion-reduce:transform-none"
             >
                 <ExternalLink className="size-4" aria-hidden="true" />
                 {t('openOriginalImage')}
             </a>
+            <button
+                type="button"
+                onClick={() => void handleSave()}
+                disabled={saving || failed}
+                aria-busy={saving}
+                className="flex min-h-11 touch-manipulation select-none items-center justify-center gap-1.5 rounded-xl bg-primary px-4 text-sm font-medium text-primary-foreground transition-[background-color,transform] duration-150 hover:bg-primary/90 focus-visible:outline-2 focus-visible:outline-ring active:scale-[0.98] motion-reduce:transform-none disabled:pointer-events-none disabled:opacity-50"
+            >
+                {saving ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : <Download className="size-4" aria-hidden="true" />}
+                {t('saveImage')}
+            </button>
         </div>
     );
 
-    return (
-        <div className="flex min-w-0 flex-col gap-1">
+    const imageView = (
+        <div className="flex min-w-0 flex-col gap-2">
             {failed ? (
                 <p className="px-3 py-6 text-center text-xs text-destructive">{t('imageLoadFailed')}</p>
             ) : (
-                <button
+                <motion.button
                     type="button"
+                    layoutId={viewerId}
+                    transition={viewerTransition}
                     aria-label={t('zoomImage', { number })}
-                    onClick={(event) => { event.currentTarget.focus(); setViewerOpen(true); }}
-                    className="block w-full cursor-zoom-in touch-manipulation rounded-md focus-visible:outline-2 focus-visible:outline-ring"
+                    aria-hidden={viewerOpen}
+                    tabIndex={viewerOpen ? -1 : 0}
+                    onClick={(event) => {
+                        event.currentTarget.focus();
+                        setInstantMotion(event.detail === 0);
+                        setViewerOpen(true);
+                    }}
+                    style={{ visibility: viewerOpen ? 'hidden' : 'visible', pointerEvents: viewerOpen ? 'none' : undefined }}
+                    className="block w-full cursor-zoom-in touch-manipulation overflow-hidden rounded-2xl border border-border/70 bg-muted/20 focus-visible:outline-2 focus-visible:outline-ring"
                 >
-                    <img
+                    <motion.img
+                        layoutId={`${viewerId}-image`}
+                        transition={viewerTransition}
                         src={src}
                         alt={t('generatedImage', { number })}
                         loading="lazy"
@@ -234,53 +272,76 @@ function GeneratedImage({ src, number }: { src: string; number: number }) {
                         referrerPolicy="no-referrer"
                         onError={() => setFailedSrc(src)}
                         onLoad={() => setFailedSrc(null)}
-                        className="mx-auto max-h-[40dvh] w-full object-contain"
+                        className="mx-auto max-h-[40dvh] max-w-full object-contain"
                     />
-                </button>
+                </motion.button>
             )}
             {imageActions}
-            {viewerOpen && (
-                <MorphingDialogOverlayLayer
-                    layoutId={viewerId}
-                    transition={{ duration: 0 }}
-                    onClose={closeViewer}
-                    panelClassName="h-full w-full rounded-none border-0 bg-background"
-                >
-                    <div role="dialog" aria-modal="true" aria-label={t('generatedImage', { number })} className="flex h-full min-h-0 flex-col">
-                        <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-border px-3 py-2">
-                            <button
-                                type="button"
-                                onClick={closeViewer}
-                                aria-label={t('closeImage')}
-                                className="flex size-11 shrink-0 touch-manipulation items-center justify-center rounded-md hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring active:bg-muted"
-                            >
-                                <X className="size-5" aria-hidden="true" />
-                            </button>
-                            <span className="min-w-0 flex-1 text-sm">{t('generatedImage', { number })}</span>
-                            {imageActions}
-                        </div>
-                        <div
-                            onClick={(event) => { if (event.target === event.currentTarget) closeViewer(); }}
-                            className="flex min-h-0 flex-1 items-center justify-center overflow-auto overscroll-contain p-4"
+            <AnimatePresence initial={false} custom={backdropTransition}>
+                {viewerOpen && (
+                    <>
+                        {createPortal(
+                            <motion.div
+                                key={`${viewerId}-backdrop`}
+                                aria-hidden="true"
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                exit="closed"
+                                variants={{ closed: (transition: Transition) => ({ opacity: 0, transition }) }}
+                                transition={backdropTransition}
+                                onClick={(event) => closeViewer(event.detail === 0)}
+                                className="fixed inset-0 z-[60] bg-white/40 backdrop-blur-xs dark:bg-black/40"
+                            />,
+                            document.body,
+                        )}
+                        <MorphingDialogOverlayLayer
+                            layoutId={viewerLayoutId}
+                            transition={viewerTransition}
+                            onClose={() => closeViewer(true)}
+                            panelClassName="relative flex h-[min(880px,calc(100dvh-2rem))] w-[min(1100px,calc(100vw-2rem))] flex-col overflow-hidden p-4 text-card-foreground shadow-xl md:p-5"
                         >
-                            {failed ? (
-                                <p className="text-center text-sm text-destructive">{t('imageLoadFailed')}</p>
-                            ) : (
-                                <img
-                                    src={src}
-                                    alt={t('generatedImage', { number })}
-                                    decoding="async"
-                                    referrerPolicy="no-referrer"
-                                    onError={() => setFailedSrc(src)}
-                                    className="max-h-full max-w-full object-contain"
-                                />
-                            )}
-                        </div>
-                    </div>
-                </MorphingDialogOverlayLayer>
-            )}
+                            <div role="dialog" aria-modal="true" aria-label={t('generatedImage', { number })} className="flex h-full min-h-0 flex-col gap-4">
+                                <div className="flex shrink-0 items-center justify-between gap-3">
+                                    <h3 className="min-w-0 text-sm font-semibold">{t('generatedImage', { number })}</h3>
+                                    <button
+                                        type="button"
+                                        onClick={(event) => closeViewer(event.detail === 0)}
+                                        aria-label={t('closeImage')}
+                                        className="flex size-11 shrink-0 touch-manipulation items-center justify-center rounded-lg bg-muted/60 text-muted-foreground transition-[background-color,color,transform] duration-150 hover:bg-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring active:scale-95 motion-reduce:transform-none"
+                                    >
+                                        <X className="size-4" aria-hidden="true" />
+                                    </button>
+                                </div>
+                                <div
+                                    onClick={(event) => { if (event.target === event.currentTarget) closeViewer(event.detail === 0); }}
+                                    className="flex min-h-0 flex-1 items-center justify-center overflow-hidden rounded-2xl border border-border/60 bg-muted/20 p-3"
+                                >
+                                    {failed ? (
+                                        <p className="text-center text-sm text-destructive">{t('imageLoadFailed')}</p>
+                                    ) : (
+                                        <motion.img
+                                            layoutId={`${viewerLayoutId}-image`}
+                                            transition={viewerTransition}
+                                            src={src}
+                                            alt={t('generatedImage', { number })}
+                                            decoding="async"
+                                            referrerPolicy="no-referrer"
+                                            onError={() => setFailedSrc(src)}
+                                            className="max-h-full max-w-full object-contain"
+                                        />
+                                    )}
+                                </div>
+                                {imageActions}
+                            </div>
+                        </MorphingDialogOverlayLayer>
+                    </>
+                )}
+            </AnimatePresence>
         </div>
     );
+
+    // 图片层显式响应实时偏好；全局 user 策略继续管理其他动效。
+    return <MotionConfig reducedMotion="never">{imageView}</MotionConfig>;
 }
 
 /**
