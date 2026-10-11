@@ -4,7 +4,6 @@ import { AlertTriangle, Braces, Check, ChevronDown, Copy, Download, FileText, Lo
 import JsonView from '@uiw/react-json-view';
 import { githubDarkTheme } from '@uiw/react-json-view/githubDark';
 import { githubLightTheme } from '@uiw/react-json-view/githubLight';
-import { useCopyToClipboard } from '@uidotdev/usehooks';
 import { useLocale, useTranslations } from 'use-intl';
 import type { LogContentOmission, LogContentPreview, LogResponseImage } from '@/api/endpoints/log';
 import { useTheme } from '@/provider/theme';
@@ -125,6 +124,26 @@ function LogLossNotice({ preview, truncated }: { preview?: LogContentPreview; tr
 type BodyView = 'tree' | 'text';
 
 /**
+ * 无 Clipboard API 或被拒绝时的兜底：临时 textarea 承载文本并触发原生复制命令。
+ * execCommand 返回 false 或抛错都判定为复制失败，只有明确成功才返回 true。
+ * 无论结果如何都在 finally 中移除临时节点并恢复复制按钮焦点，不残留 DOM。
+ */
+function copyTextWithExecCommand(text: string, restoreFocus: () => void): boolean {
+    const textarea = document.createElement('textarea');
+    textarea.value = text;
+    document.body.appendChild(textarea);
+    try {
+        textarea.select();
+        return document.execCommand('copy');
+    } catch {
+        return false;
+    } finally {
+        textarea.remove();
+        restoreFocus();
+    }
+}
+
+/**
  * 单张生成图片：加载失败时在同位置显示错误文案，其他图片仍可查看。
  * 仅按索引作 key，不把可能很大的 Base64 源放进 key 或复制到其他状态。
  */
@@ -221,11 +240,11 @@ export function LogBodyContent({
     const { isOpen } = useMorphingDialog();
     const t = useTranslations('log.card');
     const copyT = useTranslations('common.copy');
-    const [, copyToClipboard] = useCopyToClipboard();
     const [shouldRender, setShouldRender] = useState(false);
     const [view, setView] = useState<BodyView>('tree');
     const [copied, setCopied] = useState(false);
     const copiedTimerRef = useRef<number | null>(null);
+    const copyButtonRef = useRef<HTMLButtonElement>(null);
 
     const parsed = useMemo(() => {
         if (!content) return { isJson: false, structured: false, data: null as unknown };
@@ -256,15 +275,29 @@ export function LogBodyContent({
     const handleCopy = useCallback(async () => {
         if (!content) return;
         try {
-            await copyToClipboard(content);
-            setCopied(true);
-            toast.success(copyT('success'));
-            if (copiedTimerRef.current) window.clearTimeout(copiedTimerRef.current);
-            copiedTimerRef.current = window.setTimeout(() => setCopied(false), 2000);
+            // 正文可能很大，等待 native 写入真正完成后再标记成功，避免提前勾选。
+            if (!navigator.clipboard?.writeText) throw new Error();
+            await navigator.clipboard.writeText(content);
         } catch (cause) {
-            toast.error(copyT('failed'), { description: cause instanceof Error ? cause.message : String(cause) });
+            // 无 native API 或写入被拒绝时退回 execCommand；仍失败则保留原始失败原因。
+            if (!copyTextWithExecCommand(content, () => copyButtonRef.current?.focus())) {
+                // 复制确实失败：清掉上一次的成功勾选与计时，避免误导。
+                if (copiedTimerRef.current) {
+                    window.clearTimeout(copiedTimerRef.current);
+                    copiedTimerRef.current = null;
+                }
+                setCopied(false);
+                toast.error(copyT('failed'), {
+                    description: cause instanceof Error ? cause.message : String(cause),
+                });
+                return;
+            }
         }
-    }, [content, copyToClipboard, copyT]);
+        setCopied(true);
+        toast.success(copyT('success'));
+        if (copiedTimerRef.current) window.clearTimeout(copiedTimerRef.current);
+        copiedTimerRef.current = window.setTimeout(() => setCopied(false), 2000);
+    }, [content, copyT]);
 
     const handleDownload = useCallback(() => {
         if (!content) return;
@@ -336,6 +369,7 @@ export function LogBodyContent({
                         <div className="ml-auto flex shrink-0 items-center gap-1">
                             <button
                                 type="button"
+                                ref={copyButtonRef}
                                 onClick={() => void handleCopy()}
                                 aria-label={t('copySaved')}
                                 title={t('copySaved')}

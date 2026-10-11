@@ -13,6 +13,8 @@ import (
 )
 
 // extractRelayLogImages 仅从最终客户端生图响应提取图片，不解析普通文本响应。
+// Responses 生图判定只看响应 output（type=image_generation_call 且 status=completed），
+// 不依赖请求 tools：渠道 param_append/param_override 追加的 image_generation 工具在客户端原始请求里不可见。
 func extractRelayLogImages(request *llm.Request, content []byte) []model.RelayLogImage {
 	if request == nil || len(content) == 0 {
 		return nil
@@ -33,16 +35,6 @@ func extractRelayLogImages(request *llm.Request, content []byte) []model.RelayLo
 		return images
 	}
 	if request.APIFormat != llm.APIFormatOpenAIResponse {
-		return nil
-	}
-	hasImageTool := false
-	for _, tool := range request.Tools {
-		if tool.Type == "image_generation" {
-			hasImageTool = true
-			break
-		}
-	}
-	if !hasImageTool {
 		return nil
 	}
 	var envelope struct {
