@@ -1,6 +1,7 @@
 package relay
 
 import (
+	"encoding/json"
 	"strings"
 	"testing"
 	"unicode/utf8"
@@ -61,7 +62,7 @@ func TestTruncateLogContent(t *testing.T) {
 	}
 }
 
-func TestRelayMetricsLogContentPreservesRequest(t *testing.T) {
+func TestRelayMetricsLogContentStructuredResponse(t *testing.T) {
 	text := strings.Repeat("中", 100000) // 300,000 bytes; exceeds the fixed response limit.
 	metrics := &RelayMetrics{
 		InternalRequest: &llm.Request{
@@ -71,14 +72,21 @@ func TestRelayMetricsLogContentPreservesRequest(t *testing.T) {
 				Content: llm.MessageContent{Content: &text},
 			}},
 		},
-		InternalResponse: []byte(strings.Repeat("r", 300000)),
+		InternalResponse: []byte(`{"id":"chatcmpl-fixture","model":"fixture","choices":[{"index":0,"message":{"role":"assistant","content":"` + strings.Repeat("r", 300000) + `"},"finish_reason":"stop"}],"usage":{"prompt_tokens":1}}`),
 	}
 
-	req, reqTrunc, resp, respTrunc := metrics.logContent()
-	if reqTrunc || !strings.Contains(req, text) || len(req) <= 262144 || !utf8.ValidString(req) {
-		t.Fatalf("request content was truncated: truncated=%t len=%d valid=%t", reqTrunc, len(req), utf8.ValidString(req))
+	relayLog := metrics.buildRelayLog(nil, 0, nil, 0, "", 0, "")
+	if !strings.Contains(relayLog.RequestContent, text) || relayLog.RequestContentTruncated || len(relayLog.RequestContent) <= 262144 || !utf8.ValidString(relayLog.RequestContent) {
+		t.Fatalf("request content was truncated: truncated=%t len=%d valid=%t", relayLog.RequestContentTruncated, len(relayLog.RequestContent), utf8.ValidString(relayLog.RequestContent))
 	}
-	if !respTrunc || len(resp) > 262144 {
-		t.Fatalf("response content limit not applied: truncated=%t len=%d", respTrunc, len(resp))
+	if !relayLog.ResponseContentTruncated || len(relayLog.ResponseContent) > responseLogMaxBytes {
+		t.Fatalf("response content limit not applied: truncated=%t len=%d", relayLog.ResponseContentTruncated, len(relayLog.ResponseContent))
+	}
+	if !json.Valid([]byte(relayLog.ResponseContent)) {
+		t.Fatal("oversized JSON response preview is not parseable")
+	}
+	preview := relayLog.ResponseContentPreview
+	if preview == nil || preview.Format != previewFormatJSON || preview.Reason != previewReasonSizeLimit || preview.OriginalBytes <= responseLogMaxBytes {
+		t.Fatalf("structured preview metadata = %+v", preview)
 	}
 }

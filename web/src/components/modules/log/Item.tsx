@@ -1,15 +1,11 @@
 import { useMemo, useState, useEffect, useRef } from 'react';
 import { Clock, Cpu, Zap, ArrowDownToLine, ArrowUpFromLine, DollarSign, ArrowRight, ArrowDown, Send, MessageSquare, Loader2, RotateCw, Pin, KeyRound, Gauge, Square, ChevronDown } from 'lucide-react';
 import { useTranslations } from 'use-intl';
-import { motion, AnimatePresence } from 'motion/react';
-import JsonView from '@uiw/react-json-view';
-import { githubDarkTheme } from '@uiw/react-json-view/githubDark';
-import { githubLightTheme } from '@uiw/react-json-view/githubLight';
-import { useTheme } from '@/provider/theme';
 import { type RelayLog, type ChannelAttempt, useLogDetailStream, useLogRequestBody, useLogResponseBody, useStopAttempt } from '@/api/endpoints/log';
 import { getModelIcon } from '@/lib/model-icons';
 import { formatDuration } from './format';
 import { useLiveLogDuration } from './use-live-duration';
+import { LogBodyContent } from './Body';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { CopyIconButton } from '@/components/common/CopyButton';
@@ -252,86 +248,6 @@ function RetryBadgeWithTooltip({ channelName, brandColor, rateMultiplier, attemp
 }
 
 
-function DeferredJsonContent({ content, fallbackText }: { content: string | undefined; fallbackText: string }) {
-    const { resolvedTheme } = useTheme();
-    const { isOpen } = useMorphingDialog();
-    const [shouldRender, setShouldRender] = useState(false);
-
-    const parsed = useMemo(() => {
-        if (!content) return { isJson: false, data: null };
-        try {
-            return { isJson: true, data: JSON.parse(content) };
-        } catch {
-            return { isJson: false, data: content };
-        }
-    }, [content]);
-
-    useEffect(() => {
-        if (!isOpen) return;
-        const timer = setTimeout(() => setShouldRender(true), 300);
-        return () => clearTimeout(timer);
-    }, [isOpen]);
-
-    if (!isOpen) return null;
-
-    if (!content) {
-        return (
-            <pre className="p-4 text-xs text-muted-foreground whitespace-pre-wrap wrap-break-word leading-relaxed">
-                {fallbackText}
-            </pre>
-        );
-    }
-
-    return (
-        <AnimatePresence mode="wait">
-            {!shouldRender ? (
-                <motion.div
-                    key="loading"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    transition={{ duration: 0.15 }}
-                    className="p-4 flex items-center justify-center h-full"
-                >
-                    <Loader2 className="h-5 w-5 text-muted-foreground animate-spin" />
-                </motion.div>
-            ) : parsed.isJson ? (
-                <motion.div
-                    key="json"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    transition={{ duration: 0.2 }}
-                    className="p-4"
-                >
-                    <JsonView
-                        value={parsed.data as object}
-                        style={{
-                            ...(resolvedTheme === 'dark' ? githubDarkTheme : githubLightTheme),
-                            fontSize: '12px',
-                            fontFamily: 'ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace',
-                            backgroundColor: 'transparent',
-                        }}
-                        displayDataTypes={false}
-                        displayObjectSize={false}
-                        collapsed={false}
-                    />
-                </motion.div>
-            ) : (
-                <motion.pre
-                    key="text"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    transition={{ duration: 0.2 }}
-                    className="p-4 text-xs text-muted-foreground whitespace-pre-wrap wrap-break-word font-mono leading-relaxed"
-                >
-                    {content}
-                </motion.pre>
-            )}
-        </AnimatePresence>
-    );
-}
 function LogMetrics({ log, brandColor, totalTime = log.use_time }: { log: RelayLog; brandColor: string; totalTime?: number }) {
     const t = useTranslations('log.card');
     const requestAPIKeyName = log.request_api_key_name?.trim() ?? '';
@@ -443,6 +359,9 @@ function LiveOverviewDetails({ log, brandColor }: { log: RelayLog; brandColor: s
     const responseContent = responseBody.data?.content ?? log.response_content;
     const requestTruncated = requestBody.data?.truncated ?? log.request_content_truncated;
     const responseTruncated = responseBody.data?.truncated ?? log.response_content_truncated;
+    const responsePreview = responseBody.data?.preview ?? log.response_content_preview;
+    // 正文保存元数据只在响应侧提供；正在输出的响应不提供复制/下载，避免导出尚未定稿的内容。
+    const storedResponseLabel = isActive ? undefined : `octopus-log-${log.id}-response`;
     const refetchResponseBody = responseBody.refetch;
     const previousResponseReadyRef = useRef(false);
     const previousLogStateRef = useRef(log.state);
@@ -566,7 +485,7 @@ function LiveOverviewDetails({ log, brandColor }: { log: RelayLog; brandColor: s
                             <Badge variant="secondary" className="ml-auto shrink-0 text-xs">{log.input_tokens.toLocaleString()} {t('tokens')}</Badge>
                             <ChevronDown className={cn("size-4 shrink-0 text-muted-foreground transition-transform", requestExpanded && "rotate-180")} />
                         </button>
-                        {requestExpanded && <div className="scrollbar max-h-[30dvh] overflow-auto border-t border-border bg-background/20 md:min-h-0 md:flex-1 md:max-h-none">{requestBody.error && !requestContent ? <div className="flex h-full items-center justify-center px-4 py-6 text-xs text-destructive">{t('detailUnavailable')}</div> : <DeferredJsonContent content={requestContent} fallbackText={t('noRequestContent')} />}</div>}
+                        {requestExpanded && <div className="scrollbar max-h-[30dvh] overflow-auto border-t border-border bg-background/20 md:min-h-0 md:flex-1 md:max-h-none">{requestBody.error && !requestContent ? <div className="flex h-full items-center justify-center px-4 py-6 text-xs text-destructive">{t('detailUnavailable')}</div> : <LogBodyContent content={requestContent} fallbackText={t('noRequestContent')} storedLabel={`octopus-log-${log.id}-request`} />}</div>}
                     </section>
                 </div>
 
@@ -593,7 +512,7 @@ function LiveOverviewDetails({ log, brandColor }: { log: RelayLog; brandColor: s
                         <ChevronDown className={cn("ml-auto size-4 text-muted-foreground transition-transform md:hidden", responseExpanded && "rotate-180")} />
                         {runningAttempt && <button type="button" onClick={(event) => { event.stopPropagation(); void handleStop(); }} disabled={stopAttempt.isPending} className="ml-auto flex shrink-0 items-center gap-1.5 rounded-md px-2 py-1 text-xs text-destructive transition-colors hover:bg-destructive/10 disabled:opacity-50">{stopAttempt.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <Square className="size-3.5" />}{t('stopAttempt')}</button>}
                     </div>
-                    <div id={`response-panel-${log.id}`} className={cn("scrollbar max-h-[30dvh] overflow-auto md:min-h-0 md:flex-1 md:max-h-none", !responseExpanded && "hidden md:block")}>
+                    <div id={`response-panel-${log.id}`} className={cn("scrollbar overflow-auto md:min-h-0 md:flex-1 md:max-h-none", responseTruncated && responsePreview ? "max-h-[50dvh]" : "max-h-[30dvh]", !responseExpanded && "hidden md:block")}>
                         {stopError && <p className="border-b border-destructive/20 bg-destructive/5 px-3 py-2 text-xs text-destructive">{stopError}</p>}
                         {selectedAttempt ? <div className="flex min-h-full min-w-0 flex-col">
                             <div className="flex shrink-0 flex-wrap items-start gap-x-3 gap-y-1 border-b border-border/70 px-3 py-3 text-xs md:px-4">
@@ -606,12 +525,12 @@ function LiveOverviewDetails({ log, brandColor }: { log: RelayLog; brandColor: s
                             </div>
                             <div className="min-h-0 md:flex-1">
                                 {selectedError && <div className="relative border-b border-destructive/20 bg-destructive/5 p-3"><CopyIconButton text={selectedError} className="absolute right-2 top-2 rounded-md p-1 text-destructive/60 transition-colors hover:bg-destructive/10 hover:text-destructive" copyIconClassName="size-4" checkIconClassName="size-4" /><p className="whitespace-pre-wrap wrap-break-word pr-8 text-sm leading-relaxed text-destructive">{selectedError}</p></div>}
-                                {canShowFinalResponse ? <div className="min-h-0 md:flex-1">{responseTruncated && <div className="px-3 pt-3"><Badge variant="outline" className="border-amber-500/40 text-xs text-amber-600 dark:text-amber-400">{t('truncated')}</Badge></div>}{responseLoading ? <div className="flex h-full items-center justify-center"><Loader2 className="size-5 animate-spin text-muted-foreground" /></div> : responseBody.error && !responseContent && !selectedIsCommitted ? <div className="flex h-full items-center justify-center px-4 text-xs text-destructive">{t('detailUnavailable')}</div> : <DeferredJsonContent content={responseContent} fallbackText={selectedIsCommitted ? t('responseStreaming') : t('noResponseContent')} />}</div> : selectedAttempt.status === 'running' ? <div className="flex min-h-[8rem] items-center justify-center px-4 text-xs text-muted-foreground">{t('responseStreaming')}</div> : <div className="flex min-h-[8rem] items-center justify-center px-4 text-xs text-muted-foreground">{t('noResponseContent')}</div>}
+                                {canShowFinalResponse ? <div className="min-h-0 md:flex-1">{responseTruncated && !responsePreview && <div className="px-3 pt-3"><Badge variant="outline" className="border-amber-500/40 text-xs text-amber-600 dark:text-amber-400">{t('truncated')}</Badge></div>}{responseLoading ? <div className="flex h-full items-center justify-center"><Loader2 className="size-5 animate-spin text-muted-foreground" /></div> : responseBody.error && !responseContent && !selectedIsCommitted ? <div className="flex h-full items-center justify-center px-4 text-xs text-destructive">{t('detailUnavailable')}</div> : <LogBodyContent content={responseContent} preview={responsePreview} truncated={responseTruncated} fallbackText={selectedIsCommitted ? t('responseStreaming') : t('noResponseContent')} storedLabel={storedResponseLabel} />}</div> : selectedAttempt.status === 'running' ? <div className="flex min-h-[8rem] items-center justify-center px-4 text-xs text-muted-foreground">{t('responseStreaming')}</div> : <div className="flex min-h-[8rem] items-center justify-center px-4 text-xs text-muted-foreground">{t('noResponseContent')}</div>}
                             </div>
                         </div> : <div className="min-h-0 md:flex-1">
                             {log.error && <div className="relative border-b border-destructive/20 bg-destructive/5 p-3"><CopyIconButton text={log.error} className="absolute right-2 top-2 rounded-md p-1 text-destructive/60 transition-colors hover:bg-destructive/10 hover:text-destructive" copyIconClassName="size-4" checkIconClassName="size-4" /><p className="whitespace-pre-wrap wrap-break-word pr-8 text-sm leading-relaxed text-destructive">{log.error}</p></div>}
                             <div className="min-h-0 md:flex-1">
-                                <DeferredJsonContent content={responseContent} fallbackText={isActive ? t('responseStreaming') : t('noResponseContent')} />
+                                <LogBodyContent content={responseContent} preview={responsePreview} truncated={responseTruncated} fallbackText={isActive ? t('responseStreaming') : t('noResponseContent')} storedLabel={storedResponseLabel} />
                             </div>
                         </div>}
                     </div>
@@ -634,6 +553,7 @@ export function LogCard({ log }: { log: RelayLog }) {
     const reasoningEffort = log.reasoning_effort?.trim() ?? '';
 
     const hasError = !!log.error;
+    const isActive = log.state === 'running' || log.state === 'committed';
     const requestState = log.state ?? (hasError ? 'failed' : 'success');
     const showRequestUpstreamStatus = requestState === 'failed' || requestState === 'canceled';
     const hasMultipleAttempts = log.attempts && log.attempts.length > 1;
@@ -810,7 +730,7 @@ export function LogCard({ log }: { log: RelayLog }) {
                                             </Badge>
                                         </div>
                                         <div className="scrollbar max-h-[30dvh] overflow-auto md:min-h-0 md:flex-1 md:max-h-none">
-                                            <DeferredJsonContent content={log.request_content} fallbackText={t('noRequestContent')} />
+                                            <LogBodyContent content={log.request_content} fallbackText={t('noRequestContent')} storedLabel={isActive ? undefined : `octopus-log-${log.id}-request`} />
                                         </div>
                                     </div>
 
@@ -876,7 +796,7 @@ export function LogCard({ log }: { log: RelayLog }) {
                                             <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-border bg-muted/50 px-3 py-2.5 md:px-4 md:py-3">
                                                 <MessageSquare className="size-4 shrink-0 text-purple-500" />
                                                 <span className="min-w-0 text-sm font-medium text-card-foreground">{t('finalResponse')}</span>
-                                                {log.response_content_truncated && (
+                                                {log.response_content_truncated && !log.response_content_preview && (
                                                     <Badge variant="outline" className="shrink-0 border-amber-500/40 text-xs text-amber-600 dark:text-amber-400">
                                                         {t('truncated')}
                                                     </Badge>
@@ -885,7 +805,7 @@ export function LogCard({ log }: { log: RelayLog }) {
                                                     {log.output_tokens.toLocaleString()} {t('tokens')}
                                                 </Badge>
                                             </div>
-                                            <div className="scrollbar max-h-[30dvh] overflow-auto md:min-h-0 md:flex-1 md:max-h-none">
+                                            <div className={cn("scrollbar overflow-auto md:min-h-0 md:flex-1 md:max-h-none", log.response_content_truncated && log.response_content_preview ? "max-h-[50dvh]" : "max-h-[30dvh]")}>
                                                 {log.error && (
                                                     <div className="relative border-b border-destructive/20 bg-destructive/5 p-3">
                                                         <CopyIconButton
@@ -899,7 +819,7 @@ export function LogCard({ log }: { log: RelayLog }) {
                                                         </p>
                                                     </div>
                                                 )}
-                                                <DeferredJsonContent content={log.response_content} fallbackText={t('noResponseContent')} />
+                                                <LogBodyContent content={log.response_content} preview={log.response_content_preview} truncated={log.response_content_truncated} fallbackText={t('noResponseContent')} storedLabel={isActive ? undefined : `octopus-log-${log.id}-response`} />
                                             </div>
                                         </section>
                                     </div>

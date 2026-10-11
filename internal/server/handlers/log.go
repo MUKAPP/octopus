@@ -115,12 +115,12 @@ func requestBody(c *gin.Context) {
 	if !ok {
 		return
 	}
-	body, truncated, exists := op.RelayLogStoreBody(id, false)
+	body, exists := op.RelayLogStoreBody(id, false)
 	if !exists {
 		resp.Error(c, http.StatusNotFound, "log not found")
 		return
 	}
-	resp.Success(c, gin.H{"body": body, "content": body, "truncated": truncated})
+	resp.Success(c, gin.H{"body": body.Content, "content": body.Content, "truncated": body.Truncated})
 }
 
 func responseBody(c *gin.Context) {
@@ -128,12 +128,16 @@ func responseBody(c *gin.Context) {
 	if !ok {
 		return
 	}
-	body, truncated, exists := op.RelayLogStoreBody(id, true)
+	body, exists := op.RelayLogStoreBody(id, true)
 	if !exists {
 		resp.Error(c, http.StatusNotFound, "log not found")
 		return
 	}
-	resp.Success(c, gin.H{"body": body, "content": body, "truncated": truncated})
+	response := gin.H{"body": body.Content, "content": body.Content, "truncated": body.Truncated}
+	if body.Preview != nil {
+		response["preview"] = body.Preview
+	}
+	resp.Success(c, response)
 }
 
 func stopAttempt(c *gin.Context) {

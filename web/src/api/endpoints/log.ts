@@ -8,6 +8,26 @@ import { resolveAppURL } from '@/lib/base-url';
 /** 日志请求的生命周期状态。 */
 export type RequestState = 'running' | 'committed' | 'success' | 'failed' | 'canceled';
 
+/** 正文预览中被省略字段的损失记录；path 为 JSON Pointer，根为 ""。 */
+export interface LogContentOmission {
+    path: string;
+    kind: 'string' | 'array' | 'object' | 'binary';
+    original_bytes?: number;
+    stored_bytes?: number;
+    original_items?: number;
+    stored_items?: number;
+}
+
+/** 响应正文保存大小与损失元数据；请求侧与旧数据不提供。 */
+export interface LogContentPreview {
+    original_bytes: number;
+    stored_bytes: number;
+    format: 'json' | 'text';
+    reason?: 'size_limit' | 'invalid_utf8';
+    omissions?: LogContentOmission[];
+    omitted_details?: number;
+}
+
 /** 概览流发送的单条日志（正文和尝试详情可能按需补充）。 */
 export interface RelayLogOverview {
     id: number;
@@ -37,6 +57,7 @@ export interface RelayLogOverview {
     request_api_key_name?: string;
     request_content?: string;
     response_content?: string;
+    response_content_preview?: LogContentPreview;
 }
 
 /** 详情流中的一次渠道尝试。 */
@@ -89,6 +110,45 @@ function timestampSeconds(value: unknown, fallback = 0): number {
 function durationNanosecondsToMilliseconds(value: unknown): number {
     const duration = numberValue(value);
     return duration > 0 ? duration / 1_000_000 : 0;
+}
+
+const OMISSION_KINDS = ['string', 'array', 'object', 'binary'] as const;
+
+function normalizeOmission(value: unknown): LogContentOmission | null {
+    const record = asRecord(value);
+    if (!record) return null;
+    const kind = stringValue(record.kind);
+    const path = record.path;
+    if (typeof path !== 'string') return null;
+    if (!(OMISSION_KINDS as readonly string[]).includes(kind)) return null;
+    return {
+        path,
+        kind: kind as LogContentOmission['kind'],
+        original_bytes: record.original_bytes == null ? undefined : numberValue(record.original_bytes),
+        stored_bytes: record.stored_bytes == null ? undefined : numberValue(record.stored_bytes),
+        original_items: record.original_items == null ? undefined : numberValue(record.original_items),
+        stored_items: record.stored_items == null ? undefined : numberValue(record.stored_items),
+    };
+}
+
+/** 响应正文保存元数据；缺字段的旧记录返回 undefined，避免假造原始大小。 */
+function normalizeContentPreview(value: unknown): LogContentPreview | undefined {
+    const record = asRecord(value);
+    if (!record) return undefined;
+    const format = stringValue(record.format);
+    if (format !== 'json' && format !== 'text') return undefined;
+    const reason = stringValue(record.reason);
+    const omissions = Array.isArray(record.omissions)
+        ? record.omissions.map(normalizeOmission).filter((item): item is LogContentOmission => item !== null)
+        : [];
+    return {
+        original_bytes: numberValue(record.original_bytes),
+        stored_bytes: numberValue(record.stored_bytes),
+        format,
+        reason: reason === 'size_limit' || reason === 'invalid_utf8' ? reason : undefined,
+        omissions: omissions.length > 0 ? omissions : undefined,
+        omitted_details: record.omitted_details == null ? undefined : numberValue(record.omitted_details),
+    };
 }
 
 function normalizeAttempt(value: unknown, index: number, durationIsNanoseconds: boolean): ChannelAttempt {
@@ -165,6 +225,7 @@ export function normalizeRelayLog(value: RelayLog | RelayLogOverview | unknown):
             cost: numberValue(record.total_cost ?? record.cost),
             request_content: stringValue(record.request_content ?? record.request_body),
             response_content: stringValue(record.response_content ?? record.response_body),
+            response_content_preview: normalizeContentPreview(record.response_content_preview),
             request_content_truncated: boolValue(record.request_content_truncated),
             response_content_truncated: boolValue(record.response_content_truncated),
             error: stringValue(record.error),
@@ -193,6 +254,7 @@ export function normalizeRelayLog(value: RelayLog | RelayLogOverview | unknown):
         ...old,
         reasoning_effort: stringValue(record.reasoning_effort),
         upstream_status_code: numberValue(record.upstream_status_code) || undefined,
+        response_content_preview: normalizeContentPreview(record.response_content_preview),
         attempts,
     };
 }
@@ -263,6 +325,7 @@ export interface RelayLog {
     cost: number;                // 消耗费用
     request_content: string;     // 请求内容
     response_content: string;    // 响应内容
+    response_content_preview?: LogContentPreview; // 响应正文保存大小与损失元数据
     request_content_truncated: boolean;  // 请求内容是否被截断
     response_content_truncated: boolean; // 响应内容是否被截断
     error: string;               // 错误信息
@@ -403,6 +466,7 @@ export function useStopAttempt() {
 export interface RelayLogBody {
     content?: string;
     truncated?: boolean;
+    preview?: LogContentPreview;
 }
 
 function normalizeLogBody(value: unknown): RelayLogBody {
@@ -412,6 +476,7 @@ function normalizeLogBody(value: unknown): RelayLogBody {
     return {
         content: content == null ? undefined : String(content),
         truncated: record.truncated === true,
+        preview: normalizeContentPreview(record.preview),
     };
 }
 

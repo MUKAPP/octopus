@@ -768,23 +768,49 @@ func assertRelayGatewayFailureLog(t *testing.T, relayLog op.RelayLogOverview, up
 // 正文读取合同在 op getter 上验证；鉴权 REST 路由由隔离实例验证，不在此引入 server 包循环依赖。
 func assertRelayGatewayResponseBody(t *testing.T, relayLog op.RelayLogOverview, clientBody string) {
 	t.Helper()
-	const responseMaxBytes = 262144
-	wantBody := clientBody
-	wantTruncated := len(clientBody) > responseMaxBytes
-	if wantTruncated {
-		wantBody = clientBody[:responseMaxBytes]
-		for !utf8.ValidString(wantBody) {
-			wantBody = wantBody[:len(wantBody)-1]
+	stored, found := op.RelayLogStoreBody(relayLog.ID, true)
+	if !found {
+		t.Fatal("stored response body not found")
+	}
+	if stored.Content != relayLog.ResponseContent || stored.Truncated != relayLog.ResponseContentTruncated {
+		t.Errorf("stored response body diverged from log: stored len=%d truncated=%t, log len=%d truncated=%t", len(stored.Content), stored.Truncated, len(relayLog.ResponseContent), relayLog.ResponseContentTruncated)
+	}
+	if len(stored.Content) > responseLogMaxBytes || !utf8.ValidString(stored.Content) {
+		t.Errorf("stored response body exceeds limit or splits UTF-8: length=%d valid=%t", len(stored.Content), utf8.ValidString(stored.Content))
+	}
+	preview := stored.Preview
+	if stored.Content == "" {
+		if preview != nil {
+			t.Errorf("empty stored response body reported preview metadata: %+v", preview)
 		}
+		return
 	}
-	if relayLog.ResponseContent != wantBody || relayLog.ResponseContentTruncated != wantTruncated {
-		t.Errorf("final log response body length=%d truncated=%t, want client body prefix length=%d truncated=%t", len(relayLog.ResponseContent), relayLog.ResponseContentTruncated, len(wantBody), wantTruncated)
+	if preview == nil {
+		t.Fatal("stored response body has no preview metadata")
 	}
-	body, truncated, found := op.RelayLogStoreBody(relayLog.ID, true)
-	if !found || body != wantBody || truncated != wantTruncated {
-		t.Errorf("response body getter found=%t length=%d truncated=%t, want length=%d truncated=%t", found, len(body), truncated, len(wantBody), wantTruncated)
+	if preview.OriginalBytes != len(clientBody) || preview.StoredBytes != len(stored.Content) || (preview.Reason != "") != stored.Truncated {
+		t.Errorf("preview size/flag mismatch: original=%d stored=%d reason=%q, want original=%d stored=%d truncated=%t", preview.OriginalBytes, preview.StoredBytes, preview.Reason, len(clientBody), len(stored.Content), stored.Truncated)
 	}
-	if len(body) > responseMaxBytes || !utf8.ValidString(body) {
-		t.Errorf("stored response body exceeds limit or splits UTF-8: length=%d valid=%t", len(body), utf8.ValidString(body))
+	if !stored.Truncated {
+		if stored.Content != clientBody {
+			t.Errorf("under-limit response body was rewritten: length=%d", len(stored.Content))
+		}
+		if preview.Reason != "" || len(preview.Omissions) != 0 || preview.OmittedDetails != 0 {
+			t.Errorf("under-limit response body reported loss: reason=%q omissions=%d details=%d", preview.Reason, len(preview.Omissions), preview.OmittedDetails)
+		}
+		return
+	}
+	if preview.Reason != previewReasonSizeLimit {
+		t.Errorf("truncated response reason=%q, want %q", preview.Reason, previewReasonSizeLimit)
+	}
+	if json.Valid([]byte(clientBody)) {
+		if preview.Format != previewFormatJSON {
+			t.Errorf("truncated JSON response format=%q, want %q", preview.Format, previewFormatJSON)
+		}
+		if !json.Valid([]byte(stored.Content)) {
+			t.Error("truncated JSON response preview is not parseable")
+		}
+	} else if preview.Format != previewFormatText {
+		t.Errorf("truncated non-JSON response format=%q, want %q", preview.Format, previewFormatText)
 	}
 }

@@ -139,7 +139,20 @@ func cloneRelayLog(log model.RelayLog) model.RelayLog {
 		cached := *log.CachedTokens
 		log.CachedTokens = &cached
 	}
+	log.ResponseContentPreview = cloneContentPreview(log.ResponseContentPreview)
 	return log
+}
+
+// cloneContentPreview 深拷贝预览元数据及其 omissions，避免快照共享可变切片。
+func cloneContentPreview(preview *model.RelayLogContentPreview) *model.RelayLogContentPreview {
+	if preview == nil {
+		return nil
+	}
+	cloned := *preview
+	if len(preview.Omissions) > 0 {
+		cloned.Omissions = append([]model.RelayLogContentOmission(nil), preview.Omissions...)
+	}
+	return &cloned
 }
 
 func cloneRelayLogAttempt(attempt RelayLogAttempt) RelayLogAttempt {
@@ -677,23 +690,29 @@ func RelayLogStoreStopAttempt(id int64, attemptIndex int) bool {
 	return true
 }
 
-func RelayLogStoreBody(id int64, response bool) (string, bool, bool) {
+// RelayLogStoreBody 返回正文保存内容、截断标记与可选的结构化预览元数据。
+func RelayLogStoreBody(id int64, response bool) (model.RelayLogBody, bool) {
 	relayLogStore.RLock()
 	record, ok := relayLogStore.records[id]
 	if !ok {
 		relayLogStore.RUnlock()
-		return "", false, false
+		return model.RelayLogBody{}, false
 	}
 	if response {
-		body := record.overview.ResponseContent
-		truncated := record.overview.ResponseContentTruncated
+		body := model.RelayLogBody{
+			Content:   record.overview.ResponseContent,
+			Truncated: record.overview.ResponseContentTruncated,
+			Preview:   cloneContentPreview(record.overview.ResponseContentPreview),
+		}
 		relayLogStore.RUnlock()
-		return body, truncated, true
+		return body, true
 	}
-	body := record.overview.RequestContent
-	truncated := record.overview.RequestContentTruncated
+	body := model.RelayLogBody{
+		Content:   record.overview.RequestContent,
+		Truncated: record.overview.RequestContentTruncated,
+	}
 	relayLogStore.RUnlock()
-	return body, truncated, true
+	return body, true
 }
 
 // RelayLogStoreClear removes completed records but never interrupts running requests.

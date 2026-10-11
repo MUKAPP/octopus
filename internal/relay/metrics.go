@@ -201,7 +201,10 @@ func (m *RelayMetrics) buildRelayLog(err error, duration time.Duration, attempts
 		relayLog.Cost = m.Stats.InputCost + m.Stats.OutputCost
 	}
 
-	relayLog.RequestContent, relayLog.RequestContentTruncated, relayLog.ResponseContent, relayLog.ResponseContentTruncated = m.logContent()
+	if requestBytes := m.requestContent(); requestBytes != nil {
+		relayLog.RequestContent = string(requestBytes)
+	}
+	relayLog.ResponseContent, relayLog.ResponseContentTruncated, relayLog.ResponseContentPreview = buildRelayLogContent(m.InternalResponse, responseLogMaxBytes)
 	if err != nil {
 		relayLog.Error = err.Error()
 	}
@@ -218,18 +221,6 @@ func (m *RelayMetrics) saveLog(ctx context.Context, err error, duration time.Dur
 	}
 	// 生产日志只进入并发安全的内存 store，不写入 SQLite。
 	op.RelayLogStoreComplete(m.ID, state, relayLog, err, m.CachedTokens, m.CacheWriteTokens)
-}
-
-// logContent 构造请求/响应正文字段。请求正文完整保留；响应正文仍使用固定上限，避免单条内存日志无限增长。
-func (m *RelayMetrics) logContent() (request string, requestTruncated bool, response string, responseTruncated bool) {
-	const responseMaxBytes = 262144
-	if reqBytes := m.requestContent(); reqBytes != nil {
-		request = string(reqBytes)
-	}
-	if len(m.InternalResponse) > 0 {
-		response, responseTruncated = truncateLogContent(m.InternalResponse, responseMaxBytes)
-	}
-	return request, false, response, responseTruncated
 }
 
 // truncateLogContent 按 UTF-8 字节计数保留 content 前缀，结果绝不超过 maxBytes 且不切断码点。

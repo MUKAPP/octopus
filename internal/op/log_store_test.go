@@ -169,11 +169,19 @@ func TestRelayLogStoreStopAttempt(t *testing.T) {
 }
 
 func TestRelayLogOverviewJSONOmitsBodies(t *testing.T) {
+	preview := &model.RelayLogContentPreview{
+		OriginalBytes: 900000,
+		StoredBytes:   40,
+		Format:        "json",
+		Reason:        "size_limit",
+		Omissions:     []model.RelayLogContentOmission{{Path: "/data", Kind: "array", OriginalItems: 2000, StoredItems: 256}},
+	}
 	overview := RelayLogOverview{
 		RelayLog: model.RelayLog{
-			ID:              7103,
-			RequestContent:  "request-secret",
-			ResponseContent: "response-secret",
+			ID:                     7103,
+			RequestContent:         "request-secret",
+			ResponseContent:        "response-secret",
+			ResponseContentPreview: preview,
 		},
 		RequestBody:  "request-secret",
 		ResponseBody: "response-secret",
@@ -184,6 +192,60 @@ func TestRelayLogOverviewJSONOmitsBodies(t *testing.T) {
 	}
 	if strings.Contains(string(payload), "request-secret") || strings.Contains(string(payload), "response-secret") {
 		t.Fatalf("overview leaked request/response body: %s", payload)
+	}
+	// 正文被清空，但预览元数据必须随 overview 下发。
+	var decoded map[string]json.RawMessage
+	if err := json.Unmarshal(payload, &decoded); err != nil {
+		t.Fatalf("decode overview payload: %v", err)
+	}
+	if _, ok := decoded["response_content_preview"]; !ok {
+		t.Fatalf("overview dropped response_content_preview: %s", payload)
+	}
+}
+
+func TestRelayLogStoreBodyPreviewCloneIsolation(t *testing.T) {
+	resetRelayLogStoreForTest()
+	t.Cleanup(resetRelayLogStoreForTest)
+
+	const id int64 = 7401
+	startedAt := time.Unix(1_700_000_000, 0)
+	RelayLogStoreStart(model.RelayLog{ID: id, Time: startedAt.Unix()}, startedAt, "openai", false)
+	RelayLogStoreComplete(id, RelayLogStateSuccess, model.RelayLog{
+		ID:                       id,
+		Time:                     startedAt.Unix(),
+		RequestContent:           "request-body",
+		ResponseContent:          `{"data":[1,2],"usage":{"total_tokens":1}}`,
+		ResponseContentTruncated: true,
+		ResponseContentPreview: &model.RelayLogContentPreview{
+			OriginalBytes: 900000,
+			StoredBytes:   40,
+			Format:        "json",
+			Reason:        "size_limit",
+			Omissions:     []model.RelayLogContentOmission{{Path: "/data", Kind: "array", OriginalItems: 2000, StoredItems: 256}},
+		},
+	}, nil, 0, 0)
+
+	first, found := RelayLogStoreBody(id, true)
+	if !found || first.Preview == nil || len(first.Preview.Omissions) != 1 || first.Preview.Omissions[0].Path != "/data" {
+		t.Fatalf("stored response preview = %+v, found=%t", first.Preview, found)
+	}
+	// request 分支不生成预览元数据。
+	if request, _ := RelayLogStoreBody(id, false); request.Preview != nil {
+		t.Fatalf("request body unexpectedly carries preview metadata: %+v", request.Preview)
+	}
+
+	// 修改返回的元数据不得污染 store 中保存的状态。
+	first.Preview.Omissions[0].Path = "/mutated"
+	first.Preview.OriginalBytes = -1
+	first.Preview.Omissions = append(first.Preview.Omissions, model.RelayLogContentOmission{Path: "/injected"})
+
+	second, _ := RelayLogStoreBody(id, true)
+	if second.Preview == nil || second.Preview.OriginalBytes != 900000 || len(second.Preview.Omissions) != 1 || second.Preview.Omissions[0].Path != "/data" {
+		t.Fatalf("mutating a returned preview polluted the store: %+v", second.Preview)
+	}
+	snapshot, ok := RelayLogStoreGet(id)
+	if !ok || snapshot.ResponseContentPreview == nil || len(snapshot.ResponseContentPreview.Omissions) != 1 || snapshot.ResponseContentPreview.Omissions[0].Path != "/data" {
+		t.Fatalf("overview snapshot preview was polluted: %+v", snapshot.ResponseContentPreview)
 	}
 }
 
@@ -364,8 +426,9 @@ func TestRelayLogStoreErrorCompletion(t *testing.T) {
 				if response {
 					wantBody = finalLog.ResponseContent
 				}
-				if body, truncated, found := RelayLogStoreBody(id, response); !found || truncated || body != wantBody {
-					t.Fatalf("stored body response=%t: %q, truncated=%t, found=%t", response, body, truncated, found)
+				body, found := RelayLogStoreBody(id, response)
+				if !found || body.Truncated || body.Content != wantBody {
+					t.Fatalf("stored body response=%t: %q, truncated=%t, found=%t", response, body.Content, body.Truncated, found)
 				}
 			}
 		})

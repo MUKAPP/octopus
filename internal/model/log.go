@@ -27,30 +27,61 @@ type ChannelAttempt struct {
 	UpstreamStatusCode int           `json:"upstream_status_code,omitempty"`
 }
 
+// RelayLogContentOmission 记录结构化预览中被裁剪的一个字段；path 为 JSON Pointer，根为 ""。
+type RelayLogContentOmission struct {
+	Path string `json:"path"`
+	// Kind 取值 string / array / object / binary。
+	Kind          string `json:"kind"`
+	OriginalBytes int    `json:"original_bytes,omitempty"` // 字符串字段原始字节数
+	StoredBytes   int    `json:"stored_bytes,omitempty"`   // 字符串字段保存字节数
+	OriginalItems int    `json:"original_items,omitempty"` // 数组/对象原始条目数
+	StoredItems   int    `json:"stored_items,omitempty"`   // 数组/对象保存条目数
+}
+
+// RelayLogContentPreview 是响应正文的保存元数据。仅内存使用，不落库。
+// 完整响应只提供原始/保存字节数与格式；超限响应额外标记 reason 与有损字段。
+type RelayLogContentPreview struct {
+	OriginalBytes int    `json:"original_bytes"`
+	StoredBytes   int    `json:"stored_bytes"`
+	Format        string `json:"format"` // json / text
+	// Reason 取值 size_limit / invalid_utf8；为空表示正文完整保存。
+	Reason         string                    `json:"reason,omitempty"`
+	Omissions      []RelayLogContentOmission `json:"omissions,omitempty"`
+	OmittedDetails int                       `json:"omitted_details,omitempty"`
+}
+
+// RelayLogBody 是正文按需接口的返回值：保存内容、截断标记与可选的结构化预览元数据。
+type RelayLogBody struct {
+	Content   string
+	Truncated bool
+	Preview   *RelayLogContentPreview
+}
+
 type RelayLog struct {
-	ID                       int64            `json:"id" gorm:"primaryKey;autoIncrement:false"` // Snowflake ID
-	Time                     int64            `json:"time" gorm:"index:idx_relay_logs_time"`    // 时间戳（秒）
-	RequestModelName         string           `json:"request_model_name"`                       // 请求模型名称
-	ReasoningEffort          string           `json:"reasoning_effort"`                         // 请求推理强度
-	RequestAPIKeyName        string           `json:"request_api_key_name"`                     // 请求使用的 API Key 名称
-	ChannelId                int              `json:"channel"`                                  // 实际使用的渠道ID
-	ChannelName              string           `json:"channel_name"`                             // 渠道名称
-	RateMultiplier           float64          `json:"rate_multiplier"`                          // 当时使用的渠道倍率
-	ActualModelName          string           `json:"actual_model_name"`                        // 实际使用模型名称
-	UpstreamModelName        string           `json:"upstream_model_name,omitempty" gorm:"-"`   // 实际出站请求模型名称
-	ResponseModelName        string           `json:"response_model_name,omitempty" gorm:"-"`   // 原始响应声明模型名称
-	UpstreamStatusCode       int              `json:"upstream_status_code,omitempty" gorm:"-"`  // 最终实际尝试的上游 HTTP 状态码；未收到响应时为零
-	InputTokens              int              `json:"input_tokens"`                             // 输入Token
-	OutputTokens             int              `json:"output_tokens"`                            // 输出 Token
-	CachedTokens             *int             `json:"cached_tokens,omitempty"`                  // 缓存读取 Token；历史日志未采集时为 nil
-	Ftut                     int              `json:"ftut"`                                     // 首字时间(毫秒)
-	UseTime                  int              `json:"use_time"`                                 // 总用时(毫秒)
-	Cost                     float64          `json:"cost"`                                     // 消耗费用
-	RequestContent           string           `json:"request_content"`                          // 请求内容
-	ResponseContent          string           `json:"response_content"`                         // 响应内容
-	RequestContentTruncated  bool             `json:"request_content_truncated"`                // 请求内容是否被截断
-	ResponseContentTruncated bool             `json:"response_content_truncated"`               // 响应内容是否被截断
-	Error                    string           `json:"error"`                                    // 错误信息
-	Attempts                 []ChannelAttempt `json:"attempts" gorm:"serializer:json"`          // 所有尝试记录
-	TotalAttempts            int              `json:"total_attempts"`                           // 总尝试次数
+	ID                       int64                   `json:"id" gorm:"primaryKey;autoIncrement:false"`    // Snowflake ID
+	Time                     int64                   `json:"time" gorm:"index:idx_relay_logs_time"`       // 时间戳（秒）
+	RequestModelName         string                  `json:"request_model_name"`                          // 请求模型名称
+	ReasoningEffort          string                  `json:"reasoning_effort"`                            // 请求推理强度
+	RequestAPIKeyName        string                  `json:"request_api_key_name"`                        // 请求使用的 API Key 名称
+	ChannelId                int                     `json:"channel"`                                     // 实际使用的渠道ID
+	ChannelName              string                  `json:"channel_name"`                                // 渠道名称
+	RateMultiplier           float64                 `json:"rate_multiplier"`                             // 当时使用的渠道倍率
+	ActualModelName          string                  `json:"actual_model_name"`                           // 实际使用模型名称
+	UpstreamModelName        string                  `json:"upstream_model_name,omitempty" gorm:"-"`      // 实际出站请求模型名称
+	ResponseModelName        string                  `json:"response_model_name,omitempty" gorm:"-"`      // 原始响应声明模型名称
+	UpstreamStatusCode       int                     `json:"upstream_status_code,omitempty" gorm:"-"`     // 最终实际尝试的上游 HTTP 状态码；未收到响应时为零
+	InputTokens              int                     `json:"input_tokens"`                                // 输入Token
+	OutputTokens             int                     `json:"output_tokens"`                               // 输出 Token
+	CachedTokens             *int                    `json:"cached_tokens,omitempty"`                     // 缓存读取 Token；历史日志未采集时为 nil
+	Ftut                     int                     `json:"ftut"`                                        // 首字时间(毫秒)
+	UseTime                  int                     `json:"use_time"`                                    // 总用时(毫秒)
+	Cost                     float64                 `json:"cost"`                                        // 消耗费用
+	RequestContent           string                  `json:"request_content"`                             // 请求内容
+	ResponseContent          string                  `json:"response_content"`                            // 响应内容
+	RequestContentTruncated  bool                    `json:"request_content_truncated"`                   // 请求内容是否被截断
+	ResponseContentTruncated bool                    `json:"response_content_truncated"`                  // 响应内容是否被截断
+	ResponseContentPreview   *RelayLogContentPreview `json:"response_content_preview,omitempty" gorm:"-"` // 响应正文结构化预览元数据（仅内存）
+	Error                    string                  `json:"error"`                                       // 错误信息
+	Attempts                 []ChannelAttempt        `json:"attempts" gorm:"serializer:json"`             // 所有尝试记录
+	TotalAttempts            int                     `json:"total_attempts"`                              // 总尝试次数
 }
