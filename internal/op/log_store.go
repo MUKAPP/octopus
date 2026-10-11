@@ -112,8 +112,9 @@ type relayLogStoreRecord struct {
 	cancel      context.CancelFunc
 	cancelIndex int
 	committed   bool
-	// responseImages 只保存响应图片源；不进入 overview、订阅快照或列表，仅由正文按需接口读取。
-	responseImages []model.RelayLogImage
+	// responseImages 只保存图片的私有元信息（本地文件路径或远程 URL）；不进入 overview、
+	// 订阅快照或列表，也不保留输入 Base64，仅由正文按需接口与图片路由读取。
+	responseImages []relayLogStoredImage
 }
 
 var relayLogStore = struct {
@@ -133,15 +134,6 @@ func cloneChannelAttempts(attempts []model.ChannelAttempt) []model.ChannelAttemp
 		return nil
 	}
 	return append([]model.ChannelAttempt(nil), attempts...)
-}
-
-// cloneRelayLogImages 只复制图片条目切片，隔离调用方对切片的修改；
-// src 是不可变字符串，直接共享其底层数据，不复制大段 Base64 内容。
-func cloneRelayLogImages(images []model.RelayLogImage) []model.RelayLogImage {
-	if len(images) == 0 {
-		return nil
-	}
-	return append([]model.RelayLogImage(nil), images...)
 }
 
 func cloneRelayLog(log model.RelayLog) model.RelayLog {
@@ -546,6 +538,10 @@ func RelayLogStoreComplete(id int64, state RelayLogState, log model.RelayLog, er
 	if state == "" {
 		state = RelayLogStateFailed
 	}
+	var retired []relayLogStoredImage
+	// 内联图片在 store 锁外流式解码落盘；调用方传入的 Base64 只是临时输入，绝不进入 overview 或订阅快照。
+	images := prepareRelayLogImages(id, log.ResponseImages)
+	log.ResponseImages = nil
 	relayLogStore.Lock()
 	record, ok := relayLogStore.records[id]
 	if !ok {
@@ -553,9 +549,9 @@ func RelayLogStoreComplete(id int64, state RelayLogState, log model.RelayLog, er
 		relayLogStore.records[id] = record
 	}
 	// 图片不进入 overview、订阅快照或列表，只在 store 内部随 record 生命周期保留；
-	// 条目切片复制一次以隔离调用方后续修改，字符串内容本身不可变、不复制。
-	record.responseImages = cloneRelayLogImages(log.ResponseImages)
-	log.ResponseImages = nil
+	// 旧图片文件在替换后于锁外释放，避免删除失败或打开句柄拖住 store 锁。
+	retired = append(retired, record.responseImages...)
+	record.responseImages = images
 	if !ok {
 		started := time.Now()
 		record.overview = relayLogOverviewFromModel(log, state, started, "", false)
@@ -628,12 +624,14 @@ func RelayLogStoreComplete(id int64, state RelayLogState, log model.RelayLog, er
 			}
 			if oldRecord, exists := relayLogStore.records[oldest]; exists && oldRecord.overview.State != RelayLogStateRunning && oldRecord.overview.State != RelayLogStateCommitted {
 				delete(relayLogStore.records, oldest)
+				retired = append(retired, oldRecord.responseImages...)
 			}
 		}
 	}
 	snapshot := relayLogStoreSnapshotLocked(record)
 	committed := record.committed
 	relayLogStore.Unlock()
+	retireRelayLogStoredImages(retired)
 	notifyRelayLogOverview(snapshot)
 	notifySubscribers(snapshot.RelayLog)
 	if committed {
@@ -646,7 +644,7 @@ func RelayLogStoreComplete(id int64, state RelayLogState, log model.RelayLog, er
 // and requests whose detail stream is still open.
 func RelayLogStorePrune(cutoff time.Time) int {
 	relayLogStore.Lock()
-	defer relayLogStore.Unlock()
+	var retired []relayLogStoredImage
 
 	removed := 0
 	for id, record := range relayLogStore.records {
@@ -662,6 +660,7 @@ func RelayLogStorePrune(cutoff time.Time) int {
 			continue
 		}
 		delete(relayLogStore.records, id)
+		retired = append(retired, record.responseImages...)
 		removed++
 	}
 
@@ -672,6 +671,8 @@ func RelayLogStorePrune(cutoff time.Time) int {
 		}
 	}
 	relayLogStore.completedIDs = keptIDs
+	relayLogStore.Unlock()
+	retireRelayLogStoredImages(retired)
 	return removed
 }
 
@@ -717,11 +718,12 @@ func RelayLogStoreBody(id int64, response bool) (model.RelayLogBody, bool) {
 		return model.RelayLogBody{}, false
 	}
 	if response {
+		// 图片源按记录当前索引即时渲染：本地缓存给出同组鉴权路由，远程地址原样返回。
 		body := model.RelayLogBody{
 			Content:   record.overview.ResponseContent,
 			Truncated: record.overview.ResponseContentTruncated,
 			Preview:   cloneContentPreview(record.overview.ResponseContentPreview),
-			Images:    cloneRelayLogImages(record.responseImages),
+			Images:    relayLogImagesFromStored(id, record.responseImages),
 		}
 		relayLogStore.RUnlock()
 		return body, true
@@ -737,14 +739,17 @@ func RelayLogStoreBody(id int64, response bool) (model.RelayLogBody, bool) {
 // RelayLogStoreClear removes completed records but never interrupts running requests.
 func RelayLogStoreClear() {
 	relayLogStore.Lock()
+	var retired []relayLogStoredImage
 	for id, record := range relayLogStore.records {
 		if record.overview.State == RelayLogStateRunning || record.overview.State == RelayLogStateCommitted {
 			continue
 		}
 		delete(relayLogStore.records, id)
+		retired = append(retired, record.responseImages...)
 	}
 	relayLogStore.completedIDs = relayLogStore.completedIDs[:0]
 	relayLogStore.Unlock()
+	retireRelayLogStoredImages(retired)
 }
 
 func relayLogStateForResult(success bool, err error) RelayLogState {

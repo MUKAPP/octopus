@@ -2,8 +2,10 @@ package handlers
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
+	"os"
 	"strconv"
 	"time"
 
@@ -37,6 +39,10 @@ func init() {
 		AddRoute(
 			router.NewRoute("/:request_id/response-body", http.MethodGet).
 				Handle(responseBody),
+		).
+		AddRoute(
+			router.NewRoute("/:request_id/images/:image_index", http.MethodGet).
+				Handle(logImage),
 		).
 		AddRoute(
 			router.NewRoute("/:request_id/:attempt_index/stop", http.MethodPost).
@@ -143,6 +149,32 @@ func responseBody(c *gin.Context) {
 		response["preview"] = body.Preview
 	}
 	resp.Success(c, response)
+}
+
+func logImage(c *gin.Context) {
+	id, ok := parseRelayLogID(c)
+	if !ok {
+		return
+	}
+	index, err := strconv.Atoi(c.Param("image_index"))
+	if err != nil || index < 0 {
+		resp.Error(c, http.StatusBadRequest, "invalid image index")
+		return
+	}
+	reader, contentType, err := op.RelayLogStoreOpenImage(id, index)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			resp.Error(c, http.StatusNotFound, "image not found")
+			return
+		}
+		resp.Error(c, http.StatusInternalServerError, resp.ErrInternalServer)
+		return
+	}
+	defer reader.Close()
+	c.Header("Content-Type", contentType)
+	c.Header("Cache-Control", "no-store")
+	c.Header("X-Content-Type-Options", "nosniff")
+	http.ServeContent(c.Writer, c.Request, "", time.Time{}, reader)
 }
 
 func stopAttempt(c *gin.Context) {

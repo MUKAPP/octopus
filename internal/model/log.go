@@ -51,7 +51,8 @@ type RelayLogContentPreview struct {
 }
 
 // RelayLogImage 是一次生成响应的单张图片预览源，值为可直接渲染的 Base64 data URL 或 http(s) 地址。
-// 仅内存使用，不落库。
+// 仅作为 relay metrics 向内存 store 的临时交付字段：内联编码由 store 流式解码写入本地缓存目录，
+// 完整 Base64 不进入长期 store；远程地址原样保留。不落库。
 type RelayLogImage struct {
 	Src string `json:"src"`
 }
@@ -91,6 +92,7 @@ type RelayLog struct {
 	Error                    string                  `json:"error"`                                       // 错误信息
 	Attempts                 []ChannelAttempt        `json:"attempts" gorm:"serializer:json"`             // 所有尝试记录
 	TotalAttempts            int                     `json:"total_attempts"`                              // 总尝试次数
-	// ResponseImages 是从最终响应正文提取的生成图片，仅作为 metrics 向内存 store 的内部交付字段。
+	// ResponseImages 是从最终响应正文提取的生成图片，仅作为 metrics 向内存 store 的内部交付字段：
+	// 内联图片在 store 锁外写入本地缓存文件，记录随后只保留文件引用，不保留输入 Base64。
 	ResponseImages []RelayLogImage `json:"-" gorm:"-"`
 }

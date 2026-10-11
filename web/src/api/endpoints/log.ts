@@ -483,7 +483,8 @@ function normalizeLogBody(value: unknown): RelayLogBody {
         for (const image of record.images) {
             const item = asRecord(image);
             if (item && typeof item.src === 'string' && item.src.length > 0) {
-                images.push({ src: item.src });
+                // 后端本地缓存以鉴权 API 路径交付，按部署目录解析；远程 http(s) 与 data URL 原样保留。
+                images.push({ src: item.src.startsWith('/api/v1/log/') ? resolveAppURL(item.src) : item.src });
             }
         }
     }
