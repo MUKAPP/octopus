@@ -113,6 +113,14 @@ After first launch, visit <http://localhost:8080> and log in to the management p
 
 > ⚠️ **Security Notice**: Please change the default password immediately after first login.
 
+**Reset a forgotten password:**
+
+Stop the service gracefully and back up its database before running `octopus passwd --config <path-to-config> -- <new-password>`. Replace the placeholders with the existing configuration path and the new password, quoting shell arguments as needed. With the source checkout, use `go run main.go passwd` with the same arguments.
+
+Run from the same working directory and with the same `OCTOPUS_DATABASE_*` environment overrides as the service: relative database paths are resolved from the working directory, not the configuration directory. Omitting `--config` uses `data/config.json`; if that file is missing, the normal configuration loader may create it. The command uses normal database initialization, including schema migrations, then hashes the new password and updates the existing user without requiring the old password. It does not create a user when none exists.
+
+Restart the service after success, because a running server keeps the user password hash in memory. The password argument may appear in shell history and process listings; run this only in a trusted local environment and avoid recording the command. The `--` separator allows passwords beginning with a hyphen.
+
 ### 📝 Configuration File
 
 The configuration file is located at `data/config.json` by default and is automatically generated on first startup.
