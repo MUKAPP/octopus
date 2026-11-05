@@ -9,14 +9,10 @@ import (
 	"time"
 
 	"github.com/bestruirui/octopus/internal/model"
+	"github.com/bestruirui/octopus/internal/utils/memory"
 )
 
 const relayLogStoreMaxCompleted = 100
-
-// relayLogStoreMaxCompletedBodyBytes 是全部已完成记录请求/响应正文的总内存预算。
-// 长上下文请求单条可达数 MiB，只按条数限制会让常驻内存随请求体成倍放大；
-// 超出预算时从最早完成的记录开始淘汰，刚完成的记录始终保留。
-const relayLogStoreMaxCompletedBodyBytes = 64 << 20
 
 // RelayLogState describes the in-memory lifecycle of one relay request.
 type RelayLogState string
@@ -547,6 +543,7 @@ func RelayLogStoreComplete(id int64, state RelayLogState, log model.RelayLog, er
 	// 内联图片在 store 锁外流式解码落盘；调用方传入的 Base64 只是临时输入，绝不进入 overview 或订阅快照。
 	images := prepareRelayLogImages(id, log.ResponseImages)
 	log.ResponseImages = nil
+	memoryStatus := relayLogMemoryStatus()
 	relayLogStore.Lock()
 	record, ok := relayLogStore.records[id]
 	if !ok {
@@ -621,7 +618,7 @@ func RelayLogStoreComplete(id int64, state RelayLogState, log model.RelayLog, er
 	}
 	if isNewCompleted {
 		relayLogStore.completedIDs = append(relayLogStore.completedIDs, id)
-		retired = append(retired, trimCompletedRelayLogsLocked()...)
+		retired = append(retired, trimCompletedRelayLogsLocked(memoryStatus)...)
 	}
 	snapshot := relayLogStoreSnapshotLocked(record)
 	committed := record.committed
@@ -640,9 +637,9 @@ func relayLogRecordBodyBytes(record *relayLogStoreRecord) int64 {
 	return int64(len(record.overview.RequestContent) + len(record.overview.ResponseContent))
 }
 
-// trimCompletedRelayLogsLocked 按完成顺序淘汰最早的记录，直到条数与正文总字节都回到上限内；
-// 最新完成的记录始终保留。调用方必须持有 relayLogStore 写锁，并在锁外释放返回的图片。
-func trimCompletedRelayLogsLocked() []relayLogStoredImage {
+// trimCompletedRelayLogsLocked 根据采样时的总量和可用内存计算正文预算，再按完成顺序淘汰。
+// 最新完成的记录始终保留。调用方必须在锁外采样内存、持有 store 写锁，并在锁外释放图片。
+func trimCompletedRelayLogsLocked(status memory.Status) []relayLogStoredImage {
 	ids := relayLogStore.completedIDs
 	if len(ids) == 0 {
 		return nil
@@ -653,8 +650,9 @@ func trimCompletedRelayLogsLocked() []relayLogStoredImage {
 			bodyBytes += relayLogRecordBodyBytes(record)
 		}
 	}
+	budget := relayLogCompletedBodyBudget(status)
 	var retired []relayLogStoredImage
-	for len(ids) > 1 && (len(ids) > relayLogStoreMaxCompleted || bodyBytes > relayLogStoreMaxCompletedBodyBytes) {
+	for len(ids) > 1 && (len(ids) > relayLogStoreMaxCompleted || bodyBytes > budget) {
 		oldest := ids[0]
 		ids = ids[1:]
 		oldRecord, exists := relayLogStore.records[oldest]

@@ -15,6 +15,7 @@ const (
 	TaskPriceUpdate     = "price_update"
 	TaskStatsSave       = "stats_save"
 	TaskRelayLogCleanup = "relay_log_cleanup"
+	TaskRelayLogMemory  = "relay_log_memory"
 	TaskSQLiteReclaim   = "sqlite_reclaim"
 	TaskSyncLLM         = "sync_llm"
 	TaskCleanLLM        = "clean_llm"
@@ -24,6 +25,7 @@ const (
 func Init() {
 	// 新日志只保存在内存；启动时和每天定期清理升级前遗留的数据库日志。
 	Register(TaskRelayLogCleanup, 24*time.Hour, true, op.RelayLogCleanupTask)
+	Register(TaskRelayLogMemory, 5*time.Second, true, op.RelayLogMemoryTrimTask)
 	Register(TaskSQLiteReclaim, 10*time.Minute, true, db.SQLiteReclaimTask)
 	priceUpdateIntervalHours, err := op.SettingGetInt(model.SettingKeyModelInfoUpdateInterval)
 	if err != nil {
