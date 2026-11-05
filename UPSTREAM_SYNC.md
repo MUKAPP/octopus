@@ -53,10 +53,10 @@ git merge --no-ff sync/upstream-YYYY-MM-DD
 | 上次历史审查的上游提交 | `dddc6bc1f26f13ac408d86806dbdcf984e1da2ec` |
 | 上次历史检查点对应本地提交 | `5fc512ed6220d002c2a529825b158c56594226c0` |
 | 说明 | 历史检查点只标记已审查，不代表此前上游提交全部进入当前文件树 |
-| 本批固定参考上游快照 | `0538c3e715e529e3a1f3a2b1229addb8ca4357ea`（2026-10-01 fetch；此前选择性适配参考 `357787d`） |
-| 本次已审查至 | `0538c3e715e529e3a1f3a2b1229addb8ca4357ea` |
-| 本次审查所在本地基线 | `dev` @ `8b1dc923f171fe8aaea7e607f872dac04910f11c` |
-| 本次新增上游代码合入 | 无；本次只审查，没有 cherry-pick 或 merge |
+| 本批固定参考上游快照 | `8aa58b0340ba2de58ce74fbfacd32597c44842a2`（2026-11-05 fetch，v0.13.13） |
+| 本次已审查至 | `8aa58b0340ba2de58ce74fbfacd32597c44842a2` |
+| 本次审查所在本地基线 | `dev` @ `0232a45` |
+| 本次新增上游代码合入 | 四项已按主题适配并提交至 `dev`；未 cherry-pick 或接入上游历史（本地 SHA 见本批适配记录） |
 | 待审查提交数量 | 0 |
 
 ## 已审查提交
@@ -96,6 +96,36 @@ git merge --no-ff sync/upstream-YYYY-MM-DD
 | 2026-09-30（剩余四项） | 选择性适配 `bf2027a`、`aa07f77` / `357787d` 预设快照、`08d80c3`、`1bd2ed8` / `9f91bad`；固定参考 `357787d` | 四项适配已分别提交至 `dev`；保留 fork 调度/渠道模型；运行验证及只读代码审查完成，仍有下述既有检查限制 | `3add2ca`、`c5e91a4`、`5655825`、`4e10525`；基线 `dev` @ `16d7bab` | 在 `sync/upstream-2026-09-30-remaining` 实施验证后，同基线带回 `dev`；经用户后续明确授权分别提交；未接入上游历史，连续审查点仍 `27aa40d` |
 | 2026-10-01 | 完整续审 `27aa40d..0538c3e`（29 提交），其中 `357787d..0538c3e` 新增 4 提交 | 全部有明确处理结论；仅更新台账，无代码合入 | —；审查基线 `dev` @ `8b1dc92` | 新增三项功能可手工适配，版本注释不引入；旧范围能力覆盖/取舍及实施候选见下节；连续审查点推进至 `0538c3e`，不接入上游历史 |
 | 2026-10-01（三项功能） | 手工适配 `0538c3e`、`8e93fa6`、`bdc9948` | 三项已实施、实测并经用户授权分别提交至 `dev` | `8b1110a`、`5156f9c`、`3afa382`；基线 `dev` @ `d484661` | 在 `sync/upstream-2026-10-01-three-features` 实施并同基线带回 `dev`；不 merge/cherry-pick 上游历史，不改变调度/schema/认证隔离，连续审查点仍 `0538c3e` |
+| 2026-11-05 | 续审 `0538c3e..8aa58b0`（8 提交） | 全部有明确处理结论；审查阶段无代码合入 | —；审查基线 `dev` @ `0232a45` | 逐提交结论见下节；连续审查点推进至 `8aa58b0`，不接入上游历史 |
+| 2026-11-05（四项适配） | `8cf04fb`、`fd8b3b8`、`baa5d65`、`8aa58b0` 的独立部分 | 用户授权适配 Go、UA、passwd、输出前预读；保留 fork 架构 | `0e89934`、`15ad2af`、`c034306`、`a121c4e`；基线 `dev` @ `0232a45` | 在 `sync/upstream-2026-11-05` 实施验证后同基线带回 `dev`；不 cherry-pick/merge 上游历史，未推送 |
+
+## 2026-11-05 连续审查：`0538c3e..8aa58b0`
+
+实际执行 `git fetch upstream --prune`（上游至 v0.13.13）。先完成静态比对和依赖/工具链核查：读取各补丁、fork 对应源码及 axonhub 模块缓存源码，并在临时目录以 `GOTOOLCHAIN=local` 模拟旧 Go 工具链下的 CI 依赖解析失败。随后经用户明确授权适配以下四项；当前状态及验证结果以本节适配记录为准。
+
+| 上游提交 | 更新内容 | 当前处理结论 | 本地提交 |
+|---|---|---|---|
+| `8cf04fb` | `passwd <password>` CLI 直接重置唯一用户密码 | 适配引入（已提交至 dev）；独立 `--config`，复用正常数据库初始化/迁移及现有用户哈希，缺用户不创建；停服、备份、配置/cwd/env、重启与参数暴露说明同步双语 README | `15ad2af` |
+| `1cdb163` | 修复上游 `migrate/005.go` 渠道单 URL/Key 迁移 | 不引入；fork 的 005 是 stats_hourlies 修复，目标 schema 不在本架构 | — |
+| `d1a26bd` | axonhub 伪版本升级、v0.13.10 注释 | 不引入；CI 以 `@unstable` 解析 | — |
+| `fd8b3b8` | 流式响应在真实输出前暂存启动事件，期间失败仍可重试 | 适配引入（已提交至 dev）；沿用 pipeline 和 fork balancer，启用 `WithRetry(1, 0, 0)`，在统一流中间件补齐旧依赖的 16 事件提前回放/无内容 EOF 缺口；文本/思考/工具/拒绝/有内容音频/图片才提交，启动元数据限 1024 事件/8MiB、超限失败不泄漏。首 token 期限覆盖 HTTP+预读+首写；预读期间拦截 Responses 失败终态；不引入上游直通链路或调度 | `a121c4e` |
+| `baa5d65` | 跨协议转换后补回客户端 User-Agent；直通流补 Cache-Control/Connection | 适配引入（已提交至 dev）；在 `OnOutboundRawRequest` 补回原始客户端 UA，仍允许渠道自定义头覆盖，敏感认证头规则不变。fork 没有该直通分支，流式 Cache-Control/Connection 保留库处理 | `c034306` |
+| `9a66419` | axonhub 升级、gjson 改为直接依赖 | 不引入该依赖补丁；axonhub 沿用 CI unstable 策略。fork 已使用 gjson 解析错误，不复制上游依赖清单 | — |
+| `3d1ff13` | v0.13.12 注释 | 不引入 | — |
+| `8aa58b0` | `go` 指令 1.26.4→1.26.10（crypto/x509 安全修复）及 axonhub 升级 | 部分引入（已提交至 dev）；仅采用 `go 1.26.10`，同步 AGENTS 与双语 README。正式 axonhub pin、go.sum 与两项 replace 均保留；以独立 modfile 成功验证 CI unstable 解析，未混入依赖清单升级 | `0e89934` |
+
+### 2026-11-05 四项适配与验证
+
+四项适配在临时同步分支完成后同基线带回 `dev`，经用户明确授权分主题提交：Go/CI 为 `0e89934`，passwd 为 `15ad2af`，UA 为 `c034306`，流式预读为 `a121c4e`。未推送，不接入上游原始提交历史；以下既有验证限制保留。
+
+- 仅借鉴独立功能，不引入上游迁移 005、直通 relay、渠道/调度/schema 或纯版本号；正式 axonhub pin 与 `go.sum` 未变。`go 1.26.10` 保证 `setup-go` 安装的工具链满足当前 CI unstable 的最低要求。
+- UA 在渠道自定义头之前补回，保留覆盖顺序和敏感认证规则；passwd 的停服/备份、正常初始化会执行迁移、工作目录/环境变量及重启要求见双语 README。密码参数不写入应用输出；错误 flag 使用固定文案。
+- 流式预读位于统一响应层，失败由 fork 的原选路处理。补齐旧 pin 的 16 事件提前回放与无内容 EOF；仅启动元数据受 1024 事件/8MiB 预算限制，实际内容立即连同前置事件原序回放。首 token 超时包含 HTTP 与预读且不重复计时；取消后晚到的流结果主动关闭。HTTP 状态码读取复用既有原子事实，避免新增超时与旧回调之间的数据竞争。
+- 当前固定依赖：`go test ./...` 仅 `internal/db.TestCompactSQLite` 失败（Windows 目录 sync Access is denied，既有问题）；最终 `go test ./... -skip '^TestCompactSQLite$'` 通过。CLI `passwd --help` 实际执行成功。
+- 以独立 modfile 运行 `go get github.com/looplj/axonhub/llm@unstable` 成功，解析到 `v0.0.0-20261105055319-831c95d7e89d`。初次默认测试暴露 jsonrepair/otel 新传递依赖缺少 sum；随后 `-mod=mod` 校验补齐的只是临时 modfile。四个既有 CI 解析步骤在 `go get` 后增加 `go mod tidy`，让真实项目导入的依赖闭包在构建前补全，不将纯依赖升级写入本地正式清单。
+- 新版依赖下全库测试（已跳过 CompactSQLite）仅 Responses 的 `TestRelayGatewayStreamErrorDetails/openai/responses/read_failure` 与 `TestRelayGatewayStreamStopsWithoutRetry/openai/responses/after_done_read_failure` 失败。已用 Git HEAD 原始 relay 源码 overlay 实际复现完全相同失败，属于新版依赖断流/终态诊断与既有测试期望的差异，未为全绿修改测试或更改已完成流的判定。最终新版 relay 测试明确跳过这两项后通过，其余包在新版依赖下已通过。
+- 另以全新独立 modfile 按修正后的 `go get @unstable` → `go mod tidy` → 默认模块模式 `go build -trimpath -tags=jsoniter` 完整构建成功，生成的 CI 依赖版本可执行文件实际运行 `passwd --help` 成功；正式依赖文件未改。此为本地模拟，不是 GitHub Actions 已运行声明。
+- 只读整合审查发现的严格预读缺口与超时状态码竞态均已修复，主代理核对代码并由审查者定向闭环；没有新增或修改测试文件。新增元数据预算/长启动序列/UA 和真实密码重置未另写专项用例，不宣称已独立实测这些新边界；未启动业务服务、访问生产上游或操作仓库 `data/`。
 
 ### 2026-09-30 验证结果
 
