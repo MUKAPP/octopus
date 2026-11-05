@@ -46,7 +46,9 @@ jobs:
           go-version-file: go.mod
 
       - name: Resolve latest AxonHub module
-        run: go get github.com/looplj/axonhub/llm@unstable
+        run: |
+          go get github.com/looplj/axonhub/llm@unstable
+          go mod tidy
 
       - name: Setup Python
         uses: actions/setup-python@v6

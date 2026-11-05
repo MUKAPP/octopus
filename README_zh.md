@@ -68,7 +68,7 @@ docker pull mukmiuikong/octopus:latest
 
 **环境要求：**
 
-- Go 1.26.0
+- Go 1.26.10
 - Node.js 20.19+ 或 22.12+
 - pnpm
 

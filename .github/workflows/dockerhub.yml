@@ -47,7 +47,9 @@ jobs:
           cache: false
 
       - name: Resolve latest AxonHub module
-        run: go get github.com/looplj/axonhub/llm@unstable
+        run: |
+          go get github.com/looplj/axonhub/llm@unstable
+          go mod tidy
 
       - name: Set image build information
         id: build-info

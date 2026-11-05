@@ -21,7 +21,7 @@
 
 ## 环境与命令
 
-- `go.mod` 声明 Go `1.26.0`，通过远程模块依赖 `github.com/looplj/axonhub/llm`；GitHub Actions 在构建前执行 `go get github.com/looplj/axonhub/llm@unstable`，构建时以该命令解析的上游最新版本为准。仅更新某个伪版本的上游依赖提交通常不需要单独合入；本地确需验证最新版时使用同一命令，不要手工修改 `go.sum`。
+- `go.mod` 声明 Go `1.26.10`，通过远程模块依赖 `github.com/looplj/axonhub/llm`；GitHub Actions 在构建前执行 `go get github.com/looplj/axonhub/llm@unstable`，随后运行 `go mod tidy` 补齐实际导入的依赖闭包；构建时以该命令解析的上游最新版本为准。仅更新某个伪版本的上游依赖提交通常不需要单独合入；本地确需验证最新版时使用同一命令，不要手工修改 `go.sum`。
 - 前端使用 pnpm，锁文件为 `web/pnpm-lock.yaml`。在 `web/` 中执行：
   - `pnpm install`：安装依赖。
   - `pnpm dev`：启动 Vite 开发服务器；可用 `VITE_PROXY_TARGET` 改写后端代理目标。
