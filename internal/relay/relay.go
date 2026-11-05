@@ -633,6 +633,8 @@ func (ra *relayAttempt) forward() (int, error) {
 			Pipeline(
 				&parsedRequestInbound{Inbound: ra.inAdapter, request: ra.internalRequest},
 				ra.outAdapter,
+				// 启用库的输出前预读；出站转换器不实现库的重试接口，失败仍交给 fork 的 balancer。
+				pipeline.WithRetry(1, 0, 0),
 				pipeline.WithMiddlewares(stream.EnsureUsage(), relayMiddleware),
 				pipeline.WithEmptyResponseDetection(),
 			).
@@ -643,8 +645,9 @@ func (ra *relayAttempt) forward() (int, error) {
 		heartbeatTicker := newRelaySSEHeartbeatTicker(relaySSEHeartbeatInterval)
 		result, heartbeatTicker, processCancel, err := ra.processStreamWithHeartbeat(ctx, heartbeatTicker, process)
 		if err != nil {
-			return relayMiddleware.upstreamStatusCode, err
+			return int(ra.upstreamStatusCode.Load()), err
 		}
+		relayMiddleware.streamCommitted = true
 		streamErr := ra.writeStreamWithHeartbeatTicker(ctx, result.EventStream, heartbeatTicker)
 		processCancel()
 		if streamErr != nil {
@@ -655,7 +658,7 @@ func (ra *relayAttempt) forward() (int, error) {
 
 	result, err := process(ctx)
 	if err != nil {
-		return relayMiddleware.upstreamStatusCode, err
+		return int(ra.upstreamStatusCode.Load()), err
 	}
 	if result == nil {
 		return 0, fmt.Errorf("empty pipeline result")
@@ -814,14 +817,28 @@ func (ra *relayAttempt) processStreamWithHeartbeat(
 	}
 
 	processCtx, processCancel := context.WithCancel(ctx)
+	var firstTokenC <-chan time.Time
+	if seconds := ra.group.FirstTokenTimeOut; seconds > 0 {
+		ra.firstTokenDeadline = time.Now().Add(time.Duration(seconds) * time.Second)
+		timer := time.NewTimer(time.Until(ra.firstTokenDeadline))
+		defer timer.Stop()
+		firstTokenC = timer.C
+	}
 	type processResult struct {
 		result *pipeline.Result
 		err    error
 	}
-	results := make(chan processResult, 1)
+	results := make(chan processResult)
 	go func() {
 		result, err := process(processCtx)
-		results <- processResult{result: result, err: err}
+		select {
+		case results <- processResult{result: result, err: err}:
+		case <-processCtx.Done():
+			// 超时或客户端断开后晚到的流结果没有消费者，由这里归还连接。
+			if result != nil && result.EventStream != nil {
+				_ = result.EventStream.Close()
+			}
+		}
 	}()
 
 	stop := func() {
@@ -839,6 +856,9 @@ func (ra *relayAttempt) processStreamWithHeartbeat(
 		case <-ctx.Done():
 			stop()
 			return nil, nil, nil, ctx.Err()
+		case <-firstTokenC:
+			stop()
+			return nil, nil, nil, fmt.Errorf("first token timeout (%ds)", ra.group.FirstTokenTimeOut)
 		case processed := <-results:
 			if processed.err != nil {
 				stop()
@@ -914,7 +934,11 @@ func (ra *relayAttempt) writeStreamWithHeartbeatTicker(
 	var firstTokenTimer *time.Timer
 	var firstTokenC <-chan time.Time
 	if firstTokenTimeoutSec > 0 {
-		firstTokenTimer = time.NewTimer(time.Duration(firstTokenTimeoutSec) * time.Second)
+		deadline := ra.firstTokenDeadline
+		if deadline.IsZero() {
+			deadline = time.Now().Add(time.Duration(firstTokenTimeoutSec) * time.Second)
+		}
+		firstTokenTimer = time.NewTimer(time.Until(deadline))
 		firstTokenC = firstTokenTimer.C
 		defer func() {
 			if firstTokenTimer != nil {
@@ -1032,8 +1056,8 @@ func (ra *relayAttempt) writeStreamWithHeartbeatTicker(
 // 所以这里保留一个很薄的结构体实现完整接口，而不是在 relay 主流程里重复 pipeline 的执行逻辑。
 type relayPipelineMiddleware struct {
 	pipeline.DummyMiddleware
-	attempt            *relayAttempt
-	upstreamStatusCode int
+	attempt         *relayAttempt
+	streamCommitted bool // pipeline 结果已交给客户端写流；仅预读阶段额外拦截 Responses 失败终态。
 }
 
 func (m *relayPipelineMiddleware) Name() string {
@@ -1080,7 +1104,6 @@ func (m *relayPipelineMiddleware) OnOutboundRawResponse(ctx context.Context, res
 					headers:    response.Headers,
 					detail:     detail,
 				}
-				m.upstreamStatusCode = response.StatusCode
 				m.attempt.captureUpstreamError(source)
 				return nil, pipeline.WrapUpstreamError(source)
 			}
@@ -1116,6 +1139,9 @@ func (m *relayPipelineMiddleware) OnOutboundRawStream(ctx context.Context, strea
 				}
 			}
 		}
+		if !explicit && !m.streamCommitted && m.attempt.outAdapter.APIFormat() == llm.APIFormatOpenAIResponse {
+			detail, explicit = relayPreCommitResponseFailure(event)
+		}
 		if !explicit {
 			return event, nil
 		}
@@ -1138,7 +1164,6 @@ func (m *relayPipelineMiddleware) OnOutboundRawError(ctx context.Context, err er
 	var upstreamErr *httpclient.Error
 	if errors.As(err, &upstreamErr) {
 		// pipeline 会把上游错误转换成统一错误返回；这里在转换前记录原始 HTTP 状态码，用于渠道 key 的后续调度决策。
-		m.upstreamStatusCode = upstreamErr.StatusCode
 		m.attempt.captureUpstreamError(&relayUpstreamError{
 			cause:      err,
 			protocol:   m.attempt.outAdapter.APIFormat(),

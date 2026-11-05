@@ -458,6 +458,40 @@ func relaySSEErrorBody(protocol llm.APIFormat, detail llm.ErrorDetail) []byte {
 	return body
 }
 
+// relayPreCommitResponseFailure 拦截输出前的 Responses 失败终态，避免转换器将其映射为正常结束。
+// 输出后的 length/cancelled 仍保留原转换行为，不触发从头重试。
+func relayPreCommitResponseFailure(event *httpclient.StreamEvent) (llm.ErrorDetail, bool) {
+	payload := gjson.ParseBytes(event.Data)
+	kind := payload.Get("type").String()
+	if kind == "" {
+		kind = event.Type
+	}
+	status := ""
+	switch kind {
+	case "response.completed":
+		status = payload.Get("response.status").String()
+		if status == "" || status == "completed" {
+			return llm.ErrorDetail{}, false
+		}
+	case "response.failed":
+		status = "failed"
+	case "response.incomplete":
+		status = "incomplete"
+	case "response.cancelled":
+		status = "cancelled"
+	default:
+		return llm.ErrorDetail{}, false
+	}
+	if detail, explicit := decodeRelayErrorDetail(event.Data, nil, kind); explicit && detail.Message != "" {
+		return detail, true
+	}
+	message := "response " + status
+	if reason := payload.Get("response.incomplete_details.reason").String(); status == "incomplete" && reason != "" {
+		message += ": " + reason
+	}
+	return llm.ErrorDetail{Message: message, Type: "response_" + status}, true
+}
+
 func relayStreamFailureType(event *httpclient.StreamEvent) string {
 	if event.Type == "error" || event.Type == "response.failed" {
 		return event.Type

@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	dbmodel "github.com/bestruirui/octopus/internal/model"
 	"github.com/bestruirui/octopus/internal/relay/balancer"
@@ -71,6 +72,9 @@ type relayAttempt struct {
 
 	// responseCommitted is true once the downstream status/headers have been written.
 	responseCommitted bool
+
+	// 首 token 截止时间覆盖 HTTP 请求、pipeline 预读与客户端首事件写入，不能在预读后重新计时。
+	firstTokenDeadline time.Time
 
 	// streamEventWritten 表示至少一个真实模型事件已经写入客户端。
 	streamEventWritten bool
