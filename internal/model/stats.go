@@ -21,8 +21,10 @@ type StatsTotal struct {
 	StatsMetrics
 }
 
+// StatsHourly 的 Hour 是 0-23 的业务主键；必须关闭 GORM 对整数主键的默认自增，
+// 否则 hour=0 会被当作零值写成 NULL，由数据库分配新行号。
 type StatsHourly struct {
-	Hour int    `json:"hour" gorm:"primaryKey"`
+	Hour int    `json:"hour" gorm:"primaryKey;autoIncrement:false"`
 	Date string `json:"date" gorm:"not null"` // 记录最后更新日期，格式：20060102
 	StatsMetrics
 }
