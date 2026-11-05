@@ -1044,6 +1044,14 @@ func (m *relayPipelineMiddleware) OnOutboundRawRequest(ctx context.Context, requ
 	if request.Headers == nil {
 		request.Headers = make(http.Header)
 	}
+	// 新版 axonhub 不自动合并客户端 UA；显式补回后，仍允许渠道自定义头覆盖。
+	clientHeaders := m.attempt.clientHeaders
+	if clientHeaders == nil && m.attempt.c != nil && m.attempt.c.Request != nil {
+		clientHeaders = m.attempt.c.Request.Header
+	}
+	if userAgent := clientHeaders.Get("User-Agent"); userAgent != "" {
+		request.Headers.Set("User-Agent", userAgent)
+	}
 	m.attempt.applyChannelRequestOptions(request)
 	if m.attempt.channel != nil && m.attempt.internalRequest != nil {
 		thinkingEnabled := m.attempt.internalRequest.ReasoningEffort != "none"
