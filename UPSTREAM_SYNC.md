@@ -127,6 +127,13 @@ git merge --no-ff sync/upstream-YYYY-MM-DD
 - 另以全新独立 modfile 按修正后的 `go get @unstable` → `go mod tidy` → 默认模块模式 `go build -trimpath -tags=jsoniter` 完整构建成功，生成的 CI 依赖版本可执行文件实际运行 `passwd --help` 成功；正式依赖文件未改。此为本地模拟，不是 GitHub Actions 已运行声明。
 - 只读整合审查发现的严格预读缺口与超时状态码竞态均已修复，主代理核对代码并由审查者定向闭环；没有新增或修改测试文件。新增元数据预算/长启动序列/UA 和真实密码重置未另写专项用例，不宣称已独立实测这些新边界；未启动业务服务、访问生产上游或操作仓库 `data/`。
 
+### 2026-11-05 Responses 流式断言对齐
+
+- 经用户明确授权，仅修改上述两项已有测试及本台账，不改变生产请求处理、正式 axonhub pin 或 `go.sum`。此前“两项诊断断言失败并跳过”是适配阶段的历史结果，不再代表当前测试状态。
+- `read_failure`：新版 Responses 将 `io.EOF` / `io.ErrUnexpectedEOF` 映射为原生错误码 `upstream_eof` 与文案 `upstream connection closed unexpectedly`，不是本场景的 `ErrStreamIncomplete`。测试核对错误码与固定文案，并要求终态日志、尝试记录均保留诊断；旧版仍要求原始 EOF。失败状态、失败统计、正文一致和不得重试的断言保留。
+- `after_done_read_failure`：新版库在 `response.completed` 收尾时，要求成功日志无错误、尝试成功、completed 正文与用量保留、成功统计一致；旧版继续读到 EOF 的收尾方式仍必须明确失败并保留 EOF 及失败统计。两者都必须只有一次上游调用、客户端响应字节不变、不追加错误帧；不将任意状态或任意错误视为通过。
+- 当前固定依赖 `go test ./internal/relay` 全部通过；全新独立 modfile 执行 `go get github.com/looplj/axonhub/llm@unstable`、`go mod tidy`，解析到 `v0.0.0-20261105055319-831c95d7e89d`，同一 relay 包完整测试全部通过，未跳过这两项或其他子测试。仅测试变更，不重复运行无关联的全库/前端构建；此前 Windows CompactSQLite 目录同步限制未在本批扩展处理。
+
 ### 2026-09-30 验证结果
 
 - `pnpm install --frozen-lockfile`、`pnpm build`（TypeScript + Vite）成功；未升级依赖。构建产物仅用于运行验证，不纳入提交。

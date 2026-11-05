@@ -801,6 +801,20 @@ func TestRelayGatewayStreamErrorDetails(t *testing.T) {
 					}
 				}
 				relayLog := fixture.finalLog(t)
+				// 新版 Responses 把底层 EOF 分类为 upstream_eof；旧版仍保留原始 EOF 诊断。
+				if source == "read_failure" && format == llm.APIFormatOpenAIResponse {
+					detail := failure.payload
+					if response, ok := failure.payload["response"].(map[string]any); ok {
+						detail, _ = response["error"].(map[string]any)
+					}
+					if detail["code"] == "upstream_eof" {
+						const eofMessage = "upstream connection closed unexpectedly"
+						if detail["message"] != eofMessage {
+							t.Errorf("upstream_eof lost its diagnostic: %#v", detail)
+						}
+						parts = []string{eofMessage}
+					}
+				}
 				assertRelayGatewayFailureLog(t, relayLog, http.StatusOK, parts)
 				assertRelayGatewayResponseBody(t, relayLog, failure.data)
 				assertRelayGatewayFailedStats(t, fixture.channel.ID, before)
@@ -885,6 +899,7 @@ func TestRelayGatewayStreamStopsWithoutRetry(t *testing.T) {
 					}
 				}))
 				fixture.addFallback(t, fixture.upstream.URL)
+				before := op.StatsTotalGet()
 				writer := newRecordingRelayWriter(0)
 				cancel, done := fixture.startStreamRequest(t, format, writer)
 				waitRelayGatewayFlush(t, writer, relayGatewayPartial)
@@ -918,14 +933,32 @@ func TestRelayGatewayStreamStopsWithoutRetry(t *testing.T) {
 				}
 				relayLog := fixture.finalLog(t)
 				if len(relayLog.Attempts) != 1 || hits.Load() != 1 || relayLog.UpstreamStatusCode != 200 || relayLog.Attempts[0].UpstreamStatusCode != 200 {
-					t.Errorf("terminated stream retried/lost source code: hits=%d log=%#v", hits.Load(), relayLog)
+					t.Fatalf("terminated stream retried/lost source code: hits=%d log=%#v", hits.Load(), relayLog)
 				}
 				if mode == "after_done_read_failure" {
 					if writer.body() != snapshot || writer.recorder.Code != http.StatusOK {
 						t.Errorf("post-terminal read failure changed committed response: status=%d body=%q", writer.recorder.Code, writer.body())
 					}
-					if relayLog.State != op.RelayLogStateFailed || !strings.Contains(relayLog.Error, "EOF") {
-						t.Errorf("post-terminal read failure lost its actual diagnostic: %#v", relayLog)
+					if format == llm.APIFormatOpenAIResponse && relayLog.State == op.RelayLogStateSuccess {
+						// 新版库在 response.completed 结束消费；成功日志必须与有效终态、用量及统计一致。
+						if relayLog.Error != "" || relayLog.Attempts[0].Status != model.AttemptSuccess ||
+							relayLog.InputTokens != 1 || relayLog.OutputTokens != 1 {
+							t.Errorf("completed response lost success/usage facts: %#v", relayLog)
+						}
+						response := decodeRelayGatewayJSON(t, relayLog.ResponseContent)
+						if response["status"] != "completed" || !strings.Contains(relayLog.ResponseContent, relayGatewayPartial) {
+							t.Errorf("successful log did not retain the completed response: %q", relayLog.ResponseContent)
+						}
+						after := op.StatsTotalGet()
+						channel := op.StatsChannelGet(fixture.channel.ID)
+						if after.RequestSuccess-before.RequestSuccess != 1 || after.RequestFailed-before.RequestFailed != 0 ||
+							channel.RequestSuccess != 1 || channel.RequestFailed != 0 {
+							t.Errorf("completed response success statistics differ: before=%#v after=%#v channel=%#v", before, after, channel)
+						}
+					} else {
+						// 旧库仍可能继续读连接；只允许明确的 EOF 失败，不能吞掉诊断或算作其他终态。
+						assertRelayGatewayFailureLog(t, relayLog, http.StatusOK, []string{"EOF"})
+						assertRelayGatewayFailedStats(t, fixture.channel.ID, before)
 					}
 				}
 				if mode == "client_disconnect" && (relayLog.State != op.RelayLogStateCanceled || !strings.Contains(relayLog.Error, context.Canceled.Error())) {
