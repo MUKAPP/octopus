@@ -93,7 +93,9 @@ func initSQLite(path string, config *gorm.Config) (*gorm.DB, error) {
 	params.Add("_pragma", "auto_vacuum(INCREMENTAL)")
 	params.Add("_pragma", "journal_mode(WAL)")
 	params.Add("_pragma", "synchronous(NORMAL)")
-	params.Add("_pragma", "cache_size(10000)")
+	// 负值单位为 KiB：每个连接的页缓存上限 8 MiB。正值 10000 按页计，4 KiB 页时每连接约 39 MiB，
+	// 多个连接充分使用后会在小内存机器上占用数百 MiB 匿名内存；读取仍可经 mmap 使用系统文件缓存。
+	params.Add("_pragma", "cache_size(-8192)")
 	params.Add("_pragma", "busy_timeout(5000)")
 	params.Add("_pragma", "foreign_keys(ON)")
 	params.Add("_pragma", "mmap_size(268435456)")

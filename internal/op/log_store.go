@@ -13,6 +13,11 @@ import (
 
 const relayLogStoreMaxCompleted = 100
 
+// relayLogStoreMaxCompletedBodyBytes 是全部已完成记录请求/响应正文的总内存预算。
+// 长上下文请求单条可达数 MiB，只按条数限制会让常驻内存随请求体成倍放大；
+// 超出预算时从最早完成的记录开始淘汰，刚完成的记录始终保留。
+const relayLogStoreMaxCompletedBodyBytes = 64 << 20
+
 // RelayLogState describes the in-memory lifecycle of one relay request.
 type RelayLogState string
 
@@ -616,17 +621,7 @@ func RelayLogStoreComplete(id int64, state RelayLogState, log model.RelayLog, er
 	}
 	if isNewCompleted {
 		relayLogStore.completedIDs = append(relayLogStore.completedIDs, id)
-		for len(relayLogStore.completedIDs) > relayLogStoreMaxCompleted {
-			oldest := relayLogStore.completedIDs[0]
-			relayLogStore.completedIDs = relayLogStore.completedIDs[1:]
-			if oldest == id {
-				continue
-			}
-			if oldRecord, exists := relayLogStore.records[oldest]; exists && oldRecord.overview.State != RelayLogStateRunning && oldRecord.overview.State != RelayLogStateCommitted {
-				delete(relayLogStore.records, oldest)
-				retired = append(retired, oldRecord.responseImages...)
-			}
-		}
+		retired = append(retired, trimCompletedRelayLogsLocked()...)
 	}
 	snapshot := relayLogStoreSnapshotLocked(record)
 	committed := record.committed
@@ -638,6 +633,42 @@ func RelayLogStoreComplete(id int64, state RelayLogState, log model.RelayLog, er
 		notifyRelayLogDetail(id, RelayLogDetailEvent{Type: RelayLogEventResponseCommitted, ID: id, Overview: &snapshot})
 	}
 	notifyRelayLogDetail(id, RelayLogDetailEvent{Type: RelayLogEventOverview, ID: id, Overview: &snapshot})
+}
+
+func relayLogRecordBodyBytes(record *relayLogStoreRecord) int64 {
+	// RequestBody/ResponseBody 与 RelayLog 正文字段共享同一字符串数据，只计一次。
+	return int64(len(record.overview.RequestContent) + len(record.overview.ResponseContent))
+}
+
+// trimCompletedRelayLogsLocked 按完成顺序淘汰最早的记录，直到条数与正文总字节都回到上限内；
+// 最新完成的记录始终保留。调用方必须持有 relayLogStore 写锁，并在锁外释放返回的图片。
+func trimCompletedRelayLogsLocked() []relayLogStoredImage {
+	ids := relayLogStore.completedIDs
+	if len(ids) == 0 {
+		return nil
+	}
+	var bodyBytes int64
+	for _, id := range ids {
+		if record, ok := relayLogStore.records[id]; ok {
+			bodyBytes += relayLogRecordBodyBytes(record)
+		}
+	}
+	var retired []relayLogStoredImage
+	for len(ids) > 1 && (len(ids) > relayLogStoreMaxCompleted || bodyBytes > relayLogStoreMaxCompletedBodyBytes) {
+		oldest := ids[0]
+		ids = ids[1:]
+		oldRecord, exists := relayLogStore.records[oldest]
+		if !exists {
+			continue
+		}
+		bodyBytes -= relayLogRecordBodyBytes(oldRecord)
+		if oldRecord.overview.State != RelayLogStateRunning && oldRecord.overview.State != RelayLogStateCommitted {
+			delete(relayLogStore.records, oldest)
+			retired = append(retired, oldRecord.responseImages...)
+		}
+	}
+	relayLogStore.completedIDs = ids
+	return retired
 }
 
 // RelayLogStorePrune removes old terminal records while preserving active requests
