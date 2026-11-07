@@ -118,12 +118,14 @@ export function VirtualizedGrid<T>({
         return `row-${String(getItemKey(firstItem, rowStartIndex))}`;
     }, [hasFooterRow, itemRowCount, columnCount, items, getItemKey]);
 
+    const retainedRowSizesRef = useRef(new Map<string, number>());
+
     // eslint-disable-next-line react-hooks/incompatible-library
     const rowVirtualizer = useVirtualizer({
         count: rowCount,
         getScrollElement: () => containerRef.current,
         getItemKey: getVirtualRowKey,
-        estimateSize: () => estimateItemHeight + gap,
+        estimateSize: (index) => retainedRowSizesRef.current.get(getVirtualRowKey(index)) ?? estimateItemHeight + gap,
         // Use layout height (not transformed visual height) to avoid scale-animation
         // shrinking measurements during page enter transitions.
         measureElement: (element) =>
@@ -132,6 +134,25 @@ export function VirtualizedGrid<T>({
                 : element.getBoundingClientRect().height,
         overscan,
     });
+
+    const previousRowKeysRef = useRef(new Set<string>());
+    useEffect(() => {
+        const rowKeys = new Set(Array.from({ length: rowCount }, (_, index) => getVirtualRowKey(index)));
+        const removedRows = [...previousRowKeysRef.current].some((key) => !rowKeys.has(key));
+        previousRowKeysRef.current = rowKeys;
+        if (!removedRows) return;
+
+        // 清除旧 key，同时保留现存行的高度，避免离屏行回落估计值导致滚动跳动。
+        retainedRowSizesRef.current = new Map(rowVirtualizer.measurementsCache
+            .filter((item) => rowKeys.has(String(item.key)))
+            .map((item) => [String(item.key), item.size]));
+        rowVirtualizer.measure();
+        // measure() 通知 React 后异步渲染；先同步重建尺寸，再测量仍挂载的节点。
+        rowVirtualizer.getTotalSize();
+        rowVirtualizer.elementsCache.forEach((element) => {
+            if (element.isConnected) rowVirtualizer.measureElement(element);
+        });
+    }, [getVirtualRowKey, rowCount, rowVirtualizer]);
 
     const virtualRows = rowVirtualizer.getVirtualItems();
 

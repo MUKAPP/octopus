@@ -398,13 +398,20 @@ function normalizeMergedLog(log: RelayLog): RelayLog {
     };
 }
 
+// 与后端完成记录的数量上限一致；活动请求独立保留，避免被历史窗口挤掉。
+const maxCompletedLogs = 100;
+
 function mergeRelayLogList(logs: RelayLog[]): RelayLog[] {
     const byID = new Map<number, RelayLog>();
     for (const log of logs) {
         const existing = byID.get(log.id);
         byID.set(log.id, existing ? mergeRelayLog(existing, log) : log);
     }
-    return Array.from(byID.values()).map(normalizeMergedLog).sort((a, b) => b.time - a.time || b.id - a.id);
+    let completedCount = 0;
+    return Array.from(byID.values())
+        .sort((a, b) => b.time - a.time || b.id - a.id)
+        .filter((log) => !isTerminalLogState(getEffectiveLogState(log)) || ++completedCount <= maxCompletedLogs)
+        .map(normalizeMergedLog);
 }
 
 
@@ -762,20 +769,7 @@ export function useLogs(options: { pageSize?: number } = {}) {
     });
 
     const fallbackLogs = useMemo(() => {
-        const pages = logsQuery.data?.pages ?? [];
-        const seen = new Set<number>();
-        const merged: RelayLog[] = [];
-
-        for (const page of pages) {
-            for (const log of page) {
-                if (seen.has(log.id)) continue;
-                seen.add(log.id);
-                merged.push(log);
-            }
-        }
-
-        merged.sort((a, b) => b.time - a.time);
-        return merged;
+        return mergeRelayLogList(logsQuery.data?.pages.flat() ?? []);
     }, [logsQuery.data]);
     const mergedLogs = useMemo(() => {
         if (!overviewUsable) return fallbackLogs;
@@ -789,6 +783,7 @@ export function useLogs(options: { pageSize?: number } = {}) {
         let retryTimer: ReturnType<typeof setTimeout> | null = null;
         let retryAttempt = 0;
         let opened = false;
+        let hiddenAt = document.visibilityState === 'hidden' ? Date.now() : null;
 
         const closeSource = () => {
             if (!source) return;
@@ -865,11 +860,42 @@ export function useLogs(options: { pageSize?: number } = {}) {
             }
         };
 
+        const resumeOverview = () => {
+            if (cancelled || document.visibilityState === 'hidden') return;
+            const wasHiddenLongEnough = hiddenAt !== null && Date.now() - hiddenAt >= 5_000;
+            hiddenAt = null;
+            if (source && source.readyState !== EventSource.CLOSED && !wasHiddenLongEnough) return;
+            if (!opened && retryAttempt >= 3) return;
+            if (retryTimer !== null) {
+                clearTimeout(retryTimer);
+                retryTimer = null;
+            }
+            // 回前台时重建可能已失效的连接，用服务端快照替换断线期间的活动状态。
+            disableOverview();
+            closeSource();
+            void connect();
+        };
+        const handleVisibilityChange = () => {
+            if (document.visibilityState === 'hidden') {
+                hiddenAt = Date.now();
+            } else {
+                resumeOverview();
+            }
+        };
+
         void connect();
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+        window.addEventListener('focus', resumeOverview);
+        window.addEventListener('online', resumeOverview);
+        window.addEventListener('pageshow', resumeOverview);
         return () => {
             cancelled = true;
             if (retryTimer !== null) clearTimeout(retryTimer);
             closeSource();
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
+            window.removeEventListener('focus', resumeOverview);
+            window.removeEventListener('online', resumeOverview);
+            window.removeEventListener('pageshow', resumeOverview);
         };
     }, []);
 
@@ -909,28 +935,25 @@ export function useLogs(options: { pageSize?: number } = {}) {
         queryClient.setQueryData(
             logsInfiniteQueryKey(pageSize),
             (old: InfiniteData<RelayLog[], number> | undefined) => {
-                if (!old) {
-                    const sorted = [...incoming].sort((a, b) => b.time - a.time);
-                    return { pages: [sorted], pageParams: [1] };
-                }
+                const pages = old?.pages ?? [[]];
+                const existingLogs = pages.flat();
+                const retained = mergeRelayLogList([...existingLogs, ...incoming]);
+                const byID = new Map(retained.map((log) => [log.id, log]));
+                const existingIds = new Set(existingLogs.map((log) => log.id));
+                const freshLogs = retained.filter((log) => !existingIds.has(log.id));
 
-                const existingIds = new Set<number>();
-                for (const page of old.pages) {
-                    for (const log of page) {
-                        existingIds.add(log.id);
-                    }
-                }
-
-                const freshLogs = incoming
-                    .filter((log) => !existingIds.has(log.id))
-                    .sort((a, b) => b.time - a.time);
-
-                if (freshLogs.length === 0) return old;
-
-                const firstPage = old.pages[0] ?? [];
+                // 裁剪缓存本身；分页重叠项留在原页，避免短页被误判为历史结束。
                 return {
-                    ...old,
-                    pages: [[...freshLogs, ...firstPage], ...old.pages.slice(1)],
+                    pages: pages.map((page, index) => {
+                        const nextPage: RelayLog[] = index === 0 ? [...freshLogs] : [];
+                        for (const log of page) {
+                            const latest = byID.get(log.id);
+                            if (!latest) continue;
+                            nextPage.push(latest);
+                        }
+                        return nextPage;
+                    }),
+                    pageParams: old?.pageParams ?? [1],
                 };
             }
         );
@@ -996,12 +1019,15 @@ export function useLogs(options: { pageSize?: number } = {}) {
     }, [pageSize, prependLogs]);
 
     useEffect(() => {
-        if (logsQuery.isFetched) {
+        if (logsQuery.isFetched && !overviewUsable) {
             void catchUpLatestLogs();
         }
-    }, [logsQuery.isFetched, catchUpLatestLogs]);
+    }, [logsQuery.isFetched, overviewUsable, catchUpLatestLogs]);
 
     useEffect(() => {
+        // 概览已经包含活动请求与终态更新；旧流会重复推送含正文的记录。
+        if (overviewUsable) return;
+
         let cancelled = false;
         const maxReconnectDelayMs = 30_000;
         // 后台超过该时长后，即使 readyState 仍是 OPEN 也强制重建（避免僵尸连接）
@@ -1022,7 +1048,7 @@ export function useLogs(options: { pageSize?: number } = {}) {
                 eventSourceRef.current.close();
                 eventSourceRef.current = null;
             }
-            setIsConnected(false);
+            if (!overviewUsableRef.current) setIsConnected(false);
             connectingRef.current = false;
         };
 
@@ -1092,6 +1118,7 @@ export function useLogs(options: { pageSize?: number } = {}) {
 
                 eventSource.onmessage = (event) => {
                     try {
+                        if (cancelled || overviewUsableRef.current) return;
                         const log = normalizeRelayLog(JSON.parse(event.data));
                         prependLogs([log]);
                         // 请求结束的日志到达时同步移除进行中条目（active_end 事件丢失时的兜底）
@@ -1232,7 +1259,7 @@ export function useLogs(options: { pageSize?: number } = {}) {
             }
             clearInterval(activeSyncTimer);
         };
-    }, [applyActiveEvent, catchUpLatestLogs, fetchActive, pageSize, prependLogs]);
+    }, [applyActiveEvent, catchUpLatestLogs, fetchActive, overviewUsable, pageSize, prependLogs]);
 
     const clear = useCallback(() => {
         queryClient.removeQueries({ queryKey: logsInfiniteQueryKey(pageSize) });

@@ -276,10 +276,16 @@ func sendLatestRelayLog[T any](ch chan T, value T) {
 }
 
 func notifyRelayLogOverview(snapshot RelayLogOverview) {
-	relayLogStore.RLock()
-	defer relayLogStore.RUnlock()
+	relayLogStore.Lock()
+	defer relayLogStore.Unlock()
 	for ch := range relayLogStore.overviewSubs {
-		sendLatestRelayLog(ch, cloneRelayLogOverview(snapshot))
+		select {
+		case ch <- cloneRelayLogOverview(snapshot):
+		default:
+			// 终态不能静默丢失；关闭慢订阅，让客户端重连并重新获取快照。
+			delete(relayLogStore.overviewSubs, ch)
+			close(ch)
+		}
 	}
 }
 
@@ -378,9 +384,11 @@ func RelayLogStoreSubscribeOverview() chan RelayLogOverview {
 
 func RelayLogStoreUnsubscribeOverview(ch chan RelayLogOverview) {
 	relayLogStore.Lock()
-	delete(relayLogStore.overviewSubs, ch)
-	relayLogStore.Unlock()
-	close(ch)
+	defer relayLogStore.Unlock()
+	if _, exists := relayLogStore.overviewSubs[ch]; exists {
+		delete(relayLogStore.overviewSubs, ch)
+		close(ch)
+	}
 }
 
 // RelayLogStoreSubscribeDetail subscribes to one request's attempt stream.
