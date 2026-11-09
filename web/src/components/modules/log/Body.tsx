@@ -12,7 +12,8 @@ import { useTheme } from '@/provider/theme';
 import { MorphingDialogOverlayLayer, useMorphingDialog } from '@/components/ui/morphing-dialog';
 import { toast } from '@/components/common/Toast';
 import { cn } from '@/lib/utils';
-import { EASING, REDUCED_MOTION_TRANSITION } from '@/lib/animations/fluid-transitions';
+import { copyText } from '@/lib/clipboard';
+import { EASING, REDUCED_MOTION_TRANSITION, SPRING } from '@/lib/animations/fluid-transitions';
 
 /** 树视图默认展开到该层级，更深的节点折叠并可逐个展开。 */
 const initialExpandLevel = 2;
@@ -129,36 +130,10 @@ function LogLossNotice({ preview, truncated }: { preview?: LogContentPreview; tr
 
 type BodyView = 'tree' | 'text';
 
-/**
- * 无 Clipboard API 或被拒绝时的兜底：临时 textarea 承载文本并触发原生复制命令。
- * execCommand 返回 false 或抛错都判定为复制失败，只有明确成功才返回 true。
- * 无论结果如何都在 finally 中移除临时节点并恢复复制按钮焦点，不残留 DOM。
- */
-function copyTextWithExecCommand(text: string, restoreFocus: () => void): boolean {
-    const textarea = document.createElement('textarea');
-    textarea.value = text;
-    document.body.appendChild(textarea);
-    try {
-        textarea.select();
-        return document.execCommand('copy');
-    } catch {
-        return false;
-    } finally {
-        textarea.remove();
-        restoreFocus();
-    }
-}
-
-const imageFileExtensions: Record<string, string> = {
-    'image/png': 'png',
-    'image/jpeg': 'jpg',
-    'image/webp': 'webp',
-    'image/gif': 'gif',
-    'image/avif': 'avif',
-    'image/svg+xml': 'svg',
+const imageFileExtensions: Record<string, string> = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/webp': 'webp', 'image/gif': 'gif', 'image/avif': 'avif', 'image/svg+xml': 'svg',
 };
 
-const imageViewerSpring = { type: 'spring', stiffness: 400, damping: 30 } as const;
+const imageViewerSpring = SPRING.morph;
 
 /** 单张生成图片：独立放大与保存原图，关闭图片不会关闭日志详情。 */
 function GeneratedImage({ src, number }: { src: string; number: number }) {
@@ -360,7 +335,7 @@ function LogImagePreview({ images }: { images: readonly LogResponseImage[] }) {
                 aria-controls={panelId}
                 aria-label={expanded ? t('collapseImages') : t('expandImages')}
                 onClick={() => setExpanded((value) => !value)}
-                className="flex w-full min-w-0 flex-wrap items-center gap-2 px-3 py-2 text-left hover:bg-muted md:px-4"
+                className="focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring flex w-full min-w-0 flex-wrap items-center gap-2 px-3 py-2 text-left hover:bg-muted md:px-4"
             >
                 <span className="min-w-0 text-xs font-medium text-foreground">
                     {t('generatedImages', { count: images.length })}
@@ -446,23 +421,22 @@ export function LogBodyContent({
     const handleCopy = useCallback(async () => {
         if (!content) return;
         try {
-            // 正文可能很大，等待 native 写入真正完成后再标记成功，避免提前勾选。
-            if (!navigator.clipboard?.writeText) throw new Error();
-            await navigator.clipboard.writeText(content);
+            // 正文可能很大，等待写入真正完成后再标记成功；共享实现已同时覆盖 execCommand 兜底。
+            await copyText(content);
         } catch (cause) {
-            // 无 native API 或写入被拒绝时退回 execCommand；仍失败则保留原始失败原因。
-            if (!copyTextWithExecCommand(content, () => copyButtonRef.current?.focus())) {
-                // 复制确实失败：清掉上一次的成功勾选与计时，避免误导。
-                if (copiedTimerRef.current) {
-                    window.clearTimeout(copiedTimerRef.current);
-                    copiedTimerRef.current = null;
-                }
-                setCopied(false);
-                toast.error(copyT('failed'), {
-                    description: cause instanceof Error ? cause.message : String(cause),
-                });
-                return;
+            // 复制确实失败：清掉上一次的成功勾选与计时，避免误导。
+            if (copiedTimerRef.current) {
+                window.clearTimeout(copiedTimerRef.current);
+                copiedTimerRef.current = null;
             }
+            setCopied(false);
+            toast.error(copyT('failed'), {
+                description: cause instanceof Error ? cause.message : String(cause),
+            });
+            return;
+        } finally {
+            // 无论成败都恢复复制按钮焦点，避免焦点落回 body。
+            copyButtonRef.current?.focus();
         }
         setCopied(true);
         toast.success(copyT('success'));
@@ -509,8 +483,7 @@ export function LogBodyContent({
                                 aria-pressed={activeView === 'tree'}
                                 aria-label={t('viewTree')}
                                 onClick={() => setView('tree')}
-                                className={cn(
-                                    'flex items-center gap-1 rounded-md px-1.5 py-1 text-[11px] transition-colors',
+                                className={cn("focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring", 'flex items-center gap-1 rounded-md px-1.5 py-1 text-[11px] transition-colors',
                                     activeView === 'tree'
                                         ? 'bg-primary/10 text-foreground'
                                         : 'text-muted-foreground hover:bg-muted hover:text-foreground',
@@ -524,8 +497,7 @@ export function LogBodyContent({
                                 aria-pressed={activeView === 'text'}
                                 aria-label={t('viewText')}
                                 onClick={() => setView('text')}
-                                className={cn(
-                                    'flex items-center gap-1 rounded-md px-1.5 py-1 text-[11px] transition-colors',
+                                className={cn("focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring", 'flex items-center gap-1 rounded-md px-1.5 py-1 text-[11px] transition-colors',
                                     activeView === 'text'
                                         ? 'bg-primary/10 text-foreground'
                                         : 'text-muted-foreground hover:bg-muted hover:text-foreground',
@@ -544,7 +516,7 @@ export function LogBodyContent({
                                 onClick={() => void handleCopy()}
                                 aria-label={t('copyContent')}
                                 title={t('copyContent')}
-                                className="flex items-center gap-1 rounded-md px-1.5 py-1 text-[11px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                                className="focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring flex items-center gap-1 rounded-md px-1.5 py-1 text-[11px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                             >
                                 <AnimatePresence mode="wait" initial={false}>
                                     {copied ? (
@@ -564,7 +536,7 @@ export function LogBodyContent({
                                 onClick={handleDownload}
                                 aria-label={t('downloadContent')}
                                 title={t('downloadContent')}
-                                className="flex items-center gap-1 rounded-md px-1.5 py-1 text-[11px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                                className="focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring flex items-center gap-1 rounded-md px-1.5 py-1 text-[11px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                             >
                                 <Download className="size-3.5 shrink-0" aria-hidden="true" />
                                 {t('downloadContent')}

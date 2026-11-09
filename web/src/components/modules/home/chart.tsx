@@ -9,6 +9,7 @@ import { AnimatedNumber } from '@/components/common/AnimatedNumber';
 import { Tabs, TabsList, TabsTrigger } from '@/components/animate-ui/components/animate/tabs';
 import { useHomeViewStore, type ChartMetricType, type ChartPeriod } from '@/components/modules/home/store';
 import { Loader2 } from 'lucide-react';
+import { InlineRetry } from '@/components/common/InlineRetry';
 
 export function StatsChart() {
     const PERIODS: readonly ChartPeriod[] = ['1', '7', '30'];
@@ -97,10 +98,7 @@ export function StatsChart() {
 
     const chartConfig = useMemo(() => {
         const dataKey = getChartDataKey(chartMetricType);
-        const labels = {
-            'total_cost': t('totalCost'),
-            'request_count': t('totalRequests'),
-            'total_token': t('totalTokens'),
+        const labels = { 'total_cost': t('totalCost'), 'request_count': t('totalRequests'), 'total_token': t('totalTokens'),
         };
         return {
             [dataKey]: { label: labels[dataKey] },
@@ -108,10 +106,7 @@ export function StatsChart() {
     }, [chartMetricType, t]);
 
     const getPeriodLabel = (p: ChartPeriod) => {
-        const labels = {
-            '1': t('period.today'),
-            '7': t('period.last7Days'),
-            '30': t('period.last30Days'),
+        const labels = { '1': t('period.today'), '7': t('period.last7Days'), '30': t('period.last30Days'),
         };
         return labels[p];
     };
@@ -137,7 +132,7 @@ export function StatsChart() {
     };
     if (activeQuery.isLoading && !hasActiveData) {
         return (
-            <div className="flex h-64 items-center justify-center rounded-3xl border border-card-border bg-card text-muted-foreground custom-shadow">
+            <div className="flex h-64 items-center justify-center rounded-3xl border border-card-border bg-card text-muted-foreground">
                 <Loader2 className="size-8 animate-spin" role="status" aria-label={tHome('feedback.loading')} />
             </div>
         );
@@ -145,23 +140,19 @@ export function StatsChart() {
 
     if (activeQuery.isError && !hasActiveData) {
         return (
-            <div role="alert" className="flex h-64 flex-col items-center justify-center gap-3 rounded-3xl border border-destructive/30 bg-card p-4 text-center text-sm text-muted-foreground custom-shadow">
+            <div role="alert" className="flex h-64 flex-col items-center justify-center gap-3 rounded-3xl border border-destructive/30 bg-card p-4 text-center text-sm text-muted-foreground">
                 <p>{tHome('feedback.loadFailed')}</p>
-                <button type="button" onClick={() => void activeQuery.refetch()} className="rounded-xl border border-border px-3 py-1.5 font-medium text-foreground transition-colors hover:bg-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
-                    {tHome('feedback.retry')}
-                </button>
+                <InlineRetry onRetry={() => void activeQuery.refetch()} label={tHome('feedback.retry')} />
             </div>
         );
     }
 
     return (
-        <div className="rounded-3xl bg-card border-card-border border pt-4 pb-0 text-card-foreground custom-shadow">
+        <div className="rounded-3xl bg-card border-card-border border pt-4 pb-0 text-card-foreground">
             {activeQuery.isError && hasActiveData && (
                 <div role="alert" className="mx-4 mb-2 flex items-center justify-between gap-3 rounded-2xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-muted-foreground">
                     <span>{tHome('feedback.loadFailed')}</span>
-                    <button type="button" onClick={() => void activeQuery.refetch()} className="shrink-0 rounded-xl border border-border px-3 py-1.5 font-medium text-foreground transition-colors hover:bg-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
-                        {tHome('feedback.retry')}
-                    </button>
+                    <InlineRetry onRetry={() => void activeQuery.refetch()} label={tHome('feedback.retry')} className="shrink-0" />
                 </div>
             )}
             <div className="px-4 pb-2 space-y-2">

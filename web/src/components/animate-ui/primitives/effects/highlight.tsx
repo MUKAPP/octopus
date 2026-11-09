@@ -353,12 +353,7 @@ function getNonOverridingDataAttributes(
 
 type ExtendedChildProps = React.ComponentProps<'div'> & {
   id?: string;
-  ref?: React.Ref<HTMLElement>;
-  'data-active'?: string;
-  'data-value'?: string;
-  'data-disabled'?: boolean;
-  'data-highlight'?: boolean;
-  'data-slot'?: string;
+  ref?: React.Ref<HTMLElement>; 'data-active'?: string; 'data-value'?: string; 'data-disabled'?: boolean; 'data-highlight'?: boolean; 'data-slot'?: string;
 };
 
 type HighlightItemProps<T extends React.ElementType = 'div'> =
@@ -479,12 +474,7 @@ function HighlightItem<T extends React.ElementType>({
 
   if (!React.isValidElement(children)) return children;
 
-  const dataAttributes = {
-    'data-active': isActive ? 'true' : 'false',
-    'aria-selected': isActive,
-    'data-disabled': isDisabled,
-    'data-value': childValue,
-    'data-highlight': true,
+  const dataAttributes = { 'data-active': isActive ? 'true' : 'false', 'aria-selected': isActive, 'data-disabled': isDisabled, 'data-value': childValue, 'data-highlight': true,
   };
 
   const commonHandlers = hover
@@ -516,8 +506,7 @@ function HighlightItem<T extends React.ElementType>({
           ref: refCallback,
           className: cn('relative', element.props.className),
           ...getNonOverridingDataAttributes(element, {
-            ...dataAttributes,
-            'data-slot': 'motion-highlight-item-container',
+            ...dataAttributes, 'data-slot': 'motion-highlight-item-container',
           }),
           ...commonHandlers,
           ...props,
@@ -556,8 +545,7 @@ function HighlightItem<T extends React.ElementType>({
     return React.cloneElement(element, {
       ref: refCallback,
       ...getNonOverridingDataAttributes(element, {
-        ...dataAttributes,
-        'data-slot': 'motion-highlight-item',
+        ...dataAttributes, 'data-slot': 'motion-highlight-item',
       }),
       ...commonHandlers,
     });
@@ -597,8 +585,7 @@ function HighlightItem<T extends React.ElementType>({
         style: { position: 'relative', zIndex: 1 },
         className: element.props.className,
         ...getNonOverridingDataAttributes(element, {
-          ...dataAttributes,
-          'data-slot': 'motion-highlight-item',
+          ...dataAttributes, 'data-slot': 'motion-highlight-item',
         }),
       })}
     </Component>

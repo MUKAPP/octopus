@@ -28,6 +28,34 @@ export const SPRING = {
         damping: 15,
         mass: 1,
     },
+    /**
+     * 形变共享布局（layoutId morph）的统一参数。
+     * 改前这组数值在 7 个文件里以字面量重复了 11 次，
+     * 调用方应引用本项，避免各弹层手感漂移。
+     */
+    morph: {
+        type: "spring" as const,
+        stiffness: 400,
+        damping: 30,
+    },
+    /**
+     * 列表项进出场（如 API 密钥行）。比 morph 更硬，用于小尺寸元素的快速落位。
+     */
+    listItem: {
+        type: "spring" as const,
+        stiffness: 500,
+        damping: 30,
+    },
+} as const;
+
+/**
+ * 统一的时长档位，与 globals.css 的 --duration-* 对应：
+ * overlay 用于 tooltip/popover/select 等小浮层，panel 用于弹层外壳，page 用于页面过渡。
+ */
+export const DURATION = {
+    overlay: 0.16,
+    panel: 0.2,
+    page: 0.3,
 } as const;
 
 /**
@@ -57,7 +85,7 @@ export const ENTRANCE_VARIANTS = {
             scale: 1,
             opacity: 1,
             transition: {
-                duration: 0.5,
+                duration: DURATION.page,
                 ease: EASING.easeOutExpo,
                 delay: 0.1,
             },
@@ -75,7 +103,7 @@ export const ENTRANCE_VARIANTS = {
             opacity: 1,
             filter: "blur(0px)",
             transition: {
-                duration: 0.5,
+                duration: DURATION.page,
                 ease: EASING.easeOutExpo,
                 delay: 0.1,
             },

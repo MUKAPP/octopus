@@ -5,8 +5,7 @@ import { cn } from '@/lib/utils';
 type AnyProps = Record<string, unknown>;
 
 type DOMMotionProps<T extends HTMLElement = HTMLElement> = Omit<
-  HTMLMotionProps<keyof HTMLElementTagNameMap>,
-  'ref'
+  HTMLMotionProps<keyof HTMLElementTagNameMap>, 'ref'
 > & { ref?: React.Ref<T> };
 
 type WithAsChild<Base extends object> =

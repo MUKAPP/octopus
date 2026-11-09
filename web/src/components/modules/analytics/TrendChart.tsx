@@ -8,6 +8,7 @@ import { Loader2, TrendingUp } from 'lucide-react';
 import type { UseQueryResult } from '@tanstack/react-query';
 import type { AnalyticsMetricsFormatted, AnalyticsResponseFormatted } from '@/api/endpoints/analytics';
 import { useAnalyticsViewStore, type AnalyticsChartMetric } from './store';
+import { InlineRetry } from '@/components/common/InlineRetry';
 
 interface TrendChartProps {
     query: UseQueryResult<AnalyticsResponseFormatted>;
@@ -45,12 +46,12 @@ export function TrendChart({ query }: TrendChartProps) {
         return (
             <div role="alert" className="flex h-64 flex-col items-center justify-center gap-3 rounded-3xl border border-destructive/30 bg-card p-4 text-center text-sm text-muted-foreground">
                 <p>{tFeedback('loadFailed')}</p>
-                <button type="button" onClick={() => void query.refetch()} className="rounded-xl border border-border px-3 py-1.5 font-medium text-foreground focus-visible:outline-2 focus-visible:outline-ring">{tFeedback('retry')}</button>
+                <InlineRetry onRetry={() => void query.refetch()} label={tFeedback('retry')} />
             </div>
         );
     }
     return (
-        <section className="rounded-3xl border border-card-border bg-card pt-4 pb-2 text-card-foreground custom-shadow">
+        <section className="rounded-3xl border border-card-border bg-card pt-4 pb-2 text-card-foreground">
             {query.isError && data && <p role="alert" className="px-4 pb-2 text-sm text-destructive">{tFeedback('loadFailed')}</p>}
             <div className="flex flex-wrap items-center justify-between gap-3 px-4 pb-3">
                 <h3 className="text-base font-semibold">{t('title')}</h3>
@@ -62,7 +63,7 @@ export function TrendChart({ query }: TrendChartProps) {
                 </Select>
             </div>
             {chartData.length === 0 ? (
-                <div className="flex h-40 flex-col items-center justify-center gap-3 text-muted-foreground"><TrendingUp className="size-12 opacity-30" /><p className="text-sm">{t('empty')}</p></div>
+                <div className="flex h-40 flex-col items-center justify-center gap-3 text-muted-foreground"><TrendingUp className="size-10 opacity-40" aria-hidden="true" /><p className="text-sm">{t('empty')}</p></div>
             ) : (
                 <ChartContainer config={config} className="h-48 w-full">
                     <AreaChart accessibilityLayer data={chartData} margin={{ left: 4, right: 16 }}>

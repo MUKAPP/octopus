@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect, useRef } from 'react';
 import { Clock, Cpu, Zap, ArrowDownToLine, ArrowUpFromLine, DollarSign, ArrowRight, ArrowDown, Send, MessageSquare, Loader2, RotateCw, Pin, KeyRound, Gauge, Square, ChevronDown } from 'lucide-react';
-import { useTranslations } from 'use-intl';
+import { useLocale, useTranslations } from 'use-intl';
 import { type RelayLog, type ChannelAttempt, useLogDetailStream, useLogRequestBody, useLogResponseBody, useStopAttempt } from '@/api/endpoints/log';
 import { getModelIcon } from '@/lib/model-icons';
 import { formatDuration } from './format';
@@ -21,9 +21,13 @@ import {
 } from '@/components/ui/morphing-dialog';
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/animate-ui/components/animate/tooltip';
 
-function formatTime(timestamp: number): string {
+/**
+ * 时间与数值格式统一交给调用方传入的界面 locale。
+ * 改前这里固定 'zh-CN'，英文界面下时间与数字仍按中文区域渲染。
+ */
+function formatTime(timestamp: number, locale: string): string {
     const date = new Date(timestamp * 1000);
-    return date.toLocaleTimeString('zh-CN', {
+    return date.toLocaleTimeString(locale, {
         hour: '2-digit',
         minute: '2-digit',
         second: '2-digit',
@@ -32,12 +36,12 @@ function formatTime(timestamp: number): string {
 }
 
 /** 尝试的服务端开始时刻（Unix 毫秒）；缺失、零值或非法值显示占位符。 */
-function formatAttemptStartedAt(timestampMs?: number): string {
+function formatAttemptStartedAt(timestampMs: number | undefined, locale: string): string {
     const placeholder = '--:--:--.---';
     if (timestampMs === undefined || !Number.isFinite(timestampMs) || timestampMs === 0) return placeholder;
     const date = new Date(timestampMs);
     if (Number.isNaN(date.getTime())) return placeholder;
-    return date.toLocaleTimeString('zh-CN', {
+    return date.toLocaleTimeString(locale, {
         hour: '2-digit',
         minute: '2-digit',
         second: '2-digit',
@@ -46,19 +50,26 @@ function formatAttemptStartedAt(timestampMs?: number): string {
     });
 }
 
-function formatRateMultiplier(rate: number): string {
-    return rate >= 0 ? rate.toLocaleString('zh-CN', { maximumFractionDigits: 4 }) : '';
+function formatRateMultiplier(rate: number, locale: string): string {
+    return rate >= 0 ? rate.toLocaleString(locale, { maximumFractionDigits: 4 }) : '';
 }
 
-function formatCacheRate(cachedTokens: number | undefined, inputTokens: number): string {
+function formatCacheRate(cachedTokens: number | undefined, inputTokens: number, locale: string): string {
     if (cachedTokens === undefined || inputTokens <= 0) return '—';
-    return `${((cachedTokens / inputTokens) * 100).toLocaleString('zh-CN', { maximumFractionDigits: 2 })}%`;
+    return `${((cachedTokens / inputTokens) * 100).toLocaleString(locale, { maximumFractionDigits: 2 })}%`;
 }
 
-function formatOutputSpeed(outputTokens: number, totalTime: number, firstTokenTime: number): string {
+function formatOutputSpeed(
+    outputTokens: number,
+    totalTime: number,
+    firstTokenTime: number,
+    locale: string,
+    perSecondUnit: string,
+): string {
     const generationTime = totalTime - firstTokenTime;
     if (generationTime <= 0) return '—';
-    return `${((outputTokens * 1000) / generationTime).toLocaleString('zh-CN', { maximumFractionDigits: 2 })} tokens/s`;
+    const value = ((outputTokens * 1000) / generationTime).toLocaleString(locale, { maximumFractionDigits: 2 });
+    return `${value} ${perSecondUnit}`;
 }
 function getAttemptOrder(attempt: ChannelAttempt): number {
     const order = attempt.attempt_index ?? attempt.attempt_num;
@@ -190,6 +201,7 @@ interface RetryBadgeWithTooltipProps {
 function RetryBadgeWithTooltip({ channelName, brandColor, rateMultiplier, attempts }: RetryBadgeWithTooltipProps) {
     const t = useTranslations('log.card');
     const statusT = useTranslations('log.status');
+    const locale = useLocale();
 
     return (
         <Tooltip>
@@ -201,8 +213,8 @@ function RetryBadgeWithTooltip({ channelName, brandColor, rateMultiplier, attemp
                 >
                     <RotateCw className="mr-1 size-3 shrink-0 translate-y-px opacity-80" />
                     <span className="min-w-0 break-words">{channelName}</span>
-                    {formatRateMultiplier(rateMultiplier) && (
-                        <span className="ml-1 shrink-0 opacity-80">x{formatRateMultiplier(rateMultiplier)}</span>
+                    {formatRateMultiplier(rateMultiplier, locale) && (
+                        <span className="ml-1 shrink-0 opacity-80">x{formatRateMultiplier(rateMultiplier, locale)}</span>
                     )}
                 </Badge>
             </TooltipTrigger>
@@ -221,14 +233,14 @@ function RetryBadgeWithTooltip({ channelName, brandColor, rateMultiplier, attemp
                                 <div className="flex min-w-0 flex-1 flex-col">
                                     <span className="truncate text-xs font-semibold text-foreground">
                                         {attempt.channel_name}
-                                        {formatRateMultiplier(attempt.rate_multiplier) && (
-                                            <span className="ml-1 font-normal opacity-80">({t('rateMultiplier')} {formatRateMultiplier(attempt.rate_multiplier)})</span>
+                                        {formatRateMultiplier(attempt.rate_multiplier, locale) && (
+                                            <span className="ml-1 font-normal opacity-80">({t('rateMultiplier')} {formatRateMultiplier(attempt.rate_multiplier, locale)})</span>
                                         )}
                                     </span>
                                     <ChannelKeyLabel attempt={attempt} />
                                     <div className="flex min-w-0 flex-wrap items-center gap-x-1 gap-y-1 text-[10px] tabular-nums text-muted-foreground">
                                         <span className="min-w-0 break-words">{attempt.model_name} • {formatDuration(attempt.duration)} •{' '}
-                                            <span className="shrink-0 whitespace-nowrap tabular-nums">{formatAttemptStartedAt(attempt.started_at_ms)}</span>
+                                            <span className="shrink-0 whitespace-nowrap tabular-nums">{formatAttemptStartedAt(attempt.started_at_ms, locale)}</span>
                                         </span>
                                         {(attempt.status === 'failed' || attempt.status === 'canceled') && <UpstreamStatusBadge code={attempt.upstream_status_code} />}
                                     </div>
@@ -250,14 +262,15 @@ function RetryBadgeWithTooltip({ channelName, brandColor, rateMultiplier, attemp
 
 function LogMetrics({ log, brandColor, totalTime = log.use_time }: { log: RelayLog; brandColor: string; totalTime?: number }) {
     const t = useTranslations('log.card');
+    const locale = useLocale();
     const requestAPIKeyName = log.request_api_key_name?.trim() ?? '';
-    const timeLabel = formatTime(log.time);
+    const timeLabel = formatTime(log.time, locale);
     const firstTokenLabel = `${t('firstTokenTime')}: ${formatDuration(log.ftut)}`;
     const totalTimeLabel = `${t('totalTime')}: ${formatDuration(totalTime)}`;
-    const speedLabel = `${t('outputSpeed')}: ${formatOutputSpeed(log.output_tokens, totalTime, log.ftut)}`;
-    const cacheRateLabel = `${t('cacheRate')}: ${formatCacheRate(log.cached_tokens, log.input_tokens)}`;
+    const speedLabel = `${t('outputSpeed')}: ${formatOutputSpeed(log.output_tokens, totalTime, log.ftut, locale, t('tokensPerSecondUnit'))}`;
+    const cacheRateLabel = `${t('cacheRate')}: ${formatCacheRate(log.cached_tokens, log.input_tokens, locale)}`;
     const costLabel = `${t('cost')}: ${Number(log.cost).toFixed(6)}`;
-    const rateLabel = `x${formatRateMultiplier(log.rate_multiplier)}`;
+    const rateLabel = `x${formatRateMultiplier(log.rate_multiplier, locale)}`;
 
     return (
         <div className="mt-auto grid w-full shrink-0 grid-cols-2 gap-x-3 gap-y-2 pt-4 text-xs leading-5 text-muted-foreground sm:grid-cols-3 lg:grid-cols-5 [&_svg]:translate-y-px">
@@ -305,6 +318,7 @@ function LogMetrics({ log, brandColor, totalTime = log.use_time }: { log: RelayL
 function LiveOverviewDetails({ log, brandColor }: { log: RelayLog; brandColor: string }) {
     const t = useTranslations('log.card');
     const statusT = useTranslations('log.status');
+    const locale = useLocale();
     const { isOpen } = useMorphingDialog();
     const detail = useLogDetailStream(log.id, log.state, isOpen);
     const stopAttempt = useStopAttempt();
@@ -455,11 +469,11 @@ function LiveOverviewDetails({ log, brandColor }: { log: RelayLog; brandColor: s
                                                     {attempt.sticky && <Pin className="size-3.5 shrink-0 text-amber-500" />}
                                                     {attempt.status === 'running' && <Loader2 className="size-3.5 shrink-0 animate-spin text-muted-foreground" />}
                                                     {attempt.duration > 0 && <span className="shrink-0 tabular-nums text-muted-foreground">{formatDuration(attempt.duration)}</span>}
-                                                    <span className="shrink-0 tabular-nums text-muted-foreground">{formatAttemptStartedAt(attempt.started_at_ms)}</span>
+                                                    <span className="shrink-0 tabular-nums text-muted-foreground">{formatAttemptStartedAt(attempt.started_at_ms, locale)}</span>
                                                 </div>
                                                 {attempt.model_name && <span className="min-w-0 break-words pl-0.5 text-[11px] text-muted-foreground">{attempt.model_name}</span>}
                                                 <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1 pl-0.5 text-[11px] text-muted-foreground">
-                                                    {attempt.rate_multiplier >= 0 && <span className="shrink-0">x{formatRateMultiplier(attempt.rate_multiplier)}</span>}
+                                                    {attempt.rate_multiplier >= 0 && <span className="shrink-0">x{formatRateMultiplier(attempt.rate_multiplier, locale)}</span>}
                                                     {attempt.msg && <span className="min-w-0 basis-full whitespace-pre-wrap break-words text-destructive/90">{attempt.msg}</span>}
                                                 </div>
                                             </button>
@@ -519,9 +533,9 @@ function LiveOverviewDetails({ log, brandColor }: { log: RelayLog; brandColor: s
                                 <span className="shrink-0 font-mono text-muted-foreground">{t('attemptNumber', { number: getAttemptDisplayNumber(selectedAttempt) })}</span>
                                 <ChannelKeyLabel attempt={selectedAttempt} />
                                 {selectedAttempt.model_name && <span className="min-w-0 max-w-full break-words text-muted-foreground">{selectedAttempt.model_name}</span>}
-                                {selectedAttempt.rate_multiplier >= 0 && <span className="shrink-0 text-muted-foreground">x{formatRateMultiplier(selectedAttempt.rate_multiplier)}</span>}
+                                {selectedAttempt.rate_multiplier >= 0 && <span className="shrink-0 text-muted-foreground">x{formatRateMultiplier(selectedAttempt.rate_multiplier, locale)}</span>}
                                 {selectedAttempt.duration > 0 && <span className="shrink-0 tabular-nums text-muted-foreground">{formatDuration(selectedAttempt.duration)}</span>}
-                                <span className="shrink-0 tabular-nums text-muted-foreground">{formatAttemptStartedAt(selectedAttempt.started_at_ms)}</span>
+                                <span className="shrink-0 tabular-nums text-muted-foreground">{formatAttemptStartedAt(selectedAttempt.started_at_ms, locale)}</span>
                             </div>
                             <div className="min-h-0 md:flex-1">
                                 {selectedError && <div className="relative border-b border-destructive/20 bg-destructive/5 p-3"><CopyIconButton text={selectedError} className="absolute right-2 top-2 rounded-md p-1 text-destructive/60 transition-colors hover:bg-destructive/10 hover:text-destructive" copyIconClassName="size-4" checkIconClassName="size-4" /><p className="whitespace-pre-wrap wrap-break-word pr-8 text-sm leading-relaxed text-destructive">{selectedError}</p></div>}
@@ -573,6 +587,7 @@ function LegacyResponseBody({ log }: { log: RelayLog }) {
 
 export function LogCard({ log }: { log: RelayLog }) {
     const t = useTranslations('log.card');
+    const locale = useLocale();
     const liveDuration = useLiveLogDuration(log);
     const { Icon: ModelIcon, className: iconClassName, color: brandColor } = useMemo(
         () => getModelIcon(log.actual_model_name),
@@ -630,8 +645,8 @@ export function LogCard({ log }: { log: RelayLog }) {
                                         style={{ backgroundColor: `${brandColor}15`, color: brandColor }}
                                     >
                                         <span className="min-w-0 break-words">{log.channel_name}</span>
-                                        {log.channel > 0 && formatRateMultiplier(log.rate_multiplier) && (
-                                            <span className="ml-1 shrink-0 opacity-80">x{formatRateMultiplier(log.rate_multiplier)}</span>
+                                        {log.channel > 0 && formatRateMultiplier(log.rate_multiplier, locale) && (
+                                            <span className="ml-1 shrink-0 opacity-80">x{formatRateMultiplier(log.rate_multiplier, locale)}</span>
                                         )}
                                     </Badge>
                                 )}
@@ -653,7 +668,7 @@ export function LogCard({ log }: { log: RelayLog }) {
                             <div className="grid grid-cols-2 gap-x-3 gap-y-2 text-xs leading-5 tabular-nums text-muted-foreground sm:grid-cols-3 lg:grid-cols-5 [&_svg]:translate-y-px">
                                 <div className="flex min-w-0 items-center gap-1.5">
                                     <Clock className="size-3.5 shrink-0" style={{ color: brandColor }} />
-                                    <span className="min-w-0 truncate" title={formatTime(log.time)}>{formatTime(log.time)}</span>
+                                    <span className="min-w-0 truncate" title={formatTime(log.time, locale)}>{formatTime(log.time, locale)}</span>
                                 </div>
                                 {requestAPIKeyName && (
                                     <div className="flex min-w-0 items-center gap-1.5">
@@ -683,11 +698,11 @@ export function LogCard({ log }: { log: RelayLog }) {
                                 </div>
                                 <div className="flex min-w-0 items-center gap-1.5">
                                     <ArrowDownToLine className="size-3.5 shrink-0 text-cyan-500" />
-                                    <span className="min-w-0 truncate" title={`${t('cacheRate')} ${formatCacheRate(log.cached_tokens, log.input_tokens)}`}>{t('cacheRate')} {formatCacheRate(log.cached_tokens, log.input_tokens)}</span>
+                                    <span className="min-w-0 truncate" title={`${t('cacheRate')} ${formatCacheRate(log.cached_tokens, log.input_tokens, locale)}`}>{t('cacheRate')} {formatCacheRate(log.cached_tokens, log.input_tokens, locale)}</span>
                                 </div>
                                 <div className="flex min-w-0 items-center gap-1.5">
                                     <Gauge className="size-3.5 shrink-0 text-rose-500" />
-                                    <span className="min-w-0 truncate" title={`${t('outputSpeed')} ${formatOutputSpeed(log.output_tokens, liveDuration, log.ftut)}`}>{t('outputSpeed')} {formatOutputSpeed(log.output_tokens, liveDuration, log.ftut)}</span>
+                                    <span className="min-w-0 truncate" title={`${t('outputSpeed')} ${formatOutputSpeed(log.output_tokens, liveDuration, log.ftut, locale, t('tokensPerSecondUnit'))}`}>{t('outputSpeed')} {formatOutputSpeed(log.output_tokens, liveDuration, log.ftut, locale, t('tokensPerSecondUnit'))}</span>
                                 </div>
                                 <div className="flex min-w-0 items-center gap-1.5">
                                     <DollarSign className="size-3.5 shrink-0 text-emerald-500" />
@@ -724,8 +739,8 @@ export function LogCard({ log }: { log: RelayLog }) {
                                     style={{ backgroundColor: `${brandColor}15`, color: brandColor }}
                                 >
                                     <span className="min-w-0 break-words">{log.channel_name}</span>
-                                    {log.channel > 0 && formatRateMultiplier(log.rate_multiplier) && (
-                                        <span className="ml-1 shrink-0 opacity-80">({t('rateMultiplier')} {formatRateMultiplier(log.rate_multiplier)})</span>
+                                    {log.channel > 0 && formatRateMultiplier(log.rate_multiplier, locale) && (
+                                        <span className="ml-1 shrink-0 opacity-80">({t('rateMultiplier')} {formatRateMultiplier(log.rate_multiplier, locale)})</span>
                                     )}
                                 </Badge>
                             )}
@@ -803,9 +818,9 @@ export function LogCard({ log }: { log: RelayLog }) {
                                                                     <ChannelKeyLabel attempt={attempt} />
                                                                     {attempt.model_name && <span className="min-w-0 max-w-full break-words text-muted-foreground">({attempt.model_name})</span>}
                                                                     {attempt.sticky && <Pin className="size-3.5 shrink-0 text-amber-500" />}
-                                                                    {attempt.rate_multiplier >= 0 && <span className="shrink-0 text-muted-foreground">x{formatRateMultiplier(attempt.rate_multiplier)}</span>}
+                                                                    {attempt.rate_multiplier >= 0 && <span className="shrink-0 text-muted-foreground">x{formatRateMultiplier(attempt.rate_multiplier, locale)}</span>}
                                                                     {attempt.duration > 0 && <span className="shrink-0 tabular-nums text-muted-foreground">{formatDuration(attempt.duration)}</span>}
-                                                                    <span className="shrink-0 tabular-nums text-muted-foreground">{formatAttemptStartedAt(attempt.started_at_ms)}</span>
+                                                                    <span className="shrink-0 tabular-nums text-muted-foreground">{formatAttemptStartedAt(attempt.started_at_ms, locale)}</span>
                                                                 </div>
                                                                 {attempt.msg && (
                                                                     <div className="whitespace-pre-wrap wrap-break-word border-l-2 border-destructive/30 pl-2 text-[11px] leading-relaxed text-destructive/90">

@@ -20,6 +20,14 @@ const intlLocales: Record<Locale, string> = {
     en: 'en',
 };
 
+// 同步 <html lang>：索引页固定写死 zh-CN，切换语言后若不同步，
+// 屏幕阅读器发音与浏览器翻译都会按中文处理。
+const documentLangs: Record<Locale, string> = {
+    zh_hans: 'zh-CN',
+    zh_hant: 'zh-Hant',
+    en: 'en',
+};
+
 export function LocaleProvider({ children }: { children: ReactNode }) {
     const { locale } = useSettingStore();
     const [currentLocale, setCurrentLocale] = useState<Locale>('zh_hans');
@@ -27,6 +35,10 @@ export function LocaleProvider({ children }: { children: ReactNode }) {
     useEffect(() => {
         setCurrentLocale(locale);
     }, [locale]);
+
+    useEffect(() => {
+        document.documentElement.lang = documentLangs[currentLocale];
+    }, [currentLocale]);
 
     return (
         <IntlProvider

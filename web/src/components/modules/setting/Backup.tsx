@@ -68,12 +68,20 @@ export function SettingBackup() {
 
                 <div className="flex items-center justify-between gap-4">
                     <div className="text-sm text-muted-foreground">{t('backup.export.includeLogs')}</div>
-                    <Switch checked={includeLogs} onCheckedChange={setIncludeLogs} />
+                    <Switch
+                        checked={includeLogs}
+                        onCheckedChange={setIncludeLogs}
+                        aria-label={t('backup.export.includeLogs')}
+                    />
                 </div>
 
                 <div className="flex items-center justify-between gap-4">
                     <div className="text-sm text-muted-foreground">{t('backup.export.includeStats')}</div>
-                    <Switch checked={includeStats} onCheckedChange={setIncludeStats} />
+                    <Switch
+                        checked={includeStats}
+                        onCheckedChange={setIncludeStats}
+                        aria-label={t('backup.export.includeStats')}
+                    />
                 </div>
 
                 <Button

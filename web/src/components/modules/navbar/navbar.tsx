@@ -1,11 +1,11 @@
 import { useRef, useState, type CSSProperties } from 'react';
-import { motion } from 'motion/react';
+import { motion, useReducedMotion } from 'motion/react';
 import { flushSync } from 'react-dom';
 import { cn } from '@/lib/utils';
 import { useNavStore, type NavItem } from "@/components/modules/navbar"
 import { ROUTES } from "@/route/config"
 import { usePreload } from "@/route/use-preload"
-import { ENTRANCE_VARIANTS } from "@/lib/animations/fluid-transitions"
+import { DURATION, ENTRANCE_VARIANTS, REDUCED_MOTION_TRANSITION } from "@/lib/animations/fluid-transitions"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/animate-ui/components/animate/tooltip"
 import { useTranslations } from "use-intl"
 import { useIsMobile } from "@/hooks/use-mobile"
@@ -15,6 +15,8 @@ export function NavBar() {
     const { preload } = usePreload();
     const t = useTranslations('navbar');
     const isMobile = useIsMobile();
+    // 减少动态效果时取消逐项 stagger 与按压缩放，保留纯透明度过渡。
+    const shouldReduceMotion = useReducedMotion() ?? false;
     const activeIndex = ROUTES.findIndex((route) => route.id === activeItem);
     const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
     const [isNavHovered, setIsNavHovered] = useState(false);
@@ -28,7 +30,6 @@ export function NavBar() {
                     "fixed bottom-[calc(1.5rem+var(--safe-area-bottom))] left-1/2 isolate -translate-x-1/2 flex items-center gap-1 p-3",
                     "md:sticky md:top-30 md:left-auto md:bottom-auto md:translate-x-0 md:flex-col md:gap-3",
                     "bg-sidebar text-sidebar-foreground border border-sidebar-border rounded-3xl",
-                    "custom-shadow"
                 )}
                 variants={ENTRANCE_VARIANTS.navbar}
                 initial="initial"
@@ -92,16 +93,18 @@ export function NavBar() {
                                         "relative z-20 flex size-10 items-center justify-center rounded-2xl p-2 transition-[color,scale] duration-150 ease-linear hover:z-30 hover:scale-110 active:scale-95 md:size-12 md:p-3",
                                         isActive ? "text-sidebar-primary-foreground" : "text-sidebar-foreground/60"
                                     )}
-                                    initial={{ opacity: 0, scale: 0.8 }}
+                                    initial={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.8 }}
                                     animate={{
                                         opacity: 1,
                                         scale: 1,
-                                        transition: {
-                                            delay: index * 0.05,
-                                            duration: 0.3,
-                                        }
+                                        transition: shouldReduceMotion
+                                            ? REDUCED_MOTION_TRANSITION
+                                            : {
+                                                delay: index * 0.05,
+                                                duration: DURATION.page,
+                                            }
                                     }}
-                                    whileTap={{ scale: 0.95 }}
+                                    whileTap={shouldReduceMotion ? undefined : { scale: 0.95 }}
                                 >
                                     <span className="relative z-10">
                                         <route.icon strokeWidth={2} aria-hidden="true" />

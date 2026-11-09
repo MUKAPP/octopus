@@ -7,14 +7,15 @@ import {
     useState,
 } from 'react';
 import { Loader2 } from 'lucide-react';
+import { useTranslations } from 'use-intl';
 import { useVirtualizer } from '@tanstack/react-virtual';
 
 const BREAKPOINTS = {
     sm: 640,
     md: 768,
-    lg: 960,
-    xl: 1280,
-    '2xl': 1536,
+    // 与 Tailwind 默认 lg 断点保持一致：改前写 960，会导致列数切换早于周边布局变化。
+    lg: 1024,
+    xl: 1280, '2xl': 1536,
 } as const;
 
 type Breakpoint = keyof typeof BREAKPOINTS;
@@ -64,8 +65,9 @@ export function VirtualizedGrid<T>({
     onReachEnd,
     reachEndEnabled = false,
     reachEndOffset = 1,
-}: VirtualizedGridProps<T>) {
-    'use no memo';
+}: VirtualizedGridProps<T>) { 'use no memo';
+
+    const t = useTranslations('common');
 
     const [containerWidth, setContainerWidth] = useState(() =>
         typeof window === 'undefined' ? 1024 : window.innerWidth
@@ -179,7 +181,7 @@ export function VirtualizedGrid<T>({
             >
                 {isLoading && items.length === 0 ? (
                     <div className="flex min-h-full items-center justify-center px-4 pb-nav-clearance md:pb-[calc(1rem+var(--safe-area-bottom))]">
-                        <Loader2 className="size-8 animate-spin text-muted-foreground" role="status" aria-label="加载中" />
+                        <Loader2 className="size-8 animate-spin text-muted-foreground" role="status" aria-label={t('loading')} />
                     </div>
                 ) : rowCount === 0 ? (
                     <div className="flex min-h-full items-center justify-center px-4 pb-nav-clearance md:pb-[calc(1rem+var(--safe-area-bottom))]">

@@ -14,6 +14,7 @@ import type { LLMChannel } from '@/api/model';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/animate-ui/components/animate/tooltip';
 import { Button } from '@/components/ui/button';
 import { useTranslations } from 'use-intl';
+import { SPRING } from '@/lib/animations/fluid-transitions';
 
 export interface SelectedMember extends LLMChannel {
     id: string;
@@ -91,21 +92,18 @@ function MemberItem({
                 ...(isDragging ? { zIndex: 50, boxShadow: '0 8px 32px rgba(0,0,0,0.15)' } : null),
             }}
         >
-            <div className={cn(
-                'flex items-center gap-2 rounded-lg bg-background border border-border/50 px-2.5 py-2 select-none transition-opacity duration-200 relative overflow-hidden',
+            <div className={cn( 'flex items-center gap-2 rounded-lg bg-background border border-border/50 px-2.5 py-2 select-none transition-opacity duration-200 relative overflow-hidden',
                 isRemoving && 'opacity-0',
                 isDisabled && 'opacity-60 grayscale'
             )}>
-                <span className={cn(
-                    'size-5 rounded-md text-xs font-bold grid place-items-center shrink-0',
+                <span className={cn( 'size-5 rounded-md text-xs font-bold grid place-items-center shrink-0',
                     isDisabled ? 'bg-muted text-muted-foreground' : 'bg-primary/10 text-primary'
                 )}>
                     {index + 1}
                 </span>
 
                 <div
-                    className={cn(
-                        'p-0.5 rounded touch-none transition-colors',
+                    className={cn( 'p-0.5 rounded touch-none transition-colors',
                         isDisabled
                             ? 'cursor-grab active:cursor-grabbing hover:bg-muted/60'
                             : 'cursor-grab active:cursor-grabbing hover:bg-muted'
@@ -122,8 +120,7 @@ function MemberItem({
 
                 <div className="flex flex-col min-w-0 flex-1">
                     <Tooltip side="top" sideOffset={10} align="start">
-                        <TooltipTrigger className={cn(
-                            'text-sm font-medium truncate leading-tight',
+                        <TooltipTrigger className={cn( 'text-sm font-medium truncate leading-tight',
                             isDisabled && 'text-muted-foreground'
                         )}>
                             {member.name}
@@ -145,8 +142,7 @@ function MemberItem({
                         min={1}
                         value={member.weight ?? 1}
                         onChange={(e) => onWeightChange?.(member.id, Math.max(1, parseInt(e.target.value) || 1))}
-                        className={cn(
-                            'w-12 h-6 text-xs text-center rounded border border-border bg-muted/50 focus:outline-none focus:ring-1 focus:ring-primary',
+                        className={cn( 'w-12 h-6 text-xs text-center rounded border border-border bg-muted/50 focus:outline-none focus:ring-1 focus:ring-primary',
                             isDisabled && 'text-muted-foreground'
                         )}
                     />
@@ -201,19 +197,19 @@ function MemberItem({
                         <motion.div
                             layoutId={`delete-btn-member-${layoutScope ?? 'default'}-${member.id}`}
                             className="absolute inset-0 flex items-center justify-center gap-2 bg-destructive p-1.5 rounded-lg"
-                            transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+                            transition={SPRING.morph}
                         >
                             <button
                                 type="button"
                                 onClick={() => setConfirmDelete(false)}
-                                className="flex h-6 w-6 items-center justify-center rounded-md bg-destructive-foreground/20 text-destructive-foreground transition-all hover:bg-destructive-foreground/30 active:scale-95"
+                                className="focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring flex h-6 w-6 items-center justify-center rounded-md bg-destructive-foreground/20 text-destructive-foreground transition-all hover:bg-destructive-foreground/30 active:scale-95"
                             >
                                 <X className="h-3 w-3" />
                             </button>
                             <button
                                 type="button"
                                 onClick={() => onRemove(member.id)}
-                                className="flex-1 h-6 flex items-center justify-center gap-1.5 rounded-md bg-destructive-foreground text-destructive text-xs font-semibold transition-all hover:bg-destructive-foreground/90 active:scale-[0.98]"
+                                className="focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring flex-1 h-6 flex items-center justify-center gap-1.5 rounded-md bg-destructive-foreground text-destructive text-xs font-semibold transition-all hover:bg-destructive-foreground/90 active:scale-[0.98]"
                             >
                                 <Trash2 className="h-3 w-3" />
                             </button>
@@ -307,7 +303,9 @@ export function MemberList({
             requestAnimationFrame(() => {
                 const el = scrollContainerRef.current;
                 if (!el) return;
-                el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
+                // 系统开启「减少动态效果」时直接跳到目标位置，不做平滑滚动。
+                const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+                el.scrollTo({ top: el.scrollHeight, behavior: reduceMotion ? 'auto' : 'smooth' });
             });
         }
 
@@ -332,19 +330,16 @@ export function MemberList({
     return (
         <div className="relative h-full min-h-0">
             <div
-                className={cn(
-                    'absolute inset-0 flex flex-col items-center justify-center gap-2 text-muted-foreground',
-                    'transition-opacity duration-200 ease-out',
+                className={cn( 'absolute inset-0 flex flex-col items-center justify-center gap-2 text-muted-foreground', 'transition-opacity duration-200 ease-out',
                     isEmpty ? 'opacity-100' : 'opacity-0 pointer-events-none'
                 )}
             >
-                <Layers className="size-10 opacity-40" />
+                <Layers className="size-10 opacity-40" aria-hidden="true" />
                 <span className="text-sm">{t('card.empty')}</span>
             </div>
 
             <div
-                className={cn(
-                    'scrollbar h-full overflow-y-auto transition-opacity duration-200',
+                className={cn( 'scrollbar h-full overflow-y-auto transition-opacity duration-200',
                     isEmpty ? 'opacity-0' : 'opacity-100'
                 )}
                 ref={scrollContainerRef}

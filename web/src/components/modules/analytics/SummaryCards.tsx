@@ -3,8 +3,9 @@ import { MessageSquare, Bot, DollarSign, Gauge, Loader2 } from 'lucide-react';
 import { useTranslations } from 'use-intl';
 import type { UseQueryResult } from '@tanstack/react-query';
 import { AnimatedNumber } from '@/components/common/AnimatedNumber';
-import { EASING, REDUCED_MOTION_TRANSITION } from '@/lib/animations/fluid-transitions';
+import { DURATION, EASING, REDUCED_MOTION_TRANSITION } from '@/lib/animations/fluid-transitions';
 import type { AnalyticsResponseFormatted } from '@/api/endpoints/analytics';
+import { InlineRetry } from '@/components/common/InlineRetry';
 
 interface SummaryCardsProps {
     query: UseQueryResult<AnalyticsResponseFormatted>;
@@ -30,9 +31,7 @@ export function SummaryCards({ query }: SummaryCardsProps) {
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
                 <div role="alert" className="col-span-full flex min-h-40 flex-col items-center justify-center gap-3 rounded-3xl border border-destructive/30 bg-card p-4 text-center text-sm text-muted-foreground">
                     <p>{tFeedback('loadFailed')}</p>
-                    <button type="button" onClick={() => void query.refetch()} className="rounded-xl border border-border px-3 py-1.5 font-medium text-foreground transition-colors hover:bg-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
-                        {tFeedback('retry')}
-                    </button>
+                    <InlineRetry onRetry={() => void query.refetch()} label={tFeedback('retry')} />
                 </div>
             </div>
         );
@@ -80,9 +79,7 @@ export function SummaryCards({ query }: SummaryCardsProps) {
             {query.isError && (
                 <div role="alert" className="col-span-full flex items-center justify-between gap-3 rounded-2xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-muted-foreground">
                     <span>{tFeedback('loadFailed')}</span>
-                    <button type="button" onClick={() => void query.refetch()} className="shrink-0 rounded-xl border border-border px-3 py-1.5 font-medium text-foreground transition-colors hover:bg-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
-                        {tFeedback('retry')}
-                    </button>
+                    <InlineRetry onRetry={() => void query.refetch()} label={tFeedback('retry')} className="shrink-0" />
                 </div>
             )}
             {cards.map((card, index) => (
@@ -92,7 +89,7 @@ export function SummaryCards({ query }: SummaryCardsProps) {
                     initial={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: 20, filter: 'blur(8px)' }}
                     animate={shouldReduceMotion ? { opacity: 1 } : { opacity: 1, y: 0, filter: 'blur(0px)' }}
                     transition={shouldReduceMotion ? REDUCED_MOTION_TRANSITION : {
-                        duration: 0.5,
+                        duration: DURATION.page,
                         ease: EASING.easeOutExpo,
                         delay: index * 0.08,
                     }}
@@ -104,8 +101,7 @@ export function SummaryCards({ query }: SummaryCardsProps) {
                         <span className="truncate text-xs text-muted-foreground">{card.title}</span>
                         <div className="flex flex-wrap items-baseline gap-x-1">
                             <span className="text-lg font-medium tabular-nums sm:text-xl">
-                                {card.value === undefined ? (
-                                    '-'
+                                {card.value === undefined ? ( '—'
                                 ) : card.unit === undefined ? (
                                     card.value
                                 ) : (

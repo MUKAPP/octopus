@@ -23,6 +23,7 @@ import {
     MorphingDialogTrigger,
     useMorphingDialog,
 } from '@/components/ui/morphing-dialog';
+import { SPRING } from '@/lib/animations/fluid-transitions';
 
 interface EditDialogContentProps {
     group: Group;
@@ -248,7 +249,7 @@ export function GroupCard({ group }: { group: Group }) {
     }, [group.first_token_time_out, group.session_keep_time, group.id, group.items, group.match_regex, group.mode, group.name, onSuccess, onError, updateGroup]);
 
     return (
-        <article className="flex flex-col rounded-3xl border border-border bg-card text-card-foreground p-4 custom-shadow">
+        <article className="flex flex-col rounded-3xl border border-border bg-card text-card-foreground p-4">
             <header className="flex items-start justify-between mb-3 relative overflow-visible rounded-xl -mx-1 px-1 -my-1 py-1">
                 <div className="relative flex-1 mr-2 min-w-0 group/title">
                     <Tooltip side="top" sideOffset={10} align="center">
@@ -310,11 +311,11 @@ export function GroupCard({ group }: { group: Group }) {
 
                 <AnimatePresence>
                     {confirmDelete && (
-                        <motion.div layoutId={`delete-btn-group-${group.id}`} className="absolute inset-0 flex items-center justify-center gap-2 bg-destructive p-2 rounded-xl" transition={{ type: 'spring', stiffness: 400, damping: 30 }}>
-                            <button type="button" onClick={() => setConfirmDelete(false)} className="flex h-7 w-7 items-center justify-center rounded-lg bg-destructive-foreground/20 text-destructive-foreground transition-all hover:bg-destructive-foreground/30 active:scale-95">
+                        <motion.div layoutId={`delete-btn-group-${group.id}`} className="absolute inset-0 flex items-center justify-center gap-2 bg-destructive p-2 rounded-xl" transition={SPRING.morph}>
+                            <button type="button" onClick={() => setConfirmDelete(false)} className="focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring flex h-7 w-7 items-center justify-center rounded-lg bg-destructive-foreground/20 text-destructive-foreground transition-[background-color,transform] hover:bg-destructive-foreground/30 active:scale-95">
                                 <X className="size-4" />
                             </button>
-                            <button type="button" onClick={() => group.id && deleteGroup.mutate(group.id, { onSuccess: () => toast.success(t('toast.deleted')) })} disabled={deleteGroup.isPending} className="flex-1 h-7 flex items-center justify-center gap-2 rounded-lg bg-destructive-foreground text-destructive text-sm font-semibold transition-all hover:bg-destructive-foreground/90 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed">
+                            <button type="button" onClick={() => group.id && deleteGroup.mutate(group.id, { onSuccess: () => toast.success(t('toast.deleted')) })} disabled={deleteGroup.isPending} className="focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring flex-1 h-7 flex items-center justify-center gap-2 rounded-lg bg-destructive-foreground text-destructive text-sm font-semibold transition-[background-color,transform] hover:bg-destructive-foreground/90 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed">
                                 <Trash2 className="size-3.5" />
                                 {t('detail.actions.confirmDelete')}
                             </button>
@@ -335,8 +336,7 @@ export function GroupCard({ group }: { group: Group }) {
                             if (m === group.mode) return;
                             updateGroup.mutate({ id: group.id!, mode: m }, { onSuccess, onError });
                         }}
-                        className={cn(
-                            'flex-1 py-1 text-xs rounded-lg transition-colors',
+                        className={cn("focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring", 'flex-1 py-1 text-xs rounded-lg transition-colors',
                             group.mode === m ? 'bg-primary text-primary-foreground' : 'bg-muted hover:bg-muted/80',
                             // Keep visuals stable (no opacity/disabled flicker) while still preventing double-submit via onClick guard.
                             (!group.id) && 'cursor-not-allowed opacity-50'

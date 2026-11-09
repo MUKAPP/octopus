@@ -4,6 +4,7 @@ import { useTranslations } from 'use-intl';
 import { Loader2, TrendingUp } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger, TabsContents, TabsContent } from '@/components/animate-ui/components/animate/tabs';
 import { useHomeViewStore, type RankSortMode } from '@/components/modules/home/store';
+import { InlineRetry } from '@/components/common/InlineRetry';
 
 type ChannelData = NonNullable<ReturnType<typeof useChannelList>['data']>[number];
 
@@ -50,16 +51,14 @@ export function Rank() {
             return (
                 <div role="alert" className="flex flex-col items-center justify-center gap-3 py-8 text-sm text-muted-foreground">
                     <p>{tHome('feedback.loadFailed')}</p>
-                    <button type="button" onClick={() => void refetch()} className="rounded-xl border border-border px-3 py-1.5 font-medium text-foreground transition-colors hover:bg-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
-                        {tHome('feedback.retry')}
-                    </button>
+                    <InlineRetry onRetry={() => void refetch()} label={tHome('feedback.retry')} />
                 </div>
             );
         }
         if (channels.length === 0) {
             return (
                 <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
-                    <TrendingUp className="w-12 h-12 mb-3 opacity-30" />
+                    <TrendingUp className="size-10 opacity-40" aria-hidden="true" />
                     <p className="text-sm">{t('noData')}</p>
                 </div>
             );
@@ -150,9 +149,7 @@ export function Rank() {
                 {isError && channelData && (
                     <div role="alert" className="mt-3 flex items-center justify-between gap-3 rounded-2xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-muted-foreground">
                         <span>{tHome('feedback.loadFailed')}</span>
-                        <button type="button" onClick={() => void refetch()} className="shrink-0 rounded-xl border border-border px-3 py-1.5 font-medium text-foreground transition-colors hover:bg-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
-                            {tHome('feedback.retry')}
-                        </button>
+                        <InlineRetry onRetry={() => void refetch()} label={tHome('feedback.retry')} className="shrink-0" />
                     </div>
                 )}
                 <TabsContents>

@@ -75,7 +75,7 @@ export function Card({
 					className="w-full"
 					ariaLabel={`${tDetailTitle("view")}: ${channel.name}`}
 				>
-				<article className="flex flex-col gap-4 rounded-3xl border border-border bg-card text-card-foreground p-4 transition-all duration-300">
+				<article className="flex flex-col gap-4 rounded-3xl border border-border bg-card text-card-foreground p-4">
 					<header className="relative flex items-center justify-between gap-2 pr-12">
 						<Tooltip side="top" sideOffset={10} align="center">
 							<TooltipTrigger asChild>

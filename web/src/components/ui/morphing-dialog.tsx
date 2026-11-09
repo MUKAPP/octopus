@@ -24,6 +24,12 @@ export type MorphingDialogContextType = {
   setIsOpen: React.Dispatch<React.SetStateAction<boolean>>;
   uniqueId: string;
   triggerRef: React.RefObject<HTMLDivElement | null>;
+  /**
+   * 是否渲染了 MorphingDialogDescription。
+   * 用于只在描述块真实存在时才输出 aria-describedby，避免指向不存在的 id。
+   */
+  hasDescription: boolean;
+  setHasDescription: React.Dispatch<React.SetStateAction<boolean>>;
 };
 
 const MorphingDialogContext =
@@ -49,6 +55,7 @@ function MorphingDialogProvider({
   transition,
 }: MorphingDialogProviderProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [hasDescription, setHasDescription] = useState(false);
   const uniqueId = useId();
   const triggerRef = useRef<HTMLDivElement>(null!);
 
@@ -58,8 +65,10 @@ function MorphingDialogProvider({
       setIsOpen,
       uniqueId,
       triggerRef,
+      hasDescription,
+      setHasDescription,
     }),
-    [isOpen, uniqueId]
+    [isOpen, uniqueId, hasDescription]
   );
 
   return (
@@ -276,7 +285,7 @@ function MorphingDialogContent({
   style,
   dismissOnClickOutside = true,
 }: MorphingDialogContentProps) {
-  const { setIsOpen, isOpen, uniqueId, triggerRef } = useMorphingDialog();
+  const { setIsOpen, isOpen, uniqueId, triggerRef, hasDescription } = useMorphingDialog();
   const containerRef = useRef<HTMLDivElement>(null!);
   const layerContext = useNestedLayerContextValue();
 
@@ -336,7 +345,9 @@ function MorphingDialogContent({
         role='dialog'
         aria-modal='true'
         aria-labelledby={`motion-ui-morphing-dialog-title-${uniqueId}`}
-        aria-describedby={`motion-ui-morphing-dialog-description-${uniqueId}`}
+        aria-describedby={
+          hasDescription ? `dialog-description-${uniqueId}` : undefined
+        }
       >
         {children}
       </motion.div>
@@ -562,7 +573,13 @@ function MorphingDialogDescription({
   variants,
   disableLayoutAnimation,
 }: MorphingDialogDescriptionProps) {
-  const { uniqueId } = useMorphingDialog();
+  const { uniqueId, setHasDescription } = useMorphingDialog();
+
+  // 向宿主登记描述块存在，让 role=dialog 的 aria-describedby 只在 id 真实存在时生效。
+  useEffect(() => {
+    setHasDescription(true);
+    return () => setHasDescription(false);
+  }, [setHasDescription]);
 
   return (
     <motion.div

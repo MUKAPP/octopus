@@ -44,8 +44,7 @@ function TooltipContent({
 }: TooltipContentProps) {
   return (
     <TooltipContentPrimitive
-      className={cn(
-        'z-50 w-fit bg-muted text-muted-foreground  rounded-md',
+      className={cn( 'z-50 w-fit bg-muted text-muted-foreground  rounded-md',
         className,
       )}
       {...props}

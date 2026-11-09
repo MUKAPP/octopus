@@ -102,8 +102,7 @@ export function AnalysisDetails({ query }: Props) {
                                 type="button"
                                 aria-pressed={view === item}
                                 onClick={() => setView(item)}
-                                className={cn(
-                                    'flex min-w-0 items-center justify-center gap-1.5 rounded-xl px-2 py-1.5 text-xs transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring sm:shrink-0 sm:px-2.5 sm:text-sm',
+                                className={cn( 'flex min-w-0 items-center justify-center gap-1.5 rounded-xl px-2 py-1.5 text-xs transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring sm:shrink-0 sm:px-2.5 sm:text-sm',
                                     view === item
                                         ? 'bg-primary/10 font-medium text-foreground ring-1 ring-primary/25'
                                         : 'text-muted-foreground hover:bg-muted/30 hover:text-foreground'

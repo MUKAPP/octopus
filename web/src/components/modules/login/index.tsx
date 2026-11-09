@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input"
 import { useLogin } from "@/api/user";
 import { useAPIKeyLogin } from "@/api/apikey";
 import Logo from "@/components/modules/logo"
+import { DURATION } from '@/lib/animations/fluid-transitions'
 import { KeyRound, User } from "lucide-react"
 import {
   Tabs,
@@ -66,7 +67,7 @@ export function LoginForm({ onLoginSuccess }: { onLoginSuccess?: () => void }) {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      transition={{ duration: 0.3 }}
+      transition={{ duration: DURATION.page }}
       className="min-h-dvh flex items-center justify-center pl-[calc(1.5rem+var(--safe-area-left))] pr-[calc(1.5rem+var(--safe-area-right))] pt-[max(1.5rem,var(--safe-area-top))] pb-[max(1.5rem,var(--safe-area-bottom))] text-foreground"
     >
       <div className="w-full max-w-sm space-y-8">

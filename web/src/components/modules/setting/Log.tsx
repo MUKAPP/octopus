@@ -18,8 +18,10 @@ export function SettingLog() {
                 toast.success(t('log.clearSuccess'));
                 setIsClearing(false);
             },
-            onError: () => {
-                toast.error(t('log.clearFailed'));
+            onError: (error) => {
+                toast.error(t('log.clearFailed'), {
+                    description: error instanceof Error ? error.message : String(error),
+                });
                 setIsClearing(false);
             }
         });

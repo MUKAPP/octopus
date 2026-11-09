@@ -65,9 +65,10 @@ export function SettingSystem() {
                 }
             },
             onError: (error) => {
-                if (key === SettingKey.ModelFilter) {
-                    toast.error(error.message);
-                }
+                // 所有设置项的保存失败都要可见；此前只有 modelFilter 有提示，其余静默丢弃。
+                toast.error(t('saveFailed'), {
+                    description: error instanceof Error ? error.message : String(error),
+                });
             }
         });
     };
@@ -248,7 +249,7 @@ export function SettingSystem() {
                                         <button
                                             type="button"
                                             onClick={() => handleRemoveCorsOrigin(origin)}
-                                            className="text-muted-foreground transition-colors hover:text-destructive"
+                                            className="focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring text-muted-foreground transition-colors hover:text-destructive"
                                             aria-label={`remove ${origin}`}
                                         >
                                             <X className="size-4" />

@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { MorphingDialogOverlayLayer } from '@/components/ui/morphing-dialog';
 import { useChangeUsername, useChangePassword, useAuth } from '@/api/user';
 import { toast } from '@/components/common/Toast';
+import { SPRING } from '@/lib/animations/fluid-transitions';
 
 /** 密码输入框，附带显示/隐藏切换 */
 function PasswordInput({
@@ -35,7 +36,7 @@ function PasswordInput({
                 type="button"
                 onClick={() => setVisible(!visible)}
                 aria-label={placeholder}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground transition-colors hover:text-foreground"
+                className="focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground transition-colors hover:text-foreground"
             >
                 {visible ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
             </button>
@@ -73,7 +74,7 @@ function UsernameForm({ onClose }: { onClose: () => void }) {
     return (
         <MorphingDialogOverlayLayer
             layoutId="account-username"
-            transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+            transition={SPRING.morph}
             onClose={() => { if (!changeUsername.isPending) onClose(); }}
             panelClassName="w-[min(420px,calc(100vw-2rem))] p-5"
         >
@@ -92,7 +93,7 @@ function UsernameForm({ onClose }: { onClose: () => void }) {
                         type="button"
                         onClick={onClose}
                         disabled={changeUsername.isPending}
-                        className="flex-1 h-9 flex items-center justify-center gap-1.5 rounded-xl bg-muted text-muted-foreground text-sm font-medium transition-all hover:bg-muted/80 active:scale-[0.98] disabled:opacity-50"
+                        className="focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring flex-1 h-9 flex items-center justify-center gap-1.5 rounded-xl bg-muted text-muted-foreground text-sm font-medium transition-[color,background-color,transform] hover:bg-muted/80 active:scale-[0.98] disabled:opacity-50"
                     >
                         <X className="size-4" />
                         {t('account.cancel')}
@@ -100,7 +101,7 @@ function UsernameForm({ onClose }: { onClose: () => void }) {
                     <button
                         type="submit"
                         disabled={changeUsername.isPending || !newUsername.trim()}
-                        className="flex-1 h-9 flex items-center justify-center gap-1.5 rounded-xl bg-primary text-primary-foreground text-sm font-medium transition-all hover:bg-primary/90 active:scale-[0.98] disabled:opacity-50"
+                        className="focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring flex-1 h-9 flex items-center justify-center gap-1.5 rounded-xl bg-primary text-primary-foreground text-sm font-medium transition-[color,background-color,transform] hover:bg-primary/90 active:scale-[0.98] disabled:opacity-50"
                     >
                         {changeUsername.isPending ? <Loader className="size-4 animate-spin" /> : <Check className="size-4" />}
                         {changeUsername.isPending ? t('account.saving') : t('account.save')}
@@ -155,7 +156,7 @@ function PasswordForm({ onClose }: { onClose: () => void }) {
     return (
         <MorphingDialogOverlayLayer
             layoutId="account-password"
-            transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+            transition={SPRING.morph}
             onClose={() => { if (!changePassword.isPending) onClose(); }}
             panelClassName="w-[min(420px,calc(100vw-2rem))] p-5"
         >
@@ -184,7 +185,7 @@ function PasswordForm({ onClose }: { onClose: () => void }) {
                         type="button"
                         onClick={onClose}
                         disabled={changePassword.isPending}
-                        className="flex-1 h-9 flex items-center justify-center gap-1.5 rounded-xl bg-muted text-muted-foreground text-sm font-medium transition-all hover:bg-muted/80 active:scale-[0.98] disabled:opacity-50"
+                        className="focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring flex-1 h-9 flex items-center justify-center gap-1.5 rounded-xl bg-muted text-muted-foreground text-sm font-medium transition-[color,background-color,transform] hover:bg-muted/80 active:scale-[0.98] disabled:opacity-50"
                     >
                         <X className="size-4" />
                         {t('account.cancel')}
@@ -192,7 +193,7 @@ function PasswordForm({ onClose }: { onClose: () => void }) {
                     <button
                         type="submit"
                         disabled={changePassword.isPending || !oldPassword || !newPassword || !confirmPassword}
-                        className="flex-1 h-9 flex items-center justify-center gap-1.5 rounded-xl bg-primary text-primary-foreground text-sm font-medium transition-all hover:bg-primary/90 active:scale-[0.98] disabled:opacity-50"
+                        className="focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring flex-1 h-9 flex items-center justify-center gap-1.5 rounded-xl bg-primary text-primary-foreground text-sm font-medium transition-[color,background-color,transform] hover:bg-primary/90 active:scale-[0.98] disabled:opacity-50"
                     >
                         {changePassword.isPending ? <Loader className="size-4 animate-spin" /> : <Check className="size-4" />}
                         {changePassword.isPending ? t('account.saving') : t('account.password.change')}
@@ -235,7 +236,7 @@ export function SettingAccount() {
                     onClick={() => setEditing('username')}
                     disabled={editing !== null}
                     aria-label={t('account.username.label')}
-                    className="flex size-8 items-center justify-center rounded-lg bg-muted/60 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground active:scale-95 disabled:opacity-50"
+                    className="flex size-8 items-center justify-center rounded-lg bg-muted/60 text-muted-foreground transition-[color,background-color,transform] hover:bg-muted hover:text-foreground active:scale-95 disabled:opacity-50"
                 >
                     <Pencil className="size-4" />
                 </motion.button>
@@ -253,7 +254,7 @@ export function SettingAccount() {
                     onClick={() => setEditing('password')}
                     disabled={editing !== null}
                     aria-label={t('account.password.label')}
-                    className="flex size-8 items-center justify-center rounded-lg bg-muted/60 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground active:scale-95 disabled:opacity-50"
+                    className="flex size-8 items-center justify-center rounded-lg bg-muted/60 text-muted-foreground transition-[color,background-color,transform] hover:bg-muted hover:text-foreground active:scale-95 disabled:opacity-50"
                 >
                     <Pencil className="size-4" />
                 </motion.button>

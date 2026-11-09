@@ -128,7 +128,7 @@
             "outputCost": "Output cost",
             "costShare": "Share of cost",
             "reasoningTokens": "Reasoning tokens",
-            "cacheNote": "Cache read tokens and share use only collected requests whose upstream explicitly reported cache reads. The share is cached input / input tokens within those same samples, not the share of requests hitting the cache. Cache writes and reasoning tokens also require explicit upstream fields; reasoning tokens may already be included in output tokens. Cache share excludes partial stream usage without a known normalized input count; its sample count is shown separately.",
+            "cacheNote": "Cache reads use only requests where the upstream reported them. Share is cached input over input tokens in those same samples, not the rate of requests that hit the cache. Reasoning tokens may already be included in output tokens.",
             "averageDuration": "Average total duration",
             "totalDuration": "Total duration",
             "firstToken": "Time to first token",
@@ -138,7 +138,7 @@
             "speedP50": "P50 output speed",
             "speedP95": "P95 output speed",
             "tokensPerSecond": "{value} tokens/s",
-            "performanceNote": "Percentiles are computed from individual collected requests. First-token metrics use successful streams with a first token. Output speed excludes first-token waiting and uses successful streams with output tokens and a positive generation duration. The overall speed is weighted by generation time.",
+            "performanceNote": "Percentiles come from individual collected requests. First-token latency uses successful streams that received a first token; output speed excludes first-token wait and is weighted by generation time.",
             "failedRequests": "Failed requests",
             "retryRequests": "Retried requests",
             "recoveredRequests": "Recovered requests",
@@ -154,7 +154,7 @@
             "statusCode": "HTTP status",
             "noUpstreamResponse": "No upstream response",
             "noSamples": "No collected samples match the filters.",
-            "retryNote": "Only actual forwarding attempts count as retries. Circuit-break and other skips are counted separately. Recovery rate is successful retried requests / retried requests. HTTP codes describe the final upstream response.",
+            "retryNote": "Retries count only actual forwarding attempts; circuit-break and other skips are counted separately. Recovery rate is successful retried requests over retried requests.",
             "peakRpm": "Peak requests / minute",
             "peakTpm": "Peak tokens / minute",
             "hourly": "Hourly traffic",
@@ -162,7 +162,7 @@
             "cost": "Cost",
             "hourHeatmap": "Requests by hour of day",
             "hourValue": "Hour {hour}: {count} requests",
-            "trafficNote": "Hours and minute peaks are grouped by request start time in the server time zone. Tokens are attributed to the request-start minute, not measured as live generation throughput. The heatmap combines matching dates by hour of day.",
+            "trafficNote": "Hours and minute peaks follow request start time in the server time zone. Tokens are attributed to the start minute, not live throughput.",
             "featureLabel": "Breakdown dimension",
             "successRate": "Success rate",
             "durationP95": "P95 duration",
@@ -216,7 +216,7 @@
         "inputStats": "Input Stats",
         "outputStats": "Output Stats",
         "requestCount": "Requests",
-        "timeConsumed": "Time Consumed",
+        "timeConsumed": "Total duration",
         "totalToken": "Tokens Used",
         "totalCost": "Total Cost",
         "inputTokens": "Input Tokens",
@@ -229,12 +229,13 @@
         "unlimited": "Unlimited",
         "expireAt": "Expires",
         "neverExpire": "Never",
-        "daysLeft": "days left",
+        "daysLeft": "{days} days left",
         "expired": "Expired",
         "supportedModels": "Supported Models",
         "switchToLightTheme": "Switch to light theme",
         "switchToDarkTheme": "Switch to dark theme",
-        "switchLanguage": "Switch language"
+        "switchLanguage": "Switch language",
+        "loading": "Loading"
     },
     "navbar": {
         "ariaLabel": "Primary navigation",
@@ -286,12 +287,18 @@
     },
     "common": {
         "copy": {
+            "copy": "Copy",
             "success": "Copied",
             "failed": "Copy failed",
             "noContent": "Nothing to copy"
         },
         "listRequestError": "Failed to load the list. Please try again.",
-        "listRetry": "Retry"
+        "listRetry": "Retry",
+        "loading": "Loading",
+        "remove": "Remove",
+        "stats": "Statistics",
+        "edit": "Edit",
+        "close": "Close"
     },
     "home": {
         "feedback": {
@@ -301,7 +308,7 @@
         },
         "activity": {
             "requestCount": "Requests",
-            "waitTime": "Wait Time",
+            "waitTime": "Total duration",
             "totalToken": "Tokens Used",
             "totalCost": "Total Cost",
             "noData": "No Data"
@@ -312,7 +319,7 @@
             "inputStats": "Input Stats",
             "outputStats": "Output Stats",
             "requestCount": "Requests",
-            "timeConsumed": "Time Consumed",
+            "timeConsumed": "Total duration",
             "totalToken": "Tokens Used",
             "totalCost": "Total Cost",
             "inputTokens": "Input Tokens",
@@ -408,7 +415,8 @@
                 "includeStats": "Include Stats",
                 "button": "Download JSON",
                 "exporting": "Exporting...",
-                "success": "Export started"
+                "success": "Export downloaded",
+                "failed": "Export failed"
             },
             "import": {
                 "title": "Import (Incremental)",
@@ -553,7 +561,9 @@
             },
             "clearSuccess": "Logs cleared",
             "clearFailed": "Failed to clear logs"
-        }
+        },
+        "saveFailed": "Failed to save",
+        "loading": "Loading"
     },
     "group": {
         "toast": {
@@ -697,7 +707,7 @@
             "attempts": "attempts",
             "success": "Success",
             "failed": "Failed",
-            "rateMultiplier": "Rate",
+            "rateMultiplier": "Rate multiplier",
             "stopAttempt": "Stop attempt",
             "stopFailed": "Unable to stop attempt",
             "waitingResponse": "Waiting for upstream response...",
@@ -737,7 +747,8 @@
             "saveImage": "Save image",
             "openOriginalImage": "Open original image",
             "imageSaveFailed": "Unable to save image",
-            "imageSaveFailedHint": "The link may have expired or the remote server may not allow direct downloads. Open the original image to save it."
+            "imageSaveFailedHint": "The link may have expired or the remote server may not allow direct downloads. Open the original image to save it.",
+            "tokensPerSecondUnit": "tokens/s"
         }
     },
     "channel": {
@@ -777,7 +788,7 @@
                 "outputToken": "Output Tokens",
                 "inputCost": "Input Cost",
                 "outputCost": "Output Cost",
-                "avgWaitTime": "Wait Time"
+                "avgWaitTime": "Total duration"
             },
             "actions": {
                 "edit": "Edit",
