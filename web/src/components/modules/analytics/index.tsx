@@ -6,6 +6,7 @@ import { FilterBar } from './FilterBar';
 import { SummaryCards } from './SummaryCards';
 import { TrendChart } from './TrendChart';
 import { BreakdownTable } from './BreakdownTable';
+import { AnalysisDetails } from './AnalysisDetails';
 
 
 export function Analytics() {
@@ -17,6 +18,11 @@ export function Analytics() {
     const apiKey = useAnalyticsViewStore((state) => state.apiKey);
     const channel = useAnalyticsViewStore((state) => state.channel);
     const status = useAnalyticsViewStore((state) => state.status);
+    const stream = useAnalyticsViewStore((state) => state.stream);
+    const reasoningEffort = useAnalyticsViewStore((state) => state.reasoningEffort);
+    const taskType = useAnalyticsViewStore((state) => state.taskType);
+    const clientProtocol = useAnalyticsViewStore((state) => state.clientProtocol);
+    const errorCategory = useAnalyticsViewStore((state) => state.errorCategory);
 
     const filters = useMemo<AnalyticsFilters>(() => ({
         period,
@@ -26,8 +32,8 @@ export function Analytics() {
         actualModel,
         apiKey,
         channel,
-        status,
-    }), [period, customStartDate, customEndDate, model, actualModel, apiKey, channel, status]);
+        status, stream, reasoningEffort, taskType, clientProtocol, errorCategory,
+    }), [period, customStartDate, customEndDate, model, actualModel, apiKey, channel, status, stream, reasoningEffort, taskType, clientProtocol, errorCategory]);
 
     const analyticsQuery = useAnalytics(filters);
 
@@ -36,6 +42,7 @@ export function Analytics() {
             <FilterBar query={analyticsQuery} />
             <SummaryCards query={analyticsQuery} />
             <TrendChart query={analyticsQuery} />
+            <AnalysisDetails query={analyticsQuery} />
             <BreakdownTable query={analyticsQuery} />
         </PageWrapper>
     );

@@ -21,6 +21,11 @@ export interface AnalyticsFilters {
     apiKey: { id: number; name: string } | null;
     channel: { id: number; name: string } | null;
     status: 'all' | 'success' | 'failed';
+    stream: 'all' | 'true' | 'false';
+    reasoningEffort: string | null;
+    taskType: string | null;
+    clientProtocol: string | null;
+    errorCategory: string | null;
 }
 
 interface AnalyticsMetrics {
@@ -32,6 +37,77 @@ interface AnalyticsMetrics {
     request_success: number;
     request_failed: number;
     cached_token: number;
+    observed_cached_token: number | null;
+    cache_read_sample_count: number;
+    cache_read_ratio: number | null;
+}
+
+export interface AnalyticsDistribution {
+    sample_count: number;
+    p50: number | null;
+    p95: number | null;
+}
+
+export interface AnalyticsFeatureRow {
+    name: string;
+    sample_count: number;
+    input_token: number;
+    output_token: number;
+    input_cost: number;
+    output_cost: number;
+    request_success: number;
+    request_failed: number;
+    cache_write_token: number | null;
+    ttft_ms: AnalyticsDistribution;
+    total_duration_ms: AnalyticsDistribution;
+    stream_output_tokens_per_second: AnalyticsDistribution & { value: number | null };
+}
+
+export interface AnalyticsDetails {
+    coverage: {
+        available_from: string;
+        available_from_ms: number | null;
+        sample_count: number;
+        legacy_request_count: number;
+        summary_source: 'daily_aggregates' | 'request_metadata';
+    };
+    performance: {
+        ttft_ms: AnalyticsDistribution;
+        total_duration_ms: AnalyticsDistribution;
+        stream_output_tokens_per_second: AnalyticsDistribution & { value: number | null };
+    };
+    tokens: {
+        usage_sample_count: number;
+        cache_read_sample_count: number;
+        cache_write_sample_count: number;
+        reasoning_sample_count: number;
+        cache_read_token: number | null;
+        cache_write_token: number | null;
+        reasoning_token: number | null;
+    };
+    reliability: {
+        executed_attempts: number;
+        retry_requests: number;
+        retry_attempts: number;
+        recovered_requests: number;
+        circuit_break_skips: number;
+        other_skips: number;
+    };
+    by_error_category: { name: string; count: number }[];
+    by_status_code: { status_code: number; count: number }[];
+    hourly: {
+        hour: string;
+        request_count: number;
+        input_token: number;
+        output_token: number;
+        input_cost: number;
+        output_cost: number;
+    }[];
+    peaks: { rpm: number | null; rpm_at: string; tpm: number | null; tpm_at: string };
+    by_stream: AnalyticsFeatureRow[];
+    by_reasoning_effort: AnalyticsFeatureRow[];
+    by_client_protocol: AnalyticsFeatureRow[];
+    by_task_type: AnalyticsFeatureRow[];
 }
 
 export interface AnalyticsResponse {
@@ -39,6 +115,7 @@ export interface AnalyticsResponse {
     resolved_start_date: string;
     resolved_end_date: string;
     summary: AnalyticsMetrics;
+    details: AnalyticsDetails;
     trend: ({ date: string } & AnalyticsMetrics)[];
     by_model: ({ name: string } & AnalyticsMetrics)[];
     by_actual_model: ({ name: string } & AnalyticsMetrics)[];
@@ -51,6 +128,11 @@ export interface AnalyticsDimensions {
     actual_models: string[];
     api_keys: { id: number; name: string }[];
     channels: { id: number; name: string }[];
+    streams: string[];
+    reasoning_efforts: string[];
+    task_types: string[];
+    client_protocols: string[];
+    error_categories: string[];
 }
 
 export type FormattedValue = { raw: number; formatted: { value: string; unit: string } };
@@ -64,12 +146,16 @@ export interface AnalyticsMetricsFormatted {
     request_success: FormattedValue;
     request_failed: FormattedValue;
     cached_token: FormattedValue;
+    observed_cached_token: FormattedValue | null;
+    cache_read_sample_count: number;
     request_count: FormattedValue;
     total_token: FormattedValue;
     total_cost: FormattedValue;
     /** 0~100，分母为 0 时 raw 为 0 */
     success_rate: { raw: number; formatted: string };
     average_wait_time: FormattedValue;
+    average_cost: FormattedValue;
+    cache_read_ratio: { raw: number | null; formatted: string };
 }
 
 export interface AnalyticsResponseFormatted {
@@ -77,6 +163,7 @@ export interface AnalyticsResponseFormatted {
     resolved_start_date: string;
     resolved_end_date: string;
     summary: AnalyticsMetricsFormatted;
+    details: AnalyticsDetails;
     trend: { date: string; metrics: AnalyticsMetricsFormatted }[];
     by_model: { name: string; metrics: AnalyticsMetricsFormatted }[];
     by_actual_model: { name: string; metrics: AnalyticsMetricsFormatted }[];
@@ -124,6 +211,12 @@ function buildAnalyticsParams(filters: AnalyticsFilters): Record<string, string>
         params.status = filters.status;
     }
 
+    if (filters.stream !== 'all') params.stream = filters.stream;
+    if (filters.reasoningEffort !== null) params.reasoning_effort = filters.reasoningEffort;
+    if (filters.taskType !== null) params.task_type = filters.taskType;
+    if (filters.clientProtocol !== null) params.client_protocol = filters.clientProtocol;
+    if (filters.errorCategory !== null) params.error_category = filters.errorCategory;
+
     return params;
 }
 
@@ -131,6 +224,9 @@ function formatMetrics(metrics: AnalyticsMetrics): AnalyticsMetricsFormatted {
     const requestCount = metrics.request_success + metrics.request_failed;
     const totalCost = metrics.input_cost + metrics.output_cost;
     const totalToken = metrics.input_token + metrics.output_token;
+    const averageCost = requestCount > 0 ? totalCost / requestCount : 0;
+    const formattedAverageCost = formatMoney(averageCost);
+    if (averageCost > 0 && averageCost < 0.01) formattedAverageCost.formatted.value = averageCost.toPrecision(3);
     const successRate = requestCount > 0 ? (metrics.request_success / requestCount) * 100 : 0;
     const averageWaitTime = requestCount > 0 ? metrics.wait_time / requestCount : 0;
 
@@ -143,11 +239,18 @@ function formatMetrics(metrics: AnalyticsMetrics): AnalyticsMetricsFormatted {
         request_success: formatCount(metrics.request_success),
         request_failed: formatCount(metrics.request_failed),
         cached_token: formatCount(metrics.cached_token),
+        observed_cached_token: metrics.observed_cached_token === null ? null : formatCount(metrics.observed_cached_token),
+        cache_read_sample_count: metrics.cache_read_sample_count,
         request_count: formatCount(requestCount),
         total_token: formatCount(totalToken),
         total_cost: formatMoney(totalCost),
         success_rate: { raw: successRate, formatted: `${successRate.toFixed(1)}%` },
         average_wait_time: formatTime(averageWaitTime),
+        average_cost: formattedAverageCost,
+        cache_read_ratio: {
+            raw: metrics.cache_read_ratio,
+            formatted: metrics.cache_read_ratio === null ? '—' : `${metrics.cache_read_ratio.toFixed(1)}%`,
+        },
     };
 }
 
@@ -168,6 +271,7 @@ export function useAnalytics(filters: AnalyticsFilters, enabled = true): UseQuer
             resolved_start_date: data.resolved_start_date,
             resolved_end_date: data.resolved_end_date,
             summary: formatMetrics(data.summary),
+            details: data.details,
             trend: data.trend.map((item) => ({
                 date: item.date,
                 metrics: formatMetrics(item),

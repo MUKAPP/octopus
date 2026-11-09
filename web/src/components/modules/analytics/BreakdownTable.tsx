@@ -37,6 +37,7 @@ const SORT_METRIC_KEY: Record<AnalyticsSortMetric, keyof Pick<
 export function BreakdownTable({ query }: BreakdownTableProps) {
     const t = useTranslations('analytics.breakdown');
     const tFeedback = useTranslations('analytics.feedback');
+    const tDetail = useTranslations('analytics.detail');
     const data = query.data;
 
     const breakdownTab = useAnalyticsViewStore((state) => state.breakdownTab);
@@ -142,6 +143,21 @@ export function BreakdownTable({ query }: BreakdownTableProps) {
         </span>
     );
 
+    const renderDetails = (row: BreakdownRow) => {
+        const totalCost = data?.summary.total_cost.raw ?? 0;
+        const metrics = [
+            { label: tDetail('inputTokens'), value: renderMetric(row.metrics.input_token) },
+            { label: tDetail('outputTokens'), value: renderMetric(row.metrics.output_token) },
+            { label: tDetail('cacheRead'), value: row.metrics.observed_cached_token === null ? '—' : renderMetric(row.metrics.observed_cached_token) },
+            { label: tDetail('cacheRatio'), value: row.metrics.cache_read_ratio.formatted },
+            { label: tDetail('inputCost'), value: renderMetric(row.metrics.input_cost) },
+            { label: tDetail('outputCost'), value: renderMetric(row.metrics.output_cost) },
+            { label: tDetail('averageCost'), value: row.metrics.request_count.raw > 0 ? renderMetric(row.metrics.average_cost) : '—' },
+            { label: tDetail('costShare'), value: totalCost > 0 ? (row.metrics.total_cost.raw / totalCost * 100).toFixed(1) + '%' : '—' },
+        ];
+        return <details className="mt-1 text-xs font-normal"><summary className="cursor-pointer text-muted-foreground focus-visible:outline-2 focus-visible:outline-ring">{t('usageDetails')}</summary><dl className="mt-2 grid min-w-52 grid-cols-2 gap-3">{metrics.map((item) => <div key={item.label}><dt className="text-muted-foreground">{item.label}</dt><dd className="mt-0.5 tabular-nums">{item.value}</dd></div>)}</dl></details>;
+    };
+
     const renderList = () => {
         if (query.isLoading && !data) {
             return (
@@ -187,7 +203,7 @@ export function BreakdownTable({ query }: BreakdownTableProps) {
                         <TableBody>
                             {sortedRows.map((row) => (
                                 <TableRow key={row.key}>
-                                    <TableCell className="font-medium">{displayName(row)}</TableCell>
+                                    <TableCell className="font-medium">{displayName(row)}{renderDetails(row)}</TableCell>
                                     <TableCell>{renderMetric(row.metrics.request_count)}</TableCell>
                                     <TableCell className="text-right tabular-nums">{row.metrics.success_rate.formatted}</TableCell>
                                     <TableCell>{renderMetric(row.metrics.total_token)}</TableCell>
@@ -205,6 +221,7 @@ export function BreakdownTable({ query }: BreakdownTableProps) {
                         <div key={row.key} className="flex items-center gap-3 p-3 rounded-2xl hover:bg-accent/5 transition-colors">
                             <div className="flex-1 min-w-0">
                                 <p className="font-medium text-sm truncate">{displayName(row)}</p>
+                                {renderDetails(row)}
                                 <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
                                     <span>{t('successRate')}:</span>
                                     <span className="tabular-nums">{row.metrics.success_rate.formatted}</span>

@@ -3,7 +3,7 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 import type { AnalyticsPeriod } from '@/api/endpoints/analytics';
 
 export type AnalyticsStatus = 'all' | 'success' | 'failed';
-export type AnalyticsChartMetric = 'cost' | 'count' | 'tokens';
+export type AnalyticsChartMetric = 'cost' | 'count' | 'tokens' | 'input' | 'output' | 'cached' | 'cacheRatio' | 'success' | 'failed' | 'latency';
 export type AnalyticsBreakdownTab = 'model' | 'actual-model' | 'api-key' | 'channel';
 export type AnalyticsSortMetric = 'cost' | 'count' | 'tokens' | 'latency';
 
@@ -25,6 +25,11 @@ interface AnalyticsViewState {
     apiKey: AnalyticsEntityOption | null;
     channel: AnalyticsEntityOption | null;
     status: AnalyticsStatus;
+    stream: 'all' | 'true' | 'false';
+    reasoningEffort: string | null;
+    taskType: string | null;
+    clientProtocol: string | null;
+    errorCategory: string | null;
     chartMetric: AnalyticsChartMetric;
     breakdownTab: AnalyticsBreakdownTab;
     sortMetric: AnalyticsSortMetric;
@@ -36,6 +41,11 @@ interface AnalyticsViewState {
     setApiKey: (value: AnalyticsEntityOption | null) => void;
     setChannel: (value: AnalyticsEntityOption | null) => void;
     setStatus: (value: AnalyticsStatus) => void;
+    setStream: (value: 'all' | 'true' | 'false') => void;
+    setReasoningEffort: (value: string | null) => void;
+    setTaskType: (value: string | null) => void;
+    setClientProtocol: (value: string | null) => void;
+    setErrorCategory: (value: string | null) => void;
     setChartMetric: (value: AnalyticsChartMetric) => void;
     setBreakdownTab: (value: AnalyticsBreakdownTab) => void;
     setSortMetric: (value: AnalyticsSortMetric) => void;
@@ -54,6 +64,11 @@ export const useAnalyticsViewStore = create<AnalyticsViewState>()(
             apiKey: null,
             channel: null,
             status: 'all',
+            stream: 'all',
+            reasoningEffort: null,
+            taskType: null,
+            clientProtocol: null,
+            errorCategory: null,
             chartMetric: 'cost',
             breakdownTab: 'model',
             sortMetric: 'cost',
@@ -65,6 +80,11 @@ export const useAnalyticsViewStore = create<AnalyticsViewState>()(
             setApiKey: (value) => set({ apiKey: value }),
             setChannel: (value) => set({ channel: value }),
             setStatus: (value) => set({ status: value }),
+            setStream: (value) => set({ stream: value }),
+            setReasoningEffort: (value) => set({ reasoningEffort: value }),
+            setTaskType: (value) => set({ taskType: value }),
+            setClientProtocol: (value) => set({ clientProtocol: value }),
+            setErrorCategory: (value) => set({ errorCategory: value }),
             setChartMetric: (value) => set({ chartMetric: value }),
             setBreakdownTab: (value) => set({ breakdownTab: value }),
             setSortMetric: (value) => set({ sortMetric: value }),
@@ -77,6 +97,11 @@ export const useAnalyticsViewStore = create<AnalyticsViewState>()(
                 apiKey: null,
                 channel: null,
                 status: 'all',
+            stream: 'all',
+            reasoningEffort: null,
+            taskType: null,
+            clientProtocol: null,
+            errorCategory: null,
             }),
         }),
         {
@@ -91,6 +116,11 @@ export const useAnalyticsViewStore = create<AnalyticsViewState>()(
                 apiKey: state.apiKey,
                 channel: state.channel,
                 status: state.status,
+                stream: state.stream,
+                reasoningEffort: state.reasoningEffort,
+                taskType: state.taskType,
+                clientProtocol: state.clientProtocol,
+                errorCategory: state.errorCategory,
                 chartMetric: state.chartMetric,
                 breakdownTab: state.breakdownTab,
                 sortMetric: state.sortMetric,

@@ -664,14 +664,17 @@ type StatsAnalyticsFilter struct {
 // StatsAnalyticsMetrics 与分析响应中的原子指标，前端派生请求数、总 token、
 // 总成本、成功率和平均耗时。
 type StatsAnalyticsMetrics struct {
-	InputToken     int64   `json:"input_token"`
-	OutputToken    int64   `json:"output_token"`
-	InputCost      float64 `json:"input_cost"`
-	OutputCost     float64 `json:"output_cost"`
-	WaitTime       int64   `json:"wait_time"`
-	RequestSuccess int64   `json:"request_success"`
-	RequestFailed  int64   `json:"request_failed"`
-	CachedToken    int64   `json:"cached_token"`
+	InputToken           int64    `json:"input_token"`
+	OutputToken          int64    `json:"output_token"`
+	InputCost            float64  `json:"input_cost"`
+	OutputCost           float64  `json:"output_cost"`
+	WaitTime             int64    `json:"wait_time"`
+	RequestSuccess       int64    `json:"request_success"`
+	RequestFailed        int64    `json:"request_failed"`
+	CachedToken          int64    `json:"cached_token"`
+	ObservedCachedToken  *int64   `json:"observed_cached_token"`
+	CacheReadSampleCount int64    `json:"cache_read_sample_count"`
+	CacheReadRatio       *float64 `json:"cache_read_ratio"`
 }
 
 type StatsAnalyticsTrendPoint struct {
@@ -856,6 +859,9 @@ func StatsAnalyticsGet(ctx context.Context, filter StatsAnalyticsFilter) (StatsA
 		if err := statsAnalyticsMetadataSummary(ctx, filter, &result); err != nil {
 			return result, fmt.Errorf("analytics metadata summary: %w", err)
 		}
+	}
+	if err := statsAnalyticsCacheCoverage(ctx, filter, &result); err != nil {
+		return result, fmt.Errorf("analytics cache coverage: %w", err)
 	}
 	return result, nil
 }

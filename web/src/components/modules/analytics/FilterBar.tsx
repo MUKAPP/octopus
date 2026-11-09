@@ -11,6 +11,7 @@ import {
     type AnalyticsResponseFormatted,
 } from '@/api/endpoints/analytics';
 import { useAnalyticsViewStore } from './store';
+import { MetadataFilters } from './MetadataFilters';
 import { cn } from '@/lib/utils';
 
 /** UI 哨兵值：仅存在于 Select 值层，绝不发送到后端 */
@@ -73,6 +74,11 @@ export function FilterBar({ query }: FilterBarProps) {
     const status = useAnalyticsViewStore((state) => state.status);
     const setStatus = useAnalyticsViewStore((state) => state.setStatus);
     const clearFilters = useAnalyticsViewStore((state) => state.clearFilters);
+    const stream = useAnalyticsViewStore((state) => state.stream);
+    const reasoningEffort = useAnalyticsViewStore((state) => state.reasoningEffort);
+    const taskType = useAnalyticsViewStore((state) => state.taskType);
+    const clientProtocol = useAnalyticsViewStore((state) => state.clientProtocol);
+    const errorCategory = useAnalyticsViewStore((state) => state.errorCategory);
 
     const dimensionsQuery = useAnalyticsDimensions();
     const dimensions = dimensionsQuery.data;
@@ -175,8 +181,12 @@ export function FilterBar({ query }: FilterBarProps) {
         if (status !== 'all') {
             list.push({ key: 'status', label: t(`filter.statusOption.${status}`) });
         }
+        if (stream !== 'all') list.push({ key: 'stream', label: t(`detail.${stream === 'true' ? 'streaming' : 'nonStreaming'}`) });
+        for (const [key, value] of Object.entries({ reasoningEffort, taskType, clientProtocol, errorCategory })) {
+            if (value !== null) list.push({ key, label: `${t(`detail.${key}`)}: ${value || t('filter.unknown')}` });
+        }
         return list;
-    }, [period, customLabel, model, actualModel, apiKey, channel, status, t]);
+    }, [period, customLabel, model, actualModel, apiKey, channel, status, stream, reasoningEffort, taskType, clientProtocol, errorCategory, t]);
 
     const presetButtonClass = (active: boolean) =>
         cn(
@@ -361,6 +371,8 @@ export function FilterBar({ query }: FilterBarProps) {
                     </Select>
                 </div>
             </div>
+
+            <MetadataFilters dimensions={dimensions} disabled={dimensionsFailed} />
 
             {dimensionsFailed && (
                 <div role="alert" className="mt-3 flex items-center justify-between gap-3 rounded-2xl border border-destructive/30 bg-destructive/5 px-4 py-2.5 text-sm text-muted-foreground">
