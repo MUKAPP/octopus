@@ -59,6 +59,9 @@ func DBExportAll(ctx context.Context, includeLogs, includeStats bool) (*model.DB
 		if err := persistStatsUsageLocked(ctx); err != nil {
 			return nil, fmt.Errorf("flush stats_usage: %w", err)
 		}
+		if err := conn.Find(&d.RequestMetadata).Error; err != nil {
+			return nil, fmt.Errorf("export request_metadata: %w", err)
+		}
 		if err := conn.Find(&d.StatsUsage).Error; err != nil {
 			return nil, fmt.Errorf("export stats_usage: %w", err)
 		}
@@ -179,6 +182,11 @@ func DBImportIncremental(ctx context.Context, dump *model.DBDump) (*model.DBImpo
 		}
 
 		if dump.IncludeStats {
+			if n, err := createDoNothingBatch(tx, dump.RequestMetadata, 250); err != nil {
+				return fmt.Errorf("import request_metadata: %w", err)
+			} else {
+				res.RowsAffected["request_metadata"] = n
+			}
 			if n, err := createUpsertAll(tx, dump.StatsTotal, []clause.Column{{Name: "id"}}); err != nil {
 				return fmt.Errorf("import stats_total: %w", err)
 			} else {
@@ -236,10 +244,15 @@ func DBImportIncremental(ctx context.Context, dump *model.DBDump) (*model.DBImpo
 const batchSize = 2000
 
 func createDoNothing[T any](tx *gorm.DB, rows []T) (int64, error) {
+	return createDoNothingBatch(tx, rows, batchSize)
+}
+
+// Wide metadata rows need smaller batches to stay below SQLite/Postgres bind limits.
+func createDoNothingBatch[T any](tx *gorm.DB, rows []T, size int) (int64, error) {
 	if len(rows) == 0 {
 		return 0, nil
 	}
-	result := tx.Clauses(clause.OnConflict{DoNothing: true}).CreateInBatches(&rows, batchSize)
+	result := tx.Clauses(clause.OnConflict{DoNothing: true}).CreateInBatches(&rows, size)
 	return result.RowsAffected, result.Error
 }
 

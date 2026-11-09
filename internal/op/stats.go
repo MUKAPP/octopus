@@ -649,6 +649,11 @@ type StatsAnalyticsFilter struct {
 	ChannelID        *int
 	ChannelName      *string
 	Status           string // "" | "success" | "failed"
+	Stream           *bool
+	ReasoningEffort  *string
+	TaskType         *string
+	ClientProtocol   *string
+	ErrorCategory    *string
 }
 
 // StatsAnalyticsMetrics 与分析响应中的原子指标，前端派生请求数、总 token、
@@ -687,6 +692,7 @@ type StatsAnalyticsResponse struct {
 	ResolvedStartDate string                     `json:"resolved_start_date"`
 	ResolvedEndDate   string                     `json:"resolved_end_date"`
 	Summary           StatsAnalyticsMetrics      `json:"summary"`
+	Details           StatsAnalyticsDetails      `json:"details"`
 	Trend             []StatsAnalyticsTrendPoint `json:"trend"`
 	ByModel           []StatsAnalyticsModelRow   `json:"by_model"`
 	ByActualModel     []StatsAnalyticsModelRow   `json:"by_actual_model"`
@@ -703,10 +709,15 @@ type StatsAnalyticsEntityRef struct {
 // 因而已删除或重命名实体的历史数据仍可筛选；空名称保留为可选择的
 // “未知/未分配”项。
 type StatsAnalyticsDimensions struct {
-	Models       []string                  `json:"models"`
-	ActualModels []string                  `json:"actual_models"`
-	APIKeys      []StatsAnalyticsEntityRef `json:"api_keys"`
-	Channels     []StatsAnalyticsEntityRef `json:"channels"`
+	Models           []string                  `json:"models"`
+	ActualModels     []string                  `json:"actual_models"`
+	APIKeys          []StatsAnalyticsEntityRef `json:"api_keys"`
+	Channels         []StatsAnalyticsEntityRef `json:"channels"`
+	Streams          []string                  `json:"streams"`
+	ReasoningEfforts []string                  `json:"reasoning_efforts"`
+	TaskTypes        []string                  `json:"task_types"`
+	ClientProtocols  []string                  `json:"client_protocols"`
+	ErrorCategories  []string                  `json:"error_categories"`
 }
 
 type statsUsageEntityKey struct {
@@ -825,9 +836,27 @@ const statsUsageSumSelect = "" +
 	"COALESCE(SUM(request_failed),0) AS request_failed," +
 	"COALESCE(SUM(cached_token),0) AS cached_token"
 
-// StatsAnalyticsGet 返回组合筛选后的汇总、趋势与各维度拆分；整个查询期间
-// 持有 usage 读锁，避免与 flush 交错造成重复或遗漏。
+// StatsAnalyticsGet only holds the usage lock while merging daily rows and pending deltas.
+// Durable metadata queries do not access that cache and must not block relay updates.
 func StatsAnalyticsGet(ctx context.Context, filter StatsAnalyticsFilter) (StatsAnalyticsResponse, error) {
+	result, err := statsAnalyticsUsageGet(ctx, filter)
+	if err != nil {
+		return result, err
+	}
+	result.Details, err = statsAnalyticsDetailsGet(ctx, filter, result.Summary.RequestSuccess+result.Summary.RequestFailed)
+	if err != nil {
+		return result, fmt.Errorf("analytics details: %w", err)
+	}
+	if filter.hasDetailFilters() {
+		if err := statsAnalyticsMetadataSummary(ctx, filter, &result); err != nil {
+			return result, fmt.Errorf("analytics metadata summary: %w", err)
+		}
+	}
+	return result, nil
+}
+
+// statsAnalyticsUsageGet merges persistent aggregates with deltas under the usage read lock.
+func statsAnalyticsUsageGet(ctx context.Context, filter StatsAnalyticsFilter) (StatsAnalyticsResponse, error) {
 	var result StatsAnalyticsResponse
 	statsUsageDeltaCacheLock.RLock()
 	defer statsUsageDeltaCacheLock.RUnlock()
@@ -1005,8 +1034,19 @@ func statsAnalyticsEntityRowsFrom(m map[statsUsageEntityKey]model.StatsUsage) []
 	return rows
 }
 
-// StatsAnalyticsDimensionsGet 返回数据库与 delta 中实际出现的维度选项。
+// StatsAnalyticsDimensionsGet queries durable dimensions after releasing the delta lock.
 func StatsAnalyticsDimensionsGet(ctx context.Context) (StatsAnalyticsDimensions, error) {
+	dims, err := statsAnalyticsUsageDimensionsGet(ctx)
+	if err != nil {
+		return dims, err
+	}
+	if err := statsAnalyticsDetailDimensions(ctx, &dims); err != nil {
+		return dims, err
+	}
+	return dims, nil
+}
+
+func statsAnalyticsUsageDimensionsGet(ctx context.Context) (StatsAnalyticsDimensions, error) {
 	var dims StatsAnalyticsDimensions
 	statsUsageDeltaCacheLock.RLock()
 	defer statsUsageDeltaCacheLock.RUnlock()

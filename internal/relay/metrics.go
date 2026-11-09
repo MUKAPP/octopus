@@ -19,6 +19,7 @@ import (
 type RelayMetrics struct {
 	ID           int64 // Snowflake ID，进行中请求与最终日志共用
 	APIKeyID     int
+	APIKeyName   string
 	RequestModel string
 	StartTime    time.Time
 
@@ -30,13 +31,17 @@ type RelayMetrics struct {
 	InternalResponse []byte
 
 	// 统计指标
-	ActualModel        string
-	Stats              model.StatsMetrics
-	UpstreamModel      string
-	ResponseModel      string
-	UpstreamStatusCode int
-	CachedTokens       int64
-	CacheWriteTokens   int64
+	ActualModel         string
+	Stats               model.StatsMetrics
+	UpstreamModel       string
+	ResponseModel       string
+	UpstreamStatusCode  int
+	CachedTokens        int64
+	CacheWriteTokens    int64
+	ReasoningTokens     *int64
+	UsagePresent        bool
+	CacheDetailsPresent bool
+	ClientProtocol      string
 
 	// 参数覆盖 / 参数追加
 	ParamOverride string
@@ -49,6 +54,13 @@ func (m *RelayMetrics) RecordUsage(usage *llm.Usage) {
 	}
 
 	// usage 已由 axonhub/llm 标准化；octopus 仍使用本地模型价格表计算成本，所以这里只做用量落点和价格换算。
+	m.UsagePresent = true
+	m.ReasoningTokens = nil
+	if usage.CompletionTokensDetails != nil {
+		value := usage.CompletionTokensDetails.ReasoningTokens
+		m.ReasoningTokens = &value
+	}
+	m.CacheDetailsPresent = usage.PromptTokensDetails != nil
 	m.Stats.InputToken = usage.PromptTokens
 	m.Stats.OutputToken = usage.CompletionTokens
 
@@ -99,9 +111,11 @@ func (m *RelayMetrics) Save(ctx context.Context, success bool, err error, attemp
 	// 客户端断开或请求上下文取消后仍要保存最终审计日志与统计，因此持久化阶段主动脱离请求取消信号。
 	persistenceCtx := context.WithoutCancel(ctx)
 
-	var apiKeyName string
-	if apiKey, getErr := op.APIKeyGet(m.APIKeyID, persistenceCtx); getErr == nil {
-		apiKeyName = apiKey.Name
+	apiKeyName := m.APIKeyName
+	if apiKeyName == "" {
+		if apiKey, getErr := op.APIKeyGet(m.APIKeyID, persistenceCtx); getErr == nil {
+			apiKeyName = apiKey.Name
+		}
 	}
 
 	op.StatsTotalUpdate(globalStats)
@@ -142,6 +156,7 @@ func (m *RelayMetrics) Save(ctx context.Context, success bool, err error, attemp
 		m.Stats.InputCost, m.Stats.OutputCost, m.Stats.InputCost+m.Stats.OutputCost,
 		len(attempts))
 
+	m.saveMetadata(persistenceCtx, success, err, duration, attempts, channelID, channelName, rateMultiplier, apiKeyName)
 	m.saveLog(persistenceCtx, err, duration, attempts, channelID, channelName, rateMultiplier, apiKeyName)
 }
 

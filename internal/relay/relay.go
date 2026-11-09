@@ -133,6 +133,7 @@ func newRelayRun(c *gin.Context, inboundType llm.APIFormat, inAdapter transforme
 		internalRequest: internalRequest,
 		clientHeaders:   clientHeaders,
 		metrics: &RelayMetrics{
+			ClientProtocol:  string(inboundType),
 			APIKeyID:        apiKeyID,
 			RequestModel:    internalRequest.Model,
 			StartTime:       time.Now(),
@@ -161,7 +162,7 @@ func (r *relayRun) run() {
 				case <-ctx.Done():
 					log.Infof("request context canceled, stopping retry")
 					r.removeActive()
-					r.metrics.Save(ctx, false, context.Canceled, r.iter.Attempts())
+					r.metrics.Save(ctx, false, ctx.Err(), r.iter.Attempts())
 					return
 				default:
 				}
@@ -212,6 +213,7 @@ func (r *relayRun) registerActive() {
 	if apiKey, err := op.APIKeyGet(r.metrics.APIKeyID, r.c.Request.Context()); err == nil {
 		apiKeyName = apiKey.Name
 	}
+	r.metrics.APIKeyName = apiKeyName
 	r.metrics.ID = snowflake.GenerateID()
 	initialLog := r.metrics.buildRelayLog(nil, 0, nil, 0, "", 0, apiKeyName)
 	stream := r.internalRequest.Stream != nil && *r.internalRequest.Stream
@@ -315,6 +317,15 @@ func (r *relayRun) emitAttemptsSince(start int) {
 		return
 	}
 	for index := start; index < len(attempts); index++ {
+		// Skipped decisions still retain the selected key identity without retaining its value.
+		if r.candidateChannel != nil && attempts[index].ChannelKeyID != 0 {
+			for _, key := range r.candidateChannel.Keys {
+				if key.ID == attempts[index].ChannelKeyID {
+					attempts[index].ChannelKeyRemark = strings.TrimSpace(key.Remark)
+					break
+				}
+			}
+		}
 		op.RelayLogStoreAttemptFinished(r.metrics.ID, index, attempts[index])
 	}
 }
@@ -391,6 +402,14 @@ func (r *relayRun) preparedAttempt(item dbmodel.GroupItem, channel *dbmodel.Chan
 	// 每次尝试都把客户端模型改成本次候选的实际上游模型；重试时会被下一候选覆盖。
 	r.internalRequest.Model = item.ModelName
 	r.metrics.ActualModel = item.ModelName
+	// Usage and timing belong to the final executed attempt, not a failed predecessor.
+	r.metrics.Stats = dbmodel.StatsMetrics{}
+	r.metrics.FirstTokenTime = time.Time{}
+	r.metrics.UpstreamStatusCode = 0
+	r.metrics.UsagePresent = false
+	r.metrics.CacheDetailsPresent = false
+	r.metrics.CachedTokens, r.metrics.CacheWriteTokens = 0, 0
+	r.metrics.ReasoningTokens = nil
 	r.metrics.ParamOverride = ""
 	r.metrics.ParamAppend = ""
 	r.metrics.UpstreamModel = ""

@@ -222,5 +222,25 @@ func parseStatsAnalyticsFilter(c *gin.Context) (op.StatsAnalyticsFilter, error) 
 	}
 	filter.Status = status
 
+	switch stream := query.Get("stream"); stream {
+	case "", "all":
+	case "true", "false":
+		value := stream == "true"
+		filter.Stream = &value
+	default:
+		return filter, fmt.Errorf("invalid stream: %s", stream)
+	}
+	for _, field := range []struct {
+		name   string
+		target **string
+	}{
+		{"reasoning_effort", &filter.ReasoningEffort}, {"task_type", &filter.TaskType},
+		{"client_protocol", &filter.ClientProtocol}, {"error_category", &filter.ErrorCategory},
+	} {
+		if values, ok := query[field.name]; ok {
+			value := values[0]
+			*field.target = &value
+		}
+	}
 	return filter, nil
 }
