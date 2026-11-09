@@ -64,6 +64,7 @@ type relayAttempt struct {
 	modelNamesMu      sync.Mutex
 	upstreamModelName string
 	responseModelName string
+	usageMetadata     relayUsageCollector
 
 	// 原始 HTTP 响应和错误只归属当前尝试，避免取消后的晚到响应污染下一次尝试。
 	upstreamStatusCode atomic.Int32

@@ -406,10 +406,8 @@ func (r *relayRun) preparedAttempt(item dbmodel.GroupItem, channel *dbmodel.Chan
 	r.metrics.Stats = dbmodel.StatsMetrics{}
 	r.metrics.FirstTokenTime = time.Time{}
 	r.metrics.UpstreamStatusCode = 0
-	r.metrics.UsagePresent = false
-	r.metrics.CacheDetailsPresent = false
+	r.metrics.usageMetadata = relayUsageMetadata{}
 	r.metrics.CachedTokens, r.metrics.CacheWriteTokens = 0, 0
-	r.metrics.ReasoningTokens = nil
 	r.metrics.ParamOverride = ""
 	r.metrics.ParamAppend = ""
 	r.metrics.UpstreamModel = ""
@@ -555,6 +553,7 @@ func (ra *relayAttempt) run() (bool, error) {
 	fwdErr = ra.normalizeUpstreamError(fwdErr)
 	observedStatusCode := int(ra.upstreamStatusCode.Load())
 	ra.metrics.UpstreamStatusCode = observedStatusCode
+	ra.metrics.usageMetadata = ra.snapshotUsageMetadata()
 	ra.modelNamesMu.Lock()
 	ra.metrics.UpstreamModel = ra.upstreamModelName
 	ra.metrics.ResponseModel = ra.responseModelName
@@ -1113,6 +1112,7 @@ func (m *relayPipelineMiddleware) OnOutboundRawRequest(ctx context.Context, requ
 func (m *relayPipelineMiddleware) OnOutboundRawResponse(ctx context.Context, response *httpclient.Response) (*httpclient.Response, error) {
 	if response != nil {
 		m.attempt.recordResponseModelName(response.Body, false)
+		m.attempt.recordUsageMetadata(response.Body)
 		// 普通成功响应只查找字节标记；明确错误候选才进行 JSON 解码。
 		if bytes.Contains(response.Body, []byte(`"error"`)) || bytes.Contains(response.Body, []byte(`"errors"`)) || bytes.Contains(response.Body, []byte(`"response.failed"`)) {
 			if detail, explicit := decodeRelayErrorDetail(response.Body, response.Headers, ""); explicit {
@@ -1144,6 +1144,7 @@ func (m *relayPipelineMiddleware) OnOutboundRawStream(ctx context.Context, strea
 			return nil, nil
 		}
 		m.attempt.recordResponseModelName(event.Data, true)
+		m.attempt.recordUsageMetadata(event.Data)
 		explicit := event.Type == "error" || event.Type == "response.failed"
 		var detail llm.ErrorDetail
 		if explicit || bytes.Contains(event.Data, []byte(`"error"`)) || bytes.Contains(event.Data, []byte(`"errors"`)) || bytes.Contains(event.Data, []byte(`"response.failed"`)) {

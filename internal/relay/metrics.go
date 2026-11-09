@@ -31,17 +31,15 @@ type RelayMetrics struct {
 	InternalResponse []byte
 
 	// 统计指标
-	ActualModel         string
-	Stats               model.StatsMetrics
-	UpstreamModel       string
-	ResponseModel       string
-	UpstreamStatusCode  int
-	CachedTokens        int64
-	CacheWriteTokens    int64
-	ReasoningTokens     *int64
-	UsagePresent        bool
-	CacheDetailsPresent bool
-	ClientProtocol      string
+	ActualModel        string
+	Stats              model.StatsMetrics
+	UpstreamModel      string
+	ResponseModel      string
+	UpstreamStatusCode int
+	CachedTokens       int64
+	CacheWriteTokens   int64
+	usageMetadata      relayUsageMetadata
+	ClientProtocol     string
 
 	// 参数覆盖 / 参数追加
 	ParamOverride string
@@ -54,13 +52,6 @@ func (m *RelayMetrics) RecordUsage(usage *llm.Usage) {
 	}
 
 	// usage 已由 axonhub/llm 标准化；octopus 仍使用本地模型价格表计算成本，所以这里只做用量落点和价格换算。
-	m.UsagePresent = true
-	m.ReasoningTokens = nil
-	if usage.CompletionTokensDetails != nil {
-		value := usage.CompletionTokensDetails.ReasoningTokens
-		m.ReasoningTokens = &value
-	}
-	m.CacheDetailsPresent = usage.PromptTokensDetails != nil
 	m.Stats.InputToken = usage.PromptTokens
 	m.Stats.OutputToken = usage.CompletionTokens
 

@@ -54,18 +54,15 @@ func (m *RelayMetrics) saveMetadata(ctx context.Context, success bool, relayErr 
 		RequestModelName: m.RequestModel, ActualModelName: m.ActualModel, UpstreamModelName: m.UpstreamModel, ResponseModelName: m.ResponseModel,
 		APIKeyID: m.APIKeyID, APIKeyName: apiKeyName, ChannelID: channelID, ChannelName: channelName, RateMultiplier: rate,
 		ClientProtocol: m.ClientProtocol, Success: success, StatusCode: m.UpstreamStatusCode,
-		UsagePresent: m.UsagePresent, InputToken: m.Stats.InputToken, OutputToken: m.Stats.OutputToken,
-		InputCost: m.Stats.InputCost, OutputCost: m.Stats.OutputCost, TotalDurationMS: duration.Milliseconds(), ReasoningToken: m.ReasoningTokens,
+		UsagePresent: m.usageMetadata.Present, InputToken: m.Stats.InputToken, OutputToken: m.Stats.OutputToken,
+		InputCost: m.Stats.InputCost, OutputCost: m.Stats.OutputCost, TotalDurationMS: duration.Milliseconds(), ReasoningToken: m.usageMetadata.ReasoningToken,
+		CacheReadToken: m.usageMetadata.CacheReadToken, CacheWriteToken: m.usageMetadata.CacheWriteToken,
 		Attempts: make([]model.RequestAttemptMetadata, 0, len(attempts)),
 	}
 	if m.InternalRequest != nil {
 		row.Stream = m.InternalRequest.Stream != nil && *m.InternalRequest.Stream
 		row.ReasoningEffort = m.InternalRequest.ReasoningEffort
 		row.TaskType = string(m.InternalRequest.RequestType)
-	}
-	if m.CacheDetailsPresent {
-		read, write := m.CachedTokens, m.CacheWriteTokens
-		row.CacheReadToken, row.CacheWriteToken = &read, &write
 	}
 	if !m.FirstTokenTime.IsZero() {
 		value := m.FirstTokenTime.Sub(m.StartTime).Milliseconds()
