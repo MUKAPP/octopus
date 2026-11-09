@@ -129,6 +129,13 @@ func DBImportIncremental(ctx context.Context, dump *model.DBDump) (*model.DBImpo
 			return nil, fmt.Errorf("validate stats_usage row %d: key_hash mismatch", i)
 		}
 	}
+	if dump.IncludeStats {
+		for i, row := range dump.RequestMetadata {
+			if row.ID == "" || len(row.ID) > 32 {
+				return nil, fmt.Errorf("validate request_metadata row %d: invalid permanent id", i)
+			}
+		}
+	}
 	// 导入前逐项校验 setting，任何无效值在事务写入前整体拒绝，避免导入绕过 handler 校验。
 	for i := range dump.Settings {
 		if err := dump.Settings[i].Validate(); err != nil {
@@ -182,11 +189,6 @@ func DBImportIncremental(ctx context.Context, dump *model.DBDump) (*model.DBImpo
 		}
 
 		if dump.IncludeStats {
-			if n, err := createDoNothingBatch(tx, dump.RequestMetadata, 250); err != nil {
-				return fmt.Errorf("import request_metadata: %w", err)
-			} else {
-				res.RowsAffected["request_metadata"] = n
-			}
 			if n, err := createUpsertAll(tx, dump.StatsTotal, []clause.Column{{Name: "id"}}); err != nil {
 				return fmt.Errorf("import stats_total: %w", err)
 			} else {
@@ -217,12 +219,12 @@ func DBImportIncremental(ctx context.Context, dump *model.DBDump) (*model.DBImpo
 			} else {
 				res.RowsAffected["stats_api_key"] = n
 			}
-			// 冲突时保留目标库现值（DoNothing），重复导入幂等，不把两个累计快照相加。
-			if n, err := createDoNothing(tx, dump.StatsUsage); err != nil {
-				return fmt.Errorf("import stats_usage: %w", err)
-			} else {
-				res.RowsAffected["stats_usage"] = n
+			usageRows, metadataRows, err := importRequestMetadataAndUsage(ctx, tx, dump)
+			if err != nil {
+				return err
 			}
+			res.RowsAffected["stats_usage"] = usageRows
+			res.RowsAffected["request_metadata"] = metadataRows
 		}
 
 		if dump.IncludeLogs {
@@ -244,15 +246,10 @@ func DBImportIncremental(ctx context.Context, dump *model.DBDump) (*model.DBImpo
 const batchSize = 2000
 
 func createDoNothing[T any](tx *gorm.DB, rows []T) (int64, error) {
-	return createDoNothingBatch(tx, rows, batchSize)
-}
-
-// Wide metadata rows need smaller batches to stay below SQLite/Postgres bind limits.
-func createDoNothingBatch[T any](tx *gorm.DB, rows []T, size int) (int64, error) {
 	if len(rows) == 0 {
 		return 0, nil
 	}
-	result := tx.Clauses(clause.OnConflict{DoNothing: true}).CreateInBatches(&rows, size)
+	result := tx.Clauses(clause.OnConflict{DoNothing: true}).CreateInBatches(&rows, batchSize)
 	return result.RowsAffected, result.Error
 }
 
