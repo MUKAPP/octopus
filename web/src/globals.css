@@ -21,6 +21,8 @@
   --destructive: oklch(0.5787 0.1500 34.8321);
   --destructive-foreground: oklch(0.9796 0.0101 32.5158);
   --border: oklch(0.8795 0.0142 88.6926);
+  /* 卡片边界：略淡于通用 border，用于大卡片容器，亮暗主题自动派生。 */
+  --card-border: color-mix(in oklch, var(--border) 62%, var(--card));
   --input: oklch(0.8795 0.0142 88.6926);
   --ring: oklch(0.6205 0.1199 144.8607);
   --chart-1: oklch(0.6809 0.1201 145.0433);
@@ -74,6 +76,7 @@ html.dark,
   --destructive: oklch(0.5787 0.1500 34.8321);
   --destructive-foreground: oklch(0.9496 0.0101 32.5162);
   --border: oklch(0.4006 0.0210 145.1704);
+  --card-border: color-mix(in oklch, var(--border) 62%, var(--card));
   --input: oklch(0.4006 0.0210 145.1704);
   --ring: oklch(0.6990 0.1292 144.8727);
   --chart-1: oklch(0.7603 0.1309 144.9935);
@@ -124,6 +127,7 @@ html.dark,
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
   --color-border: var(--border);
+  --color-card-border: var(--card-border);
   --color-input: var(--input);
   --color-ring: var(--ring);
   --color-chart-1: var(--chart-1);
@@ -153,6 +157,22 @@ html.dark,
   --shadow-lg: var(--shadow-lg);
   --shadow-xl: var(--shadow-xl);
   --shadow-2xl: var(--shadow-2xl);
+
+  /*
+   * 动效时长与缓动统一档位。
+   * 背景：改前浮层进出场散落在 0.15s / 0.16s / 0.2s / 0.4s 四套时长，
+   * 这里收敛成三档：小浮层（tooltip/popover/select）、弹层（dialog/morph）、
+   * 以及页面级过渡。数值来自既有的 overlay 滚动条 160ms 与 motion 0.2s 惯例。
+   */
+  --duration-overlay: 160ms;
+  --duration-panel: 200ms;
+  --duration-page: 300ms;
+  --ease-out-emphasized: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* 共享 ease-out 档位，供 CSS transition 复用（与 motion 的 EASING.easeOutExpo 一致）。 */
+@utility ease-emphasized {
+  transition-timing-function: var(--ease-out-emphasized);
 }
 
 /* 原生 viewport 保持原样；共享增强器在父层绘制零占位轨道。 */

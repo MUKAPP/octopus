@@ -6,6 +6,7 @@ import { Fragment } from 'react';
 import { Loader2 } from 'lucide-react';
 import dayjs from 'dayjs';
 import { getOverlayScrollbarViewport } from '@/lib/overlay-scrollbars';
+import { InlineRetry } from '@/components/common/InlineRetry';
 
 interface StatsDailyData {
     dateStr: string;
@@ -112,13 +113,11 @@ export function Activity() {
     }, [pinnedDateStr, hideTooltip]);
 
     return (
-        <div ref={containerRef} className="rounded-3xl bg-card border-card-border border text-card-foreground custom-shadow">
+        <div ref={containerRef} className="rounded-3xl bg-card border-card-border border text-card-foreground">
             {isError && statsDailyFormatted && (
                 <div role="alert" className="mx-4 mt-4 flex items-center justify-between gap-3 rounded-2xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-muted-foreground">
                     <span>{tHome('feedback.loadFailed')}</span>
-                    <button type="button" onClick={() => void refetch()} className="shrink-0 rounded-xl border border-border px-3 py-1.5 font-medium text-foreground transition-colors hover:bg-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
-                        {tHome('feedback.retry')}
-                    </button>
+                    <InlineRetry onRetry={() => void refetch()} label={tHome('feedback.retry')} className="shrink-0" />
                 </div>
             )}
             <div
@@ -134,9 +133,7 @@ export function Activity() {
                 ) : isError && !statsDailyFormatted ? (
                     <div role="alert" className="flex h-[7.375rem] min-w-[47.25rem] flex-col items-center justify-center gap-3 text-sm text-muted-foreground">
                         <p>{tHome('feedback.loadFailed')}</p>
-                        <button type="button" onClick={() => void refetch()} className="rounded-xl border border-border px-3 py-1.5 font-medium text-foreground transition-colors hover:bg-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
-                            {tHome('feedback.retry')}
-                        </button>
+                        <InlineRetry onRetry={() => void refetch()} label={tHome('feedback.retry')} />
                     </div>
                 ) : (
                     <div className="ml-auto w-fit">
@@ -219,7 +216,7 @@ export function Activity() {
 
                     return (
                         <div
-                            className={`fixed z-50 w-fit min-w-max text-sm bg-background text-foreground border rounded-3xl p-3 transition-opacity duration-500 pointer-events-none ${tooltip.visible ? 'opacity-100' : 'opacity-0'}`}
+                            className={`fixed z-50 w-fit min-w-max text-sm bg-background text-foreground border rounded-3xl p-3 transition-opacity duration-200 pointer-events-none ${tooltip.visible ? 'opacity-100' : 'opacity-0'}`}
                             style={{
                                 left: tooltip.x,
                                 top: tooltip.y,

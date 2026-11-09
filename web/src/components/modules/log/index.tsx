@@ -28,7 +28,7 @@ export function Log() {
         if (hasMore && (isLoading || isLoadingMore)) {
             return (
                 <div className="flex justify-center py-4">
-                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                    <Loader2 className="size-5 animate-spin text-muted-foreground" role="status" aria-label={commonT('loading')} />
                 </div>
             );
         }
@@ -40,7 +40,7 @@ export function Log() {
             );
         }
         return null;
-    }, [hasMore, isLoading, isLoadingMore, logs.length, t]);
+    }, [hasMore, isLoading, isLoadingMore, logs.length, t, commonT]);
     return (
         <div className="flex h-full min-h-0 flex-col gap-2">
             <div className="relative min-h-0 flex-1">

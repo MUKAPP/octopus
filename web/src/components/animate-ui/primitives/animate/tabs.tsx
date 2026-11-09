@@ -286,8 +286,7 @@ function TabsContents({
     (child): child is React.ReactElement<{ value: string }> =>
       React.isValidElement(child) &&
       typeof child.props === 'object' &&
-      child.props !== null &&
-      'value' in child.props &&
+      child.props !== null && 'value' in child.props &&
       child.props.value === activeValue,
   );
 

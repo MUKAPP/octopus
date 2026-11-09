@@ -15,7 +15,8 @@ import {
 import { useTranslations } from 'use-intl';
 import { useStatsTotal } from '@/api/stats';
 import { AnimatedNumber } from '@/components/common/AnimatedNumber';
-import { EASING, REDUCED_MOTION_TRANSITION } from '@/lib/animations/fluid-transitions';
+import { DURATION, EASING, REDUCED_MOTION_TRANSITION } from '@/lib/animations/fluid-transitions';
+import { InlineRetry } from '@/components/common/InlineRetry';
 
 
 export function Total() {
@@ -39,9 +40,7 @@ export function Total() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div role="alert" className="col-span-full flex min-h-40 flex-col items-center justify-center gap-3 rounded-3xl border border-destructive/30 bg-card p-4 text-center text-sm text-muted-foreground">
                     <p>{tHome('feedback.loadFailed')}</p>
-                    <button type="button" onClick={() => void refetch()} className="rounded-xl border border-border px-3 py-1.5 font-medium text-foreground transition-colors hover:bg-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
-                        {tHome('feedback.retry')}
-                    </button>
+                    <InlineRetry onRetry={() => void refetch()} label={tHome('feedback.retry')} />
                 </div>
             </div>
         );
@@ -143,9 +142,7 @@ export function Total() {
             {isError && (
                 <div role="alert" className="col-span-full flex items-center justify-between gap-3 rounded-2xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-muted-foreground">
                     <span>{tHome('feedback.loadFailed')}</span>
-                    <button type="button" onClick={() => void refetch()} className="shrink-0 rounded-xl border border-border px-3 py-1.5 font-medium text-foreground transition-colors hover:bg-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
-                        {tHome('feedback.retry')}
-                    </button>
+                    <InlineRetry onRetry={() => void refetch()} label={tHome('feedback.retry')} className="shrink-0" />
                 </div>
             )}
             {cards.map((card, index) => (
@@ -155,7 +152,7 @@ export function Total() {
                     initial={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: 20, filter: 'blur(8px)' }}
                     animate={shouldReduceMotion ? { opacity: 1 } : { opacity: 1, y: 0, filter: 'blur(0px)' }}
                     transition={shouldReduceMotion ? REDUCED_MOTION_TRANSITION : {
-                        duration: 0.5,
+                        duration: DURATION.page,
                         ease: EASING.easeOutExpo,
                         delay: index * 0.08,
                     }}

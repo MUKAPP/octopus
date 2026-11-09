@@ -12,7 +12,7 @@
             "apikey": "密钥登录"
         },
         "error": {
-            "generic": "登录失败,请检查登录凭据"
+            "generic": "登录失败，请检查登录凭据"
         },
         "button": {
             "loading": "登录中...",
@@ -128,7 +128,7 @@
             "outputCost": "输出成本",
             "costShare": "费用占比",
             "reasoningTokens": "推理 Token",
-            "cacheNote": "缓存读取量和占比仅使用上游明确提供缓存读取字段的已采集请求；占比为同一批样本的缓存读取 Token ÷ 输入 Token，与请求命中率不同。缓存写入和推理 Token 同样仅统计明确上报的字段；推理 Token 可能已包含在输出 Token 中。 缓存占比不包含尚无标准化输入量的部分流式用量，比例样本数单独显示。",
+            "cacheNote": "缓存读取仅统计上游明确上报的请求；占比为这些样本内缓存读取 Token ÷ 输入 Token，不是请求命中率。推理 Token 可能已包含在输出 Token 中。",
             "averageDuration": "平均总耗时",
             "totalDuration": "请求总耗时",
             "firstToken": "首字延迟",
@@ -138,7 +138,7 @@
             "speedP50": "P50 输出速度",
             "speedP95": "P95 输出速度",
             "tokensPerSecond": "{value} Token/秒",
-            "performanceNote": "分位数按已采集的单次请求计算。首字延迟仅使用收到首字的成功流式请求；输出速度排除首字等待，仅使用有输出 Token 且生成时长有效的成功流式请求，总体速度按生成时长加权。",
+            "performanceNote": "分位数按单次请求计算。首字延迟取收到首字的成功流式请求；输出速度排除首字等待，按生成时长加权。",
             "failedRequests": "失败请求",
             "retryRequests": "发生重试的请求",
             "recoveredRequests": "重试后成功请求",
@@ -154,7 +154,7 @@
             "statusCode": "HTTP 状态码",
             "noUpstreamResponse": "未收到上游响应",
             "noSamples": "当前筛选无已采集样本。",
-            "retryNote": "重试仅统计真正执行的转发，熔断和其他跳过单独计数。重试恢复率 = 重试后成功请求 ÷ 发生重试的请求。HTTP 状态码取最终上游响应。",
+            "retryNote": "重试只统计真正执行的转发，熔断与其他跳过单独计数；重试恢复率 = 重试后成功 ÷ 发生重试的请求。",
             "peakRpm": "每分钟请求峰值",
             "peakTpm": "每分钟 Token 峰值",
             "hourly": "小时流量",
@@ -162,7 +162,7 @@
             "cost": "成本",
             "hourHeatmap": "各时段请求热力图",
             "hourValue": "{hour} 时：{count} 个请求",
-            "trafficNote": "小时流量和分钟峰值按服务器时区的请求开始时间归属；Token 归入请求开始分钟，不表示实时生成吞吐。热力图按时段合并所选日期。",
+            "trafficNote": "小时流量与分钟峰值按服务器时区的请求开始时间归入；Token 计入开始分钟，不代表实时吞吐。",
             "featureLabel": "拆分维度",
             "successRate": "成功率",
             "durationP95": "P95 总耗时",
@@ -216,25 +216,26 @@
         "inputStats": "输入统计",
         "outputStats": "输出统计",
         "requestCount": "请求次数",
-        "timeConsumed": "消耗时间",
+        "timeConsumed": "总耗时",
         "totalToken": "消耗 Token",
-        "totalCost": "消耗费用",
-        "inputTokens": "输入 Tokens",
-        "inputCost": "输入费用",
-        "outputTokens": "输出 Tokens",
-        "outputCost": "输出费用",
+        "totalCost": "总成本",
+        "inputTokens": "输入 Token",
+        "inputCost": "输入成本",
+        "outputTokens": "输出 Token",
+        "outputCost": "输出成本",
         "successRequests": "成功请求",
         "failedRequests": "失败请求",
         "quota": "剩余额度",
         "unlimited": "无限制",
         "expireAt": "过期时间",
         "neverExpire": "永不过期",
-        "daysLeft": "天后到期",
+        "daysLeft": "{days} 天后到期",
         "expired": "已过期",
         "supportedModels": "支持的模型",
         "switchToLightTheme": "切换到浅色主题",
         "switchToDarkTheme": "切换到深色主题",
-        "switchLanguage": "切换语言"
+        "switchLanguage": "切换语言",
+        "loading": "加载中"
     },
     "navbar": {
         "ariaLabel": "主导航",
@@ -286,12 +287,18 @@
     },
     "common": {
         "copy": {
+            "copy": "复制",
             "success": "复制成功",
             "failed": "复制失败",
             "noContent": "无可复制内容"
         },
         "listRequestError": "加载列表失败，请重试",
-        "listRetry": "重试"
+        "listRetry": "重试",
+        "loading": "加载中",
+        "remove": "移除",
+        "stats": "统计",
+        "edit": "编辑",
+        "close": "关闭"
     },
     "home": {
         "feedback": {
@@ -301,9 +308,9 @@
         },
         "activity": {
             "requestCount": "请求次数",
-            "waitTime": "等待时间",
+            "waitTime": "总耗时",
             "totalToken": "消耗 Token",
-            "totalCost": "消耗费用",
+            "totalCost": "总成本",
             "noData": "无数据"
         },
         "total": {
@@ -312,25 +319,25 @@
             "inputStats": "输入统计",
             "outputStats": "输出统计",
             "requestCount": "请求次数",
-            "timeConsumed": "消耗时间",
+            "timeConsumed": "总耗时",
             "totalToken": "消耗 Token",
-            "totalCost": "消耗费用",
-            "inputTokens": "输入 Tokens",
-            "inputCost": "输入费用",
-            "outputTokens": "输出 Tokens",
-            "outputCost": "输出费用"
+            "totalCost": "总成本",
+            "inputTokens": "输入 Token",
+            "inputCost": "输入成本",
+            "outputTokens": "输出 Token",
+            "outputCost": "输出成本"
         },
         "chart": {
             "title": "趋势",
             "totalRequests": "请求次数",
-            "totalCost": "消费金额",
-            "totalTokens": "Tokens 消耗",
+            "totalCost": "总成本",
+            "totalTokens": "消耗 Token",
             "timePeriod": "时间周期",
             "cyclePeriod": "切换时间周期，当前：{period}",
             "metricType": {
-                "cost": "金额",
+                "cost": "成本",
                 "count": "次数",
-                "tokens": "Tokens"
+                "tokens": "Token"
             },
             "period": {
                 "today": "今天",
@@ -340,9 +347,9 @@
         },
         "rank": {
             "title": "排行榜",
-            "sortByCost": "金额",
+            "sortByCost": "成本",
             "sortByCount": "次数",
-            "sortByTokens": "Tokens",
+            "sortByTokens": "Token",
             "noData": "暂无排行数据",
             "successRate": "成功率"
         }
@@ -408,7 +415,8 @@
                 "includeStats": "包含统计",
                 "button": "下载 JSON",
                 "exporting": "导出中...",
-                "success": "开始导出"
+                "success": "导出已开始下载",
+                "failed": "导出失败"
             },
             "import": {
                 "title": "导入（增量）",
@@ -456,8 +464,8 @@
                 "noData": "暂无统计数据",
                 "inputToken": "输入 Token",
                 "outputToken": "输出 Token",
-                "inputCost": "输入费用",
-                "outputCost": "输出费用",
+                "inputCost": "输入成本",
+                "outputCost": "输出成本",
                 "requestSuccess": "成功请求",
                 "requestFailed": "失败请求"
             },
@@ -553,7 +561,9 @@
             },
             "clearSuccess": "日志已清空",
             "clearFailed": "清空失败"
-        }
+        },
+        "saveFailed": "保存失败",
+        "loading": "加载中"
     },
     "group": {
         "toast": {
@@ -671,7 +681,7 @@
             "totalTime": "总耗时",
             "input": "输入",
             "output": "输出",
-            "cost": "费用",
+            "cost": "成本",
             "requestContent": "请求内容",
             "responseContent": "响应内容",
             "truncated": "内容已截断",
@@ -737,7 +747,8 @@
             "saveImage": "保存图片",
             "openOriginalImage": "打开原图",
             "imageSaveFailed": "图片保存失败",
-            "imageSaveFailedHint": "链接可能已失效，或远程服务器不允许直接下载。可打开原图后保存。"
+            "imageSaveFailedHint": "链接可能已失效，或远程服务器不允许直接下载。可打开原图后保存。",
+            "tokensPerSecondUnit": "Token/秒"
         }
     },
     "channel": {
@@ -777,7 +788,7 @@
                 "outputToken": "输出 Token",
                 "inputCost": "输入成本",
                 "outputCost": "输出成本",
-                "avgWaitTime": "等待时间"
+                "avgWaitTime": "总耗时"
             },
             "actions": {
                 "edit": "编辑",

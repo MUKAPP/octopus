@@ -72,6 +72,8 @@ const TableHead = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <th
     ref={ref}
+    // 本项目表格均为列头，默认 scope=col 让屏幕阅读器正确关联列标题。
+    scope="col"
     className={cn(
       "h-10 px-4 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
       className

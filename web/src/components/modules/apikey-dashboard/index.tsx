@@ -8,7 +8,7 @@ import { AnimatedNumber } from '@/components/common/AnimatedNumber';
 import Logo from '@/components/modules/logo';
 import { PageWrapper } from '@/components/common/PageWrapper';
 import { CopyIconButton } from '@/components/common/CopyButton';
-import { useCopyToClipboard } from '@uidotdev/usehooks';
+import { copyText } from '@/lib/clipboard';
 import { useCallback } from 'react';
 import type { JSX } from 'react';
 import {
@@ -35,30 +35,33 @@ import dayjs from 'dayjs';
 
 export function APIKeyDashboard() {
     const t = useTranslations('apiKeyDashboard');
+    const tCopy = useTranslations('common.copy');
     const { data, error, isLoading } = useAPIKeyDashboardStats();
     const { logout } = useAuthStore();
     const { theme, setTheme } = useTheme();
     const { locale, setLocale } = useSettingStore();
-    const [, copyToClipboard] = useCopyToClipboard();
 
     const copyWithToast = useCallback(
         async (text: string, label: string) => {
             try {
-                await copyToClipboard(text);
-                toast.success(`${label} copied`);
+                await copyText(text);
+                // 文案走 i18n，避免中文界面出现固定的英文 "copied"。
+                toast.success(tCopy('success'), { description: label });
                 return true;
-            } catch {
-                toast.error(t('error'));
+            } catch (cause) {
+                toast.error(tCopy('failed'), {
+                    description: cause instanceof Error ? cause.message : String(cause),
+                });
                 return false;
             }
         },
-        [copyToClipboard, t]
+        [tCopy]
     );
 
     if (isLoading) {
         return (
             <div className="min-h-dvh flex items-center justify-center pt-(--safe-area-top) pr-(--safe-area-right) pb-(--safe-area-bottom) pl-(--safe-area-left)">
-                <Loader2 className="size-8 animate-spin text-muted-foreground" role="status" aria-label="加载中" />
+                <Loader2 className="size-8 animate-spin text-muted-foreground" role="status" aria-label={t('loading')} />
             </div>
         );
     }
@@ -167,7 +170,7 @@ export function APIKeyDashboard() {
                                     </code>
                                     <CopyIconButton
                                         text={info.api_key}
-                                        className="flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary transition-all hover:bg-primary hover:text-primary-foreground active:scale-95"
+                                        className="flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary transition-[color,background-color,transform] hover:bg-primary hover:text-primary-foreground active:scale-95"
                                         copyIconClassName="size-4"
                                         checkIconClassName="size-4"
                                     />
@@ -179,7 +182,7 @@ export function APIKeyDashboard() {
                                         {expireAt ? (
                                             <span className={`font-medium ${isExpired ? 'text-destructive' : ''}`}>
                                                 {expireAt.format('YYYY-MM-DD')}
-                                                {!isExpired && daysUntilExpire !== null && <span className="ml-2 text-xs bg-secondary px-2 py-0.5 rounded-full">{daysUntilExpire} {t('daysLeft')}</span>}
+                                                {!isExpired && daysUntilExpire !== null && <span className="ml-2 text-xs bg-secondary px-2 py-0.5 rounded-full">{t('daysLeft', { days: daysUntilExpire })}</span>}
                                                 {isExpired && <span className="ml-2 text-xs bg-destructive/10 text-destructive px-2 py-0.5 rounded-full">{t('expired')}</span>}
                                             </span>
                                         ) : (

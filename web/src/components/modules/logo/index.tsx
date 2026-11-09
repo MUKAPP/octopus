@@ -1,4 +1,4 @@
-import { motion } from 'motion/react';
+import { motion, useReducedMotion } from 'motion/react';
 
 interface LogoProps {
     size?: number | string;
@@ -9,10 +9,7 @@ const LOGO_DRAW_DURATION_S = 0.8;
 const LOGO_STAGGER_S = 0.15;
 const LOGO_FADE_DURATION_S = 0.6;
 
-const paths = [
-    "M20 90 Q30 90 30 83 Q30 80 27.88 77.88 C25 75 15 65 15 50 C15 30 30 15 50 15 C70 15 85 30 85 50 C85 65 75 75 72.12 77.88 Q70 80 70 83 Q70 90 80 90",
-    "M43 77 L43 85 C43 87.76 40.76 90 38 90",
-    "M57 77 L57 85 C57 87.76 59.24 90 62 90",
+const paths = [ "M20 90 Q30 90 30 83 Q30 80 27.88 77.88 C25 75 15 65 15 50 C15 30 30 15 50 15 C70 15 85 30 85 50 C85 65 75 75 72.12 77.88 Q70 80 70 83 Q70 90 80 90", "M43 77 L43 85 C43 87.76 40.76 90 38 90", "M57 77 L57 85 C57 87.76 59.24 90 62 90",
 ];
 
 export const LOGO_DRAW_END_MS = Math.round(
@@ -21,8 +18,10 @@ export const LOGO_DRAW_END_MS = Math.round(
 
 export default function Logo({ size = 48, animate = false }: LogoProps) {
     const sizeValue = size === '100%' ? '100%' : size;
+    // 无限循环的描边动画对前庭敏感用户不友好：减少动态效果时直接渲染完整静态图形。
+    const shouldReduceMotion = useReducedMotion() ?? false;
 
-    if (animate) {
+    if (animate && !shouldReduceMotion) {
         const drawDuration = LOGO_DRAW_DURATION_S;
         const stagger = LOGO_STAGGER_S;
         const fadeDuration = LOGO_FADE_DURATION_S;

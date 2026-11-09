@@ -13,6 +13,7 @@ import {
 import { useAnalyticsViewStore } from './store';
 import { MetadataFilters } from './MetadataFilters';
 import { cn } from '@/lib/utils';
+import { InlineRetry } from '@/components/common/InlineRetry';
 
 /** UI 哨兵值：仅存在于 Select 值层，绝不发送到后端 */
 const ALL_VALUE = '__all__';
@@ -192,7 +193,7 @@ export function FilterBar({ query }: FilterBarProps) {
     }, [period, customLabel, model, actualModel, apiKey, channel, status, stream, reasoningEffort, taskType, clientProtocol, errorCategory, t]);
 
     return (
-        <div className="rounded-3xl border border-card-border bg-card p-3 text-card-foreground custom-shadow sm:p-4">
+        <div className="rounded-3xl border border-card-border bg-card p-3 text-card-foreground sm:p-4">
             {/* 主筛选：日期分段 + 关键维度 */}
             <div className="flex flex-col gap-3">
                 <div className="flex flex-wrap items-center gap-2">
@@ -203,8 +204,7 @@ export function FilterBar({ query }: FilterBarProps) {
                                 type="button"
                                 onClick={() => selectPreset(preset.value)}
                                 aria-pressed={period === preset.value}
-                                className={cn(
-                                    'rounded-xl px-2.5 py-1.5 text-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring',
+                                className={cn( 'rounded-xl px-2.5 py-1.5 text-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring',
                                     period === preset.value
                                         ? 'bg-card font-medium text-foreground shadow-sm'
                                         : 'text-muted-foreground hover:text-foreground'
@@ -220,8 +220,7 @@ export function FilterBar({ query }: FilterBarProps) {
                                     onClick={() => selectPreset('custom')}
                                     aria-pressed={period === 'custom'}
                                     aria-label={t('filter.date')}
-                                    className={cn(
-                                        'flex items-center gap-1.5 rounded-xl px-2.5 py-1.5 text-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring',
+                                    className={cn( 'flex items-center gap-1.5 rounded-xl px-2.5 py-1.5 text-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring',
                                         period === 'custom'
                                             ? 'bg-card font-medium text-foreground shadow-sm'
                                             : 'text-muted-foreground hover:text-foreground'
@@ -375,8 +374,7 @@ export function FilterBar({ query }: FilterBarProps) {
                             type="button"
                             onClick={() => setAdvancedOpen((value) => !value)}
                             aria-expanded={advancedOpen}
-                            className={cn(
-                                'flex h-9 w-full items-center justify-center gap-1.5 rounded-xl border px-3 text-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring',
+                            className={cn( 'flex h-9 w-full items-center justify-center gap-1.5 rounded-xl border px-3 text-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring',
                                 advancedOpen || advancedCount > 0
                                     ? 'border-primary/30 bg-primary/10 text-foreground'
                                     : 'border-border bg-muted/20 text-muted-foreground hover:bg-muted/30 hover:text-foreground'
@@ -398,13 +396,7 @@ export function FilterBar({ query }: FilterBarProps) {
             {dimensionsFailed && (
                 <div role="alert" className="mt-3 flex items-center justify-between gap-3 rounded-2xl border border-destructive/30 bg-destructive/5 px-4 py-2.5 text-sm text-muted-foreground">
                     <span>{t('filter.dimensionLoadFailed')}</span>
-                    <button
-                        type="button"
-                        onClick={() => void dimensionsQuery.refetch()}
-                        className="shrink-0 rounded-xl border border-border px-3 py-1.5 font-medium text-foreground transition-colors hover:bg-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-                    >
-                        {t('filter.dimensionRetry')}
-                    </button>
+                    <InlineRetry onRetry={() => void dimensionsQuery.refetch()} label={t('filter.dimensionRetry')} className="shrink-0" />
                 </div>
             )}
 

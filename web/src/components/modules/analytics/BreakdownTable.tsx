@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import type { AnalyticsMetricsFormatted, AnalyticsResponseFormatted } from '@/api/endpoints/analytics';
 import { useAnalyticsViewStore, type AnalyticsBreakdownTab, type AnalyticsSortMetric } from './store';
 import { cn } from '@/lib/utils';
+import { InlineRetry } from '@/components/common/InlineRetry';
 
 interface BreakdownTableProps {
     query: UseQueryResult<AnalyticsResponseFormatted>;
@@ -25,8 +26,7 @@ type BreakdownKind = 'model' | 'entity';
 type FormattedMetric = AnalyticsMetricsFormatted['total_cost'];
 
 const SORT_METRIC_KEY: Record<AnalyticsSortMetric, keyof Pick<
-    AnalyticsMetricsFormatted,
-    'total_cost' | 'request_count' | 'total_token' | 'average_wait_time'
+    AnalyticsMetricsFormatted, 'total_cost' | 'request_count' | 'total_token' | 'average_wait_time'
 >> = {
     cost: 'total_cost',
     count: 'request_count',
@@ -108,9 +108,7 @@ export function BreakdownTable({ query }: BreakdownTableProps) {
     };
 
     const tabLabels: Record<AnalyticsBreakdownTab, string> = {
-        model: t('tab.model'),
-        'actual-model': t('tab.actualModel'),
-        'api-key': t('tab.apiKey'),
+        model: t('tab.model'), 'actual-model': t('tab.actualModel'), 'api-key': t('tab.apiKey'),
         channel: t('tab.channel'),
     };
 
@@ -126,8 +124,7 @@ export function BreakdownTable({ query }: BreakdownTableProps) {
             <button
                 type="button"
                 onClick={() => setSortMetric(column)}
-                className={cn(
-                    'text-left font-medium transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring',
+                className={cn( 'text-left font-medium transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring',
                     sortMetric === column ? 'text-foreground' : 'text-muted-foreground'
                 )}
             >
@@ -170,16 +167,14 @@ export function BreakdownTable({ query }: BreakdownTableProps) {
             return (
                 <div role="alert" className="flex flex-col items-center justify-center gap-3 py-8 text-sm text-muted-foreground">
                     <p>{tFeedback('loadFailed')}</p>
-                    <button type="button" onClick={() => void query.refetch()} className="rounded-xl border border-border px-3 py-1.5 font-medium text-foreground transition-colors hover:bg-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
-                        {tFeedback('retry')}
-                    </button>
+                    <InlineRetry onRetry={() => void query.refetch()} label={tFeedback('retry')} />
                 </div>
             );
         }
         if (sortedRows.length === 0) {
             return (
                 <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
-                    <Inbox className="w-12 h-12 mb-3 opacity-30" />
+                    <Inbox className="size-10 opacity-40" aria-hidden="true" />
                     <p className="text-sm">{t('empty')}</p>
                 </div>
             );
@@ -270,9 +265,7 @@ export function BreakdownTable({ query }: BreakdownTableProps) {
                 {query.isError && data && (
                     <div role="alert" className="mt-3 flex items-center justify-between gap-3 rounded-2xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-muted-foreground">
                         <span>{tFeedback('loadFailed')}</span>
-                        <button type="button" onClick={() => void query.refetch()} className="shrink-0 rounded-xl border border-border px-3 py-1.5 font-medium text-foreground transition-colors hover:bg-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
-                            {tFeedback('retry')}
-                        </button>
+                        <InlineRetry onRetry={() => void query.refetch()} label={tFeedback('retry')} className="shrink-0" />
                     </div>
                 )}
                 <TabsContents>

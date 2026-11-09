@@ -20,7 +20,7 @@ import {
 } from '@/components/ui/morphing-dialog';
 import { Tabs, TabsContents, TabsContent } from '@/components/animate-ui/primitives/animate/tabs';
 import { type StatsMetricsFormatted } from '@/api/stats';
-import { useTranslations } from 'use-intl';
+import { useLocale, useTranslations } from 'use-intl';
 import { Button } from '@/components/ui/button';
 import { ChannelForm, type ChannelFormData } from './Form';
 import { formatMoney } from '@/lib/utils';
@@ -29,6 +29,7 @@ import { cn } from '@/lib/utils';
 
 import { toast } from '@/components/common/Toast';
 export function CardContent({ channel, stats }: { channel: Channel; stats: StatsMetricsFormatted }) {
+    const locale = useLocale();
     const { setIsOpen } = useMorphingDialog();
     const updateChannel = useUpdateChannel();
     const deleteChannel = useDeleteChannel();
@@ -397,7 +398,7 @@ export function CardContent({ channel, stats }: { channel: Channel; stats: Stats
                                                 <div className="flex items-center gap-2 shrink-0">
                                                     {key.last_use_time_stamp > 0 && (
                                                         <span className="text-xs text-muted-foreground whitespace-nowrap hidden sm:inline-block">
-                                                            {new Date(key.last_use_time_stamp * 1000).toLocaleString()}
+                                                            {new Date(key.last_use_time_stamp * 1000).toLocaleString(locale)}
                                                         </span>
                                                     )}
 

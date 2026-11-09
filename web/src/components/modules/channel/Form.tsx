@@ -79,6 +79,7 @@ export function ChannelForm({
     allowZeroRateMultiplier = false,
 }: ChannelFormProps) {
     const t = useTranslations('channel.form');
+    const tCommon = useTranslations('common');
 
     // Ensure the form always shows at least 1 row for base_urls / keys / custom_header.
     // This avoids "empty list" UI and also keeps URL + APIKEY layout consistent.
@@ -388,7 +389,7 @@ export function ChannelForm({
                                 onClick={() => handleRemoveBaseUrl(idx)}
                                 disabled={(formData.base_urls ?? []).length <= 1}
                                 className="h-8 w-8 p-0 rounded-xl text-muted-foreground hover:text-destructive disabled:opacity-40 hover:bg-transparent"
-                                title="Remove"
+                                title={tCommon('remove')}
                             >
                                 <X className="h-4 w-4" />
                             </Button>
@@ -442,7 +443,7 @@ export function ChannelForm({
                                 onClick={() => handleRemoveKey(idx)}
                                 disabled={(formData.keys ?? []).length <= 1}
                                 className="h-8 w-8 p-0 rounded-xl text-muted-foreground hover:text-destructive hover:bg-transparent disabled:opacity-40"
-                                title="Remove"
+                                title={tCommon('remove')}
                             >
                                 <X className="h-4 w-4" />
                             </Button>
@@ -631,7 +632,7 @@ export function ChannelForm({
                                             onClick={() => handleRemoveHeader(idx)}
                                             disabled={(formData.custom_header ?? []).length <= 1}
                                             className="h-8 w-8 p-0 rounded-xl text-muted-foreground hover:text-destructive hover:bg-transparent disabled:opacity-40"
-                                            title="Remove"
+                                            title={tCommon('remove')}
                                         >
                                             <X className="h-4 w-4" />
                                         </Button>

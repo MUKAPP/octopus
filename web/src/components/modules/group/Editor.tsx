@@ -93,8 +93,7 @@ function ModelPickerSection({
                 <button
                     type="button"
                     onClick={onAutoAdd}
-                    className={cn(
-                        'justify-self-end shrink-0 flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium transition-colors',
+                    className={cn("focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring", 'justify-self-end shrink-0 flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium transition-colors',
                         autoAddDisabled
                             ? 'text-muted-foreground/50 cursor-not-allowed'
                             : 'hover:bg-muted text-muted-foreground hover:text-foreground'
@@ -139,8 +138,7 @@ function ModelPickerSection({
                                                     type="button"
                                                     onClick={() => !isSelected && onAdd(m)}
                                                     disabled={isSelected}
-                                                    className={cn(
-                                                        'w-full flex items-center justify-between gap-2 rounded-lg border border-border/50 bg-background px-2.5 py-2 text-left transition-colors',
+                                                    className={cn("focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring", 'w-full flex items-center justify-between gap-2 rounded-lg border border-border/50 bg-background px-2.5 py-2 text-left transition-colors',
                                                         isSelected ? 'opacity-60 cursor-not-allowed' : 'hover:bg-muted'
                                                     )}
                                                 >
@@ -206,8 +204,7 @@ function SortSection({
                     type="button"
                     onClick={onClear}
                     disabled={members.length === 0}
-                    className={cn(
-                        'flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium transition-colors',
+                    className={cn("focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring", 'flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium transition-colors',
                         members.length === 0
                             ? 'text-muted-foreground/50 cursor-not-allowed'
                             : 'hover:bg-muted text-muted-foreground hover:text-foreground'
@@ -372,7 +369,8 @@ export function GroupEditor({
                             />
                             {regexError && (
                                 <p className="mt-1 text-xs text-destructive">
-                                    {t('form.matchRegexInvalid')}: {regexError}
+                                    {t('form.matchRegexInvalid')}
+                                    <span className="mt-0.5 block break-all font-mono text-[11px] opacity-80">{regexError}</span>
                                 </p>
                             )}
                         </Field>
@@ -453,8 +451,7 @@ export function GroupEditor({
                                 key={m}
                                 type="button"
                                 onClick={() => setMode(m)}
-                                className={cn(
-                                    'min-w-0 flex-1 py-1 text-center text-xs rounded-lg transition-colors',
+                                className={cn("focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring", 'min-w-0 flex-1 py-1 text-center text-xs rounded-lg transition-colors',
                                     mode === m ? 'bg-primary text-primary-foreground' : 'bg-muted hover:bg-muted/80'
                                 )}
                             >

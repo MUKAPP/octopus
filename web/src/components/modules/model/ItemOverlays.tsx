@@ -3,6 +3,7 @@ import { Check, Loader, Trash2, X } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useTranslations } from 'use-intl';
 import { Input } from '@/components/ui/input';
+import { SPRING } from '@/lib/animations/fluid-transitions';
 
 type EditValues = {
     input: string;
@@ -29,12 +30,12 @@ export function ModelDeleteOverlay({
         <motion.div
             layoutId={layoutId}
             className="absolute inset-0 flex items-center justify-center gap-3 bg-destructive p-4 rounded-2xl"
-            transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+            transition={SPRING.morph}
         >
             <button
                 type="button"
                 onClick={onCancel}
-                className="h-9 px-4 flex items-center justify-center gap-1.5 rounded-xl bg-destructive-foreground/20 text-destructive-foreground text-sm font-medium transition-all hover:bg-destructive-foreground/30 active:scale-[0.98]"
+                className="focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring h-9 px-4 flex items-center justify-center gap-1.5 rounded-xl bg-destructive-foreground/20 text-destructive-foreground text-sm font-medium transition-[color,background-color,transform] hover:bg-destructive-foreground/30 active:scale-[0.98]"
             >
                 <X className="size-4" />
                 {t('cancel')}
@@ -43,7 +44,7 @@ export function ModelDeleteOverlay({
                 type="button"
                 onClick={onConfirm}
                 disabled={isPending}
-                className="h-9 px-4 flex items-center justify-center gap-1.5 rounded-xl bg-destructive-foreground text-destructive text-sm font-medium transition-all hover:bg-destructive-foreground/90 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+                className="focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring h-9 px-4 flex items-center justify-center gap-1.5 rounded-xl bg-destructive-foreground text-destructive text-sm font-medium transition-[color,background-color,transform] hover:bg-destructive-foreground/90 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
             >
                 {isPending ? (
                     <Loader className="size-4 animate-spin" />
@@ -99,8 +100,8 @@ export function ModelEditOverlay({
         <motion.div
             ref={setOverlayRef}
             layoutId={layoutId}
-            className="z-20 flex flex-col bg-card p-5 rounded-3xl border border-border custom-shadow scrollbar overflow-y-auto max-h-[calc(100dvh-var(--safe-area-top)-var(--safe-area-bottom))]"
-            transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+            className="z-20 flex flex-col bg-card p-5 rounded-3xl border border-border scrollbar overflow-y-auto max-h-[calc(100dvh-var(--safe-area-top)-var(--safe-area-bottom))]"
+            transition={SPRING.morph}
         >
             <h3 className="text-sm font-semibold text-card-foreground line-clamp-1 mb-3">
                 {modelName}
@@ -154,7 +155,7 @@ export function ModelEditOverlay({
                     type="button"
                     onClick={onCancel}
                     disabled={isPending}
-                    className="flex-1 h-9 flex items-center justify-center gap-1.5 rounded-xl bg-muted text-muted-foreground text-sm font-medium transition-all hover:bg-muted/80 active:scale-[0.98] disabled:opacity-50"
+                    className="focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring flex-1 h-9 flex items-center justify-center gap-1.5 rounded-xl bg-muted text-muted-foreground text-sm font-medium transition-[color,background-color,transform] hover:bg-muted/80 active:scale-[0.98] disabled:opacity-50"
                 >
                     <X className="size-4" />
                     {t('cancel')}
@@ -163,7 +164,7 @@ export function ModelEditOverlay({
                     type="button"
                     onClick={onSave}
                     disabled={isPending}
-                    className="flex-1 h-9 flex items-center justify-center gap-1.5 rounded-xl text-sm font-medium transition-all active:scale-[0.98] disabled:opacity-50"
+                    className="focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring flex-1 h-9 flex items-center justify-center gap-1.5 rounded-xl text-sm font-medium transition-all active:scale-[0.98] disabled:opacity-50"
                     style={{ backgroundColor: brandColor, color: '#fff' }}
                 >
                     {isPending ? <Loader className="size-4 animate-spin" /> : <Check className="size-4" />}

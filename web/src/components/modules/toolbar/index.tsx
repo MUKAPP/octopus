@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { ArrowUpAZ, Clock3, LayoutGrid, List, Plus, Search, SlidersHorizontal, X } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
 import {
     MorphingDialog,
     MorphingDialogTrigger,
@@ -26,6 +26,7 @@ import {
     type ToolbarSortField,
     type ToolbarSortOrder,
 } from './view-options-store';
+import { DURATION, SPRING } from '@/lib/animations/fluid-transitions';
 
 const CHANNEL_FILTER_OPTIONS: ChannelFilter[] = ['all', 'enabled', 'disabled'];
 const GROUP_FILTER_OPTIONS: GroupFilter[] = ['all', 'with-members', 'empty'];
@@ -79,6 +80,7 @@ export function Toolbar() {
     const setGroupFilter = useToolbarViewOptionsStore((s) => s.setGroupFilter);
     const setModelFilter = useToolbarViewOptionsStore((s) => s.setModelFilter);
     const [expandedSearchItem, setExpandedSearchItem] = useState<ToolbarPage | null>(null);
+    const shouldReduceMotion = useReducedMotion() ?? false;
     const searchExpanded = expandedSearchItem === toolbarItem;
 
     if (!toolbarItem) return null;
@@ -91,8 +93,7 @@ export function Toolbar() {
         disabled: 'popover.filter.channel.disabled',
     };
     const groupFilterLabelKeys: Record<GroupFilter, string> = {
-        all: 'popover.filter.group.all',
-        'with-members': 'popover.filter.group.withMembers',
+        all: 'popover.filter.group.all', 'with-members': 'popover.filter.group.withMembers',
         empty: 'popover.filter.group.empty',
     };
     const modelFilterLabelKeys: Record<ModelFilter, string> = {
@@ -140,10 +141,10 @@ export function Toolbar() {
         <AnimatePresence mode="wait">
             <motion.div
                 key="toolbar"
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.9 }}
-                transition={{ duration: 0.2 }}
+                initial={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.9 }}
+                animate={shouldReduceMotion ? { opacity: 1 } : { opacity: 1, scale: 1 }}
+                exit={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.9 }}
+                transition={{ duration: DURATION.panel }}
                 className="flex items-center gap-2"
             >
                 {/* 搜索按钮/展开框 */}
@@ -162,7 +163,7 @@ export function Toolbar() {
                         <motion.div
                             layoutId="search-box"
                             className="absolute right-0 top-0 flex items-center gap-2 h-9 px-3 rounded-xl border"
-                            transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+                            transition={SPRING.morph}
                         >
                             <motion.span layout="position"><Search className="size-4 text-muted-foreground shrink-0" /></motion.span>
                             <input
@@ -171,6 +172,12 @@ export function Toolbar() {
                                 onChange={(e) => setSearchTerm(toolbarItem, e.target.value)}
                                 aria-label={t('search')}
                                 placeholder={t('searchPlaceholder')}
+                                onKeyDown={(event) => {
+                                    if (event.key !== 'Escape') return;
+                                    event.preventDefault();
+                                    setSearchTerm(toolbarItem, '');
+                                    setExpandedSearchItem(null);
+                                }}
                                 autoFocus
                                 className="w-32 bg-transparent text-sm outline-none placeholder:text-muted-foreground sm:w-48"
                             />
@@ -181,7 +188,7 @@ export function Toolbar() {
                                     setSearchTerm(toolbarItem, '');
                                     setExpandedSearchItem(null);
                                 }}
-                                className="p-0.5 rounded shrink-0 text-muted-foreground hover:text-foreground transition-colors"
+                                className="focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring p-0.5 rounded shrink-0 text-muted-foreground hover:text-foreground transition-colors"
                             >
                                 <X className="size-3.5" />
                             </button>
@@ -217,8 +224,7 @@ export function Toolbar() {
                                         <button
                                             type="button"
                                             onClick={() => setLayout(toolbarItem, 'grid')}
-                                            className={cn(
-                                                'h-8 rounded-lg border text-xs font-medium inline-flex items-center justify-center gap-1.5 transition-colors',
+                                            className={cn("focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring", 'h-8 rounded-lg border text-xs font-medium inline-flex items-center justify-center gap-1.5 transition-colors',
                                                 layout === 'grid'
                                                     ? 'border-primary/30 bg-primary text-primary-foreground'
                                                     : 'border-border bg-muted/20 text-foreground hover:bg-muted/30'
@@ -230,8 +236,7 @@ export function Toolbar() {
                                         <button
                                             type="button"
                                             onClick={() => setLayout(toolbarItem, 'list')}
-                                            className={cn(
-                                                'h-8 rounded-lg border text-xs font-medium inline-flex items-center justify-center gap-1.5 transition-colors',
+                                            className={cn("focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring", 'h-8 rounded-lg border text-xs font-medium inline-flex items-center justify-center gap-1.5 transition-colors',
                                                 layout === 'list'
                                                     ? 'border-primary/30 bg-primary text-primary-foreground'
                                                     : 'border-border bg-muted/20 text-foreground hover:bg-muted/30'
@@ -257,8 +262,7 @@ export function Toolbar() {
                                                         setSortConfig(toolbarItem, option.field, option.order);
                                                     }
                                                 }}
-                                                className={cn(
-                                                    'h-8 rounded-lg border text-xs font-medium inline-flex items-center justify-center gap-1.5 transition-colors',
+                                                className={cn("focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring", 'h-8 rounded-lg border text-xs font-medium inline-flex items-center justify-center gap-1.5 transition-colors',
                                                     sortField === option.field && sortOrder === option.order
                                                         ? 'border-primary/30 bg-primary text-primary-foreground'
                                                         : 'border-border bg-muted/20 text-foreground hover:bg-muted/30'
@@ -274,8 +278,7 @@ export function Toolbar() {
                                         <button
                                             type="button"
                                             onClick={() => setSortOrder(toolbarItem, 'asc')}
-                                            className={cn(
-                                                'h-8 rounded-lg border text-xs font-medium inline-flex items-center justify-center gap-1.5 transition-colors',
+                                            className={cn("focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring", 'h-8 rounded-lg border text-xs font-medium inline-flex items-center justify-center gap-1.5 transition-colors',
                                                 sortOrder === 'asc'
                                                     ? 'border-primary/30 bg-primary text-primary-foreground'
                                                     : 'border-border bg-muted/20 text-foreground hover:bg-muted/30'
@@ -287,8 +290,7 @@ export function Toolbar() {
                                         <button
                                             type="button"
                                             onClick={() => setSortOrder(toolbarItem, 'desc')}
-                                            className={cn(
-                                                'h-8 rounded-lg border text-xs font-medium inline-flex items-center justify-center gap-1.5 transition-colors',
+                                            className={cn("focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring", 'h-8 rounded-lg border text-xs font-medium inline-flex items-center justify-center gap-1.5 transition-colors',
                                                 sortOrder === 'desc'
                                                     ? 'border-primary/30 bg-primary text-primary-foreground'
                                                     : 'border-border bg-muted/20 text-foreground hover:bg-muted/30'
@@ -309,8 +311,7 @@ export function Toolbar() {
                                             key={option.value}
                                             type="button"
                                             onClick={() => handleFilterChange(option.value)}
-                                            className={cn(
-                                                'h-8 rounded-lg border px-2 text-xs font-medium text-left transition-colors',
+                                            className={cn("focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring", 'h-8 rounded-lg border px-2 text-xs font-medium text-left transition-colors',
                                                 activeFilter === option.value
                                                     ? 'border-primary/30 bg-primary text-primary-foreground'
                                                     : 'border-border bg-muted/20 text-foreground hover:bg-muted/30'
@@ -335,8 +336,7 @@ export function Toolbar() {
                     <MorphingDialogContainer>
                         <MorphingDialogContent
                             dismissOnClickOutside={false}
-                            className={cn(
-                                'custom-shadow flex min-h-0 min-w-0 w-(--overlay-width) max-w-full flex-col overflow-hidden rounded-3xl bg-card px-4 py-5 text-card-foreground sm:px-6',
+                            className={cn( 'flex min-h-0 min-w-0 w-(--overlay-width) max-w-full flex-col overflow-hidden rounded-3xl bg-card px-4 py-5 text-card-foreground sm:px-6',
                                 toolbarItem === 'group'
                                     ? 'h-full max-h-full md:max-w-[944px]'
                                     : 'max-h-(--overlay-height) md:max-w-[624px]'

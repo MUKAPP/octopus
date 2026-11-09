@@ -53,7 +53,12 @@ export function SettingCircuitBreaker() {
             onSuccess: () => {
                 toast.success(t('saved'));
             },
-            onError: () => setEnabled(previousValue),
+            onError: (error) => {
+                setEnabled(previousValue);
+                toast.error(t('saveFailed'), {
+                    description: error instanceof Error ? error.message : String(error),
+                });
+            },
         });
     };
 
@@ -70,6 +75,12 @@ export function SettingCircuitBreaker() {
                 } else if (key === SettingKey.CircuitBreakerMaxCooldown) {
                     initialMaxCooldown.current = value;
                 }
+            },
+            // 保存失败必须反馈，否则「已保存」只在成功分支出现，失败时界面毫无动静。
+            onError: (error) => {
+                toast.error(t('saveFailed'), {
+                    description: error instanceof Error ? error.message : String(error),
+                });
             }
         });
     };
@@ -94,7 +105,12 @@ export function SettingCircuitBreaker() {
 
             <div className="flex items-center justify-between gap-4">
                 <div className="text-sm font-medium">{t('circuitBreaker.enabled.label')}</div>
-                <Switch checked={enabled} onCheckedChange={handleEnabledChange} disabled={setSetting.isPending} />
+                <Switch
+                    checked={enabled}
+                    onCheckedChange={handleEnabledChange}
+                    disabled={setSetting.isPending}
+                    aria-label={t('circuitBreaker.enabled.label')}
+                />
             </div>
             {/* 熔断触发阈值 */}
             <div className="flex items-center justify-between gap-4">
@@ -108,6 +124,9 @@ export function SettingCircuitBreaker() {
                     onChange={(e) => setThreshold(e.target.value)}
                     onBlur={() => handleSave(SettingKey.CircuitBreakerThreshold, threshold, initialThreshold.current)}
                     placeholder={t('circuitBreaker.threshold.placeholder')}
+                    min={1}
+                    step={1}
+                    inputMode="numeric"
                     disabled={!enabled || setSetting.isPending}
                     className="w-48 rounded-xl"
                 />
@@ -125,6 +144,9 @@ export function SettingCircuitBreaker() {
                     onChange={(e) => setCooldown(e.target.value)}
                     onBlur={() => handleSave(SettingKey.CircuitBreakerCooldown, cooldown, initialCooldown.current)}
                     placeholder={t('circuitBreaker.cooldown.placeholder')}
+                    min={1}
+                    step={1}
+                    inputMode="numeric"
                     disabled={!enabled || setSetting.isPending}
                     className="w-48 rounded-xl"
                 />
@@ -142,6 +164,9 @@ export function SettingCircuitBreaker() {
                     onChange={(e) => setMaxCooldown(e.target.value)}
                     onBlur={() => handleSave(SettingKey.CircuitBreakerMaxCooldown, maxCooldown, initialMaxCooldown.current)}
                     placeholder={t('circuitBreaker.maxCooldown.placeholder')}
+                    min={1}
+                    step={1}
+                    inputMode="numeric"
                     disabled={!enabled || setSetting.isPending}
                     className="w-48 rounded-xl"
                 />

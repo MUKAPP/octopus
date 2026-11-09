@@ -128,7 +128,7 @@
             "outputCost": "輸出成本",
             "costShare": "費用佔比",
             "reasoningTokens": "推理 Token",
-            "cacheNote": "快取讀取量和佔比僅使用上游明確提供快取讀取欄位的已採集請求；佔比為同一批樣本的快取讀取 Token ÷ 輸入 Token，與請求命中率不同。快取寫入和推理 Token 同樣僅統計明確回報的欄位；推理 Token 可能已包含在輸出 Token 中。 快取佔比不包含尚無標準化輸入量的部分串流用量，比例樣本數單獨顯示。",
+            "cacheNote": "快取讀取僅統計上游明確上報的請求；佔比為這些樣本內快取讀取 Token ÷ 輸入 Token，不是請求命中率。推理 Token 可能已包含在輸出 Token 中。",
             "averageDuration": "平均總耗時",
             "totalDuration": "請求總耗時",
             "firstToken": "首字延遲",
@@ -138,7 +138,7 @@
             "speedP50": "P50 輸出速度",
             "speedP95": "P95 輸出速度",
             "tokensPerSecond": "{value} Token/秒",
-            "performanceNote": "分位數按已採集的單次請求計算。首字延遲僅使用收到首字的成功串流請求；輸出速度排除首字等待，僅使用有輸出 Token 且生成時長有效的成功串流請求，整體速度按生成時長加權。",
+            "performanceNote": "分位數按單次請求計算。首字延遲取收到首字的成功串流請求；輸出速度排除首字等待，按生成時長加權。",
             "failedRequests": "失敗請求",
             "retryRequests": "發生重試的請求",
             "recoveredRequests": "重試後成功請求",
@@ -154,7 +154,7 @@
             "statusCode": "HTTP 狀態碼",
             "noUpstreamResponse": "未收到上游回應",
             "noSamples": "目前篩選無已採集樣本。",
-            "retryNote": "重試僅統計真正執行的轉發，熔斷和其他跳過單獨計數。重試恢復率 = 重試後成功請求 ÷ 發生重試的請求。HTTP 狀態碼取最終上游回應。",
+            "retryNote": "重試只統計真正執行的轉發，熔斷與其他跳過單獨計數；重試恢復率 = 重試後成功 ÷ 發生重試的請求。",
             "peakRpm": "每分鐘請求峰值",
             "peakTpm": "每分鐘 Token 峰值",
             "hourly": "小時流量",
@@ -162,7 +162,7 @@
             "cost": "成本",
             "hourHeatmap": "各時段請求熱力圖",
             "hourValue": "{hour} 時：{count} 個請求",
-            "trafficNote": "小時流量和分鐘峰值按伺服器時區的請求開始時間歸屬；Token 歸入請求開始分鐘，不表示即時生成吞吐。熱力圖按時段合併所選日期。",
+            "trafficNote": "小時流量與分鐘峰值按伺服器時區的請求開始時間歸入；Token 計入開始分鐘，不代表即時吞吐。",
             "featureLabel": "拆分維度",
             "successRate": "成功率",
             "durationP95": "P95 總耗時",
@@ -216,30 +216,31 @@
         "inputStats": "輸入統計",
         "outputStats": "輸出統計",
         "requestCount": "請求次數",
-        "timeConsumed": "消耗時間",
+        "timeConsumed": "總耗時",
         "totalToken": "消耗 Token",
-        "totalCost": "消耗費用",
-        "inputTokens": "輸入 Tokens",
-        "inputCost": "輸入費用",
-        "outputTokens": "輸出 Tokens",
-        "outputCost": "輸出費用",
+        "totalCost": "總成本",
+        "inputTokens": "輸入 Token",
+        "inputCost": "輸入成本",
+        "outputTokens": "輸出 Token",
+        "outputCost": "輸出成本",
         "successRequests": "成功請求",
         "failedRequests": "失敗請求",
         "quota": "剩餘額度",
         "unlimited": "無限制",
         "expireAt": "過期時間",
         "neverExpire": "永不過期",
-        "daysLeft": "天後到期",
+        "daysLeft": "{days} 天後到期",
         "expired": "已過期",
         "supportedModels": "支援的模型",
         "switchToLightTheme": "切換至淺色主題",
         "switchToDarkTheme": "切換至深色主題",
-        "switchLanguage": "切換語言"
+        "switchLanguage": "切換語言",
+        "loading": "載入中"
     },
     "navbar": {
         "ariaLabel": "主導覽",
         "home": "主頁",
-        "analytics": "數據分析",
+        "analytics": "資料分析",
         "channel": "供應源",
         "group": "分組",
         "key": "金鑰",
@@ -286,12 +287,18 @@
     },
     "common": {
         "copy": {
+            "copy": "複製",
             "success": "複製成功",
             "failed": "複製失敗",
             "noContent": "無可複製內容"
         },
         "listRequestError": "載入列表失敗，請重試",
-        "listRetry": "重試"
+        "listRetry": "重試",
+        "loading": "載入中",
+        "remove": "移除",
+        "stats": "統計",
+        "edit": "編輯",
+        "close": "關閉"
     },
     "home": {
         "feedback": {
@@ -301,10 +308,10 @@
         },
         "activity": {
             "requestCount": "請求次數",
-            "waitTime": "等待時間",
+            "waitTime": "總耗時",
             "totalToken": "消耗 Token",
-            "totalCost": "消耗費用",
-            "noData": "無數據"
+            "totalCost": "總成本",
+            "noData": "無資料"
         },
         "total": {
             "requestStats": "請求統計",
@@ -312,25 +319,25 @@
             "inputStats": "輸入統計",
             "outputStats": "輸出統計",
             "requestCount": "請求次數",
-            "timeConsumed": "消耗時間",
+            "timeConsumed": "總耗時",
             "totalToken": "消耗 Token",
-            "totalCost": "消耗費用",
-            "inputTokens": "輸入 Tokens",
-            "inputCost": "輸入費用",
-            "outputTokens": "輸出 Tokens",
-            "outputCost": "輸出費用"
+            "totalCost": "總成本",
+            "inputTokens": "輸入 Token",
+            "inputCost": "輸入成本",
+            "outputTokens": "輸出 Token",
+            "outputCost": "輸出成本"
         },
         "chart": {
             "title": "趨勢",
             "totalRequests": "請求次數",
-            "totalCost": "消費金額",
-            "totalTokens": "Tokens 消耗",
+            "totalCost": "總成本",
+            "totalTokens": "消耗 Token",
             "timePeriod": "時間週期",
             "cyclePeriod": "切換時間週期，目前：{period}",
             "metricType": {
-                "cost": "金額",
+                "cost": "成本",
                 "count": "次數",
-                "tokens": "Tokens"
+                "tokens": "Token"
             },
             "period": {
                 "today": "今天",
@@ -340,10 +347,10 @@
         },
         "rank": {
             "title": "排行榜",
-            "sortByCost": "金額",
+            "sortByCost": "成本",
             "sortByCount": "次數",
-            "sortByTokens": "Tokens",
-            "noData": "暫無排行數據",
+            "sortByTokens": "Token",
+            "noData": "暫無排行資料",
             "successRate": "成功率"
         }
     },
@@ -397,7 +404,7 @@
                 "label": "最大冷卻時間（秒）",
                 "placeholder": "請輸入最大冷卻時間"
             },
-            "hint": "當渠道連續失敗達到閾值後觸發熔斷，冷卻時間按指數退避增長，上限為最大冷卻時間"
+            "hint": "當供應源連續失敗達到閾值後觸發熔斷，冷卻時間按指數退避增長，上限為最大冷卻時間"
         },
         "saved": "已儲存",
         "backup": {
@@ -408,7 +415,8 @@
                 "includeStats": "包含統計",
                 "button": "下載 JSON",
                 "exporting": "匯出中...",
-                "success": "開始匯出"
+                "success": "匯出已開始下載",
+                "failed": "匯出失敗"
             },
             "import": {
                 "title": "匯入（增量）",
@@ -429,7 +437,7 @@
             "loadFailed": "載入失敗",
             "form": {
                 "name": "名稱",
-                "value": "密鑰值",
+                "value": "金鑰值",
                 "valuePlaceholder": "留空自動生成",
                 "maxCost": "最大金額",
                 "maxCostPlaceholder": "請輸入金額",
@@ -453,11 +461,11 @@
                 "confirm": "確認"
             },
             "stats": {
-                "noData": "暫無統計數據",
+                "noData": "暫無統計資料",
                 "inputToken": "輸入 Token",
                 "outputToken": "輸出 Token",
-                "inputCost": "輸入費用",
-                "outputCost": "輸出費用",
+                "inputCost": "輸入成本",
+                "outputCost": "輸出成本",
                 "requestSuccess": "成功請求",
                 "requestFailed": "失敗請求"
             },
@@ -553,7 +561,9 @@
             },
             "clearSuccess": "日誌已清空",
             "clearFailed": "清空失敗"
-        }
+        },
+        "saveFailed": "儲存失敗",
+        "loading": "載入中"
     },
     "group": {
         "toast": {
@@ -671,7 +681,7 @@
             "totalTime": "總耗時",
             "input": "輸入",
             "output": "輸出",
-            "cost": "費用",
+            "cost": "成本",
             "requestContent": "請求內容",
             "responseContent": "響應內容",
             "truncated": "內容已截斷",
@@ -690,7 +700,7 @@
             "retryDetails": "重試詳情",
             "attemptHistory": "嘗試歷史",
             "attemptNumber": "第 {number} 次嘗試",
-            "attemptKey": "渠道密鑰 #{id}",
+            "attemptKey": "供應源金鑰 #{id}",
             "selectedAttempt": "目前嘗試",
             "finalResponse": "最終響應",
             "noAttempts": "暫無供應源嘗試",
@@ -737,7 +747,8 @@
             "saveImage": "儲存圖片",
             "openOriginalImage": "開啟原圖",
             "imageSaveFailed": "圖片儲存失敗",
-            "imageSaveFailedHint": "連結可能已失效，或遠端伺服器不允許直接下載。可開啟原圖後儲存。"
+            "imageSaveFailedHint": "連結可能已失效，或遠端伺服器不允許直接下載。可開啟原圖後儲存。",
+            "tokensPerSecondUnit": "Token/秒"
         }
     },
     "channel": {
@@ -777,7 +788,7 @@
                 "outputToken": "輸出 Token",
                 "inputCost": "輸入成本",
                 "outputCost": "輸出成本",
-                "avgWaitTime": "等待時間"
+                "avgWaitTime": "總耗時"
             },
             "actions": {
                 "edit": "編輯",

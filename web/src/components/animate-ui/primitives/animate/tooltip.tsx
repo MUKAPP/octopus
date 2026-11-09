@@ -61,8 +61,7 @@ type TooltipContextType = {
   id: string;
 };
 
-const [LocalTooltipProvider, useTooltip] = getStrictContext<TooltipContextType>(
-  'LocalTooltipProvider',
+const [LocalTooltipProvider, useTooltip] = getStrictContext<TooltipContextType>( 'LocalTooltipProvider',
 );
 
 type TooltipPosition = { x: number; y: number };
@@ -210,8 +209,7 @@ const [FloatingProvider, useFloatingContext] =
 const MotionTooltipArrow = motion.create(FloatingArrow);
 
 type TooltipArrowProps = Omit<
-  React.ComponentProps<typeof MotionTooltipArrow>,
-  'context'
+  React.ComponentProps<typeof MotionTooltipArrow>, 'context'
 > & {
   withTransition?: boolean;
 };

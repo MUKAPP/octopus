@@ -40,8 +40,9 @@ export function AppContainer() {
     const shouldReduceMotion = useReducedMotion() ?? false;
     const entranceVariants = shouldReduceMotion ? REDUCED_MOTION_ENTRANCE_VARIANTS : ENTRANCE_VARIANTS;
 
-    // Logo 动画完成状态
-    const [logoAnimationComplete, setLogoAnimationComplete] = useState(false);
+    // Logo 动画完成状态；减少动态效果时不播放描边动画，直接视为已完成。
+    const [logoAnimationDone, setLogoAnimationDone] = useState(false);
+    const logoAnimationComplete = logoAnimationDone || shouldReduceMotion;
     const [bootstrapComplete, setBootstrapComplete] = useState(false);
     const bootstrapStartedRef = useRef(false);
 
@@ -56,7 +57,7 @@ export function AppContainer() {
     }, []);
 
     useEffect(() => {
-        const timer = setTimeout(() => setLogoAnimationComplete(true), LOGO_DRAW_END_MS);
+        const timer = setTimeout(() => setLogoAnimationDone(true), LOGO_DRAW_END_MS);
         return () => clearTimeout(timer);
     }, []);
 
@@ -177,7 +178,8 @@ export function AppContainer() {
                     initial="initial"
                     animate="animate"
                     exit={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.98 }}
-                    transition={shouldReduceMotion ? REDUCED_MOTION_TRANSITION : { duration: 0.25 }}
+                    /* 时长由 entranceVariants 内部提供，这里只处理 reduced-motion 分支。 */
+                    transition={shouldReduceMotion ? REDUCED_MOTION_TRANSITION : undefined}
                     className="h-full min-h-0 flex-1"
                 >
                     <ContentLoader activeRoute={activeItem} />

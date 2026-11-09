@@ -1,6 +1,6 @@
 import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
 import { ReactNode, isValidElement, Children } from 'react';
-import { EASING, REDUCED_MOTION_TRANSITION } from '@/lib/animations/fluid-transitions';
+import { DURATION, EASING, REDUCED_MOTION_TRANSITION } from '@/lib/animations/fluid-transitions';
 
 interface PageWrapperProps {
   children: ReactNode;
@@ -40,10 +40,10 @@ export function PageWrapper({ children, className = 'space-y-6' }: PageWrapperPr
               exit={shouldReduceMotion ? { opacity: 0 } : {
                 opacity: 0,
                 scale: 0.95,
-                transition: { duration: 0.3 }
+                transition: { duration: DURATION.page }
               }}
               transition={shouldReduceMotion ? REDUCED_MOTION_TRANSITION : {
-                duration: 0.5,
+                duration: DURATION.page,
                 ease: EASING.easeOutExpo,
                 delay: getDiminishingDelay(index),
               }}
