@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { useTranslations } from 'use-intl';
-import { Loader2, Inbox } from 'lucide-react';
+import { Loader2, Inbox, ChevronRight } from 'lucide-react';
 import type { UseQueryResult } from '@tanstack/react-query';
 import { Tabs, TabsList, TabsTrigger, TabsContents, TabsContent } from '@/components/animate-ui/components/animate/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -155,7 +155,7 @@ export function BreakdownTable({ query }: BreakdownTableProps) {
             { label: tDetail('averageCost'), value: row.metrics.request_count.raw > 0 ? renderMetric(row.metrics.average_cost) : '—' },
             { label: tDetail('costShare'), value: totalCost > 0 ? (row.metrics.total_cost.raw / totalCost * 100).toFixed(1) + '%' : '—' },
         ];
-        return <details className="mt-1 text-xs font-normal"><summary className="cursor-pointer text-muted-foreground focus-visible:outline-2 focus-visible:outline-ring">{t('usageDetails')}</summary><dl className="mt-2 grid min-w-52 grid-cols-2 gap-3">{metrics.map((item) => <div key={item.label}><dt className="text-muted-foreground">{item.label}</dt><dd className="mt-0.5 tabular-nums">{item.value}</dd></div>)}</dl></details>;
+        return <details className="group mt-1 text-xs font-normal"><summary className="inline-flex cursor-pointer list-none items-center gap-1 rounded-lg text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"><ChevronRight className="size-3.5 transition-transform group-open:rotate-90" />{t('usageDetails')}</summary><dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-2 sm:w-80">{metrics.map((item) => <div key={item.label}><dt className="text-muted-foreground">{item.label}</dt><dd className="mt-0.5 tabular-nums">{item.value}</dd></div>)}</dl></details>;
     };
 
     const renderList = () => {
@@ -205,9 +205,9 @@ export function BreakdownTable({ query }: BreakdownTableProps) {
                                 <TableRow key={row.key}>
                                     <TableCell className="font-medium">{displayName(row)}{renderDetails(row)}</TableCell>
                                     <TableCell>{renderMetric(row.metrics.request_count)}</TableCell>
-                                    <TableCell className="text-right tabular-nums">{row.metrics.success_rate.formatted}</TableCell>
+                                    <TableCell className="text-right"><span className={cn('tabular-nums', row.metrics.success_rate.raw < 100 && 'text-destructive')}>{row.metrics.success_rate.formatted}</span></TableCell>
                                     <TableCell>{renderMetric(row.metrics.total_token)}</TableCell>
-                                    <TableCell className="text-right">{renderMetric(row.metrics.cached_token)}</TableCell>
+                                    <TableCell className="text-right">{row.metrics.observed_cached_token === null ? <span className="text-muted-foreground">—</span> : renderMetric(row.metrics.observed_cached_token)}</TableCell>
                                     <TableCell>{renderMetric(row.metrics.total_cost)}</TableCell>
                                     <TableCell>{renderMetric(row.metrics.average_wait_time)}</TableCell>
                                 </TableRow>
@@ -220,7 +220,7 @@ export function BreakdownTable({ query }: BreakdownTableProps) {
                     {sortedRows.map((row) => (
                         <div key={row.key} className="flex items-center gap-3 p-3 rounded-2xl hover:bg-accent/5 transition-colors">
                             <div className="flex-1 min-w-0">
-                                <p className="font-medium text-sm truncate">{displayName(row)}</p>
+                                <p className="truncate text-sm font-medium">{displayName(row)}</p>
                                 {renderDetails(row)}
                                 <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
                                     <span>{t('successRate')}:</span>

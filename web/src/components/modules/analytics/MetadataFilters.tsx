@@ -22,12 +22,13 @@ export function MetadataFilters({ dimensions, disabled }: MetadataFiltersProps) 
         { key: 'clientProtocol', value: clientProtocol, set: setClientProtocol, options: dimensions?.client_protocols ?? [] },
         { key: 'errorCategory', value: errorCategory, set: setErrorCategory, options: dimensions?.error_categories ?? [] },
     ];
+    const fieldClass = 'flex min-w-0 flex-col gap-1.5';
     return (
-        <div className="mt-4 grid grid-cols-1 gap-3 border-t border-border/50 pt-4 sm:grid-cols-2 xl:grid-cols-5">
-            <div className="flex min-w-0 flex-col gap-1.5">
+        <div className="mt-3 grid grid-cols-2 gap-2 border-t border-border/50 pt-3 sm:grid-cols-3 xl:grid-cols-5">
+            <div className={fieldClass}>
                 <span className="text-xs text-muted-foreground">{t('stream')}</span>
                 <Select value={stream} onValueChange={(value) => setStream(value as typeof stream)}>
-                    <SelectTrigger aria-label={t('stream')} className="w-full rounded-xl"><SelectValue /></SelectTrigger>
+                    <SelectTrigger aria-label={t('stream')} className="w-full min-w-0 rounded-xl"><SelectValue /></SelectTrigger>
                     <SelectContent className="rounded-xl">
                         <SelectItem value="all">{tFilter('all')}</SelectItem>
                         <SelectItem value="true">{t('streaming')}</SelectItem>
@@ -38,11 +39,11 @@ export function MetadataFilters({ dimensions, disabled }: MetadataFiltersProps) 
             {filters.map((filter) => {
                 const options = [...new Set([...filter.options, ...(filter.value === null ? [] : [filter.value])])];
                 return (
-                    <div key={filter.key} className="flex min-w-0 flex-col gap-1.5">
+                    <div key={filter.key} className={fieldClass}>
                         <span className="text-xs text-muted-foreground">{t(filter.key)}</span>
                         <Select value={filter.value === null ? ALL : filter.value === '' ? UNKNOWN : filter.value}
                             onValueChange={(value) => filter.set(value === ALL ? null : value === UNKNOWN ? '' : value)} disabled={disabled}>
-                            <SelectTrigger aria-label={t(filter.key)} className="w-full rounded-xl"><SelectValue /></SelectTrigger>
+                            <SelectTrigger aria-label={t(filter.key)} className="w-full min-w-0 rounded-xl"><SelectValue /></SelectTrigger>
                             <SelectContent className="rounded-xl">
                                 <SelectItem value={ALL}>{tFilter('all')}</SelectItem>
                                 {options.map((option) => (

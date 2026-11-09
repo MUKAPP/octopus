@@ -57,7 +57,8 @@
             "unassigned": "未分配",
             "activeFilters": "目前篩選",
             "dimensionLoadFailed": "篩選選項載入失敗",
-            "dimensionRetry": "重試選項"
+            "dimensionRetry": "重試選項",
+            "advanced": "更多篩選"
         },
         "summary": {
             "requests": "請求數",

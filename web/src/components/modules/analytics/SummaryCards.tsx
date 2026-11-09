@@ -17,7 +17,7 @@ export function SummaryCards({ query }: SummaryCardsProps) {
 
     if (query.isLoading && !query.data) {
         return (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
                 <div className="col-span-full flex min-h-40 items-center justify-center rounded-3xl border border-card-border bg-card text-muted-foreground">
                     <Loader2 className="size-8 animate-spin" role="status" aria-label={tFeedback('loading')} />
                 </div>
@@ -27,7 +27,7 @@ export function SummaryCards({ query }: SummaryCardsProps) {
 
     if (query.isError && !query.data) {
         return (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
                 <div role="alert" className="col-span-full flex min-h-40 flex-col items-center justify-center gap-3 rounded-3xl border border-destructive/30 bg-card p-4 text-center text-sm text-muted-foreground">
                     <p>{tFeedback('loadFailed')}</p>
                     <button type="button" onClick={() => void query.refetch()} className="rounded-xl border border-border px-3 py-1.5 font-medium text-foreground transition-colors hover:bg-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
@@ -76,7 +76,7 @@ export function SummaryCards({ query }: SummaryCardsProps) {
     ];
 
     return (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 gap-2 md:gap-3 lg:grid-cols-4">
             {query.isError && (
                 <div role="alert" className="col-span-full flex items-center justify-between gap-3 rounded-2xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-muted-foreground">
                     <span>{tFeedback('loadFailed')}</span>
@@ -88,7 +88,7 @@ export function SummaryCards({ query }: SummaryCardsProps) {
             {cards.map((card, index) => (
                 <motion.section
                     key={card.title}
-                    className="rounded-3xl bg-card border-card-border border p-5 text-card-foreground flex flex-row items-center gap-4"
+                    className="flex min-w-0 flex-col gap-3 rounded-3xl border border-card-border bg-card p-3 text-card-foreground sm:flex-row sm:items-center sm:gap-4 sm:p-5"
                     initial={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: 20, filter: 'blur(8px)' }}
                     animate={shouldReduceMotion ? { opacity: 1 } : { opacity: 1, y: 0, filter: 'blur(0px)' }}
                     transition={shouldReduceMotion ? REDUCED_MOTION_TRANSITION : {
@@ -100,10 +100,10 @@ export function SummaryCards({ query }: SummaryCardsProps) {
                     <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${card.bgColor} ${card.color}`}>
                         <card.icon className="w-5 h-5" />
                     </div>
-                    <div className="flex flex-col min-w-0">
-                        <span className="text-xs text-muted-foreground">{card.title}</span>
-                        <div className="flex items-baseline gap-1">
-                            <span className="text-xl">
+                    <div className="flex min-w-0 flex-col">
+                        <span className="truncate text-xs text-muted-foreground">{card.title}</span>
+                        <div className="flex flex-wrap items-baseline gap-x-1">
+                            <span className="text-lg font-medium tabular-nums sm:text-xl">
                                 {card.value === undefined ? (
                                     '-'
                                 ) : card.unit === undefined ? (
@@ -113,7 +113,7 @@ export function SummaryCards({ query }: SummaryCardsProps) {
                                 )}
                             </span>
                             {card.unit && (
-                                <span className="text-sm text-muted-foreground">{card.unit}</span>
+                                <span className="text-xs text-muted-foreground sm:text-sm">{card.unit}</span>
                             )}
                         </div>
                     </div>

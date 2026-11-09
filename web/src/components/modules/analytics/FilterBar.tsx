@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useTranslations } from 'use-intl';
-import { RefreshCw, CalendarDays } from 'lucide-react';
+import { RefreshCw, CalendarDays, ChevronDown, SlidersHorizontal } from 'lucide-react';
 import type { UseQueryResult } from '@tanstack/react-query';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -56,6 +56,7 @@ export function FilterBar({ query }: FilterBarProps) {
 
     const t = useTranslations('analytics');
     const [customOpen, setCustomOpen] = useState(false);
+    const [advancedOpen, setAdvancedOpen] = useState(false);
 
     const period = useAnalyticsViewStore((state) => state.period);
     const setPeriod = useAnalyticsViewStore((state) => state.setPeriod);
@@ -161,6 +162,8 @@ export function FilterBar({ query }: FilterBarProps) {
         return customStartDate > customEndDate ? t('filter.custom.invalidRange') : null;
     }, [period, customStartDate, customEndDate, t]);
 
+    const advancedCount = [stream !== 'all', reasoningEffort, taskType, clientProtocol, errorCategory].filter(Boolean).length;
+
     const chips = useMemo(() => {
         const list: { key: string; label: string }[] = [];
         if (period !== '30d') {
@@ -188,28 +191,24 @@ export function FilterBar({ query }: FilterBarProps) {
         return list;
     }, [period, customLabel, model, actualModel, apiKey, channel, status, stream, reasoningEffort, taskType, clientProtocol, errorCategory, t]);
 
-    const presetButtonClass = (active: boolean) =>
-        cn(
-            'rounded-xl border px-3 py-1.5 text-sm transition-colors',
-            active
-                ? 'bg-primary text-primary-foreground border-primary/30'
-                : 'border-border bg-muted/20 text-foreground hover:bg-muted/30'
-        );
-
     return (
-        <div className="rounded-3xl bg-card border-card-border border p-4 text-card-foreground custom-shadow">
-            <div className="flex flex-wrap items-end gap-4">
-                {/* 日期 */}
-                <div className="flex flex-col gap-1.5">
-                    <span className="text-xs text-muted-foreground">{t('filter.date')}</span>
-                    <div className="flex flex-wrap items-center gap-2">
+        <div className="rounded-3xl border border-card-border bg-card p-3 text-card-foreground custom-shadow sm:p-4">
+            {/* 主筛选：日期分段 + 关键维度 */}
+            <div className="flex flex-col gap-3">
+                <div className="flex flex-wrap items-center gap-2">
+                    <div className="flex items-center gap-1 rounded-2xl bg-muted/40 p-1">
                         {presetButtons.map((preset) => (
                             <button
                                 key={preset.value}
                                 type="button"
                                 onClick={() => selectPreset(preset.value)}
                                 aria-pressed={period === preset.value}
-                                className={presetButtonClass(period === preset.value)}
+                                className={cn(
+                                    'rounded-xl px-2.5 py-1.5 text-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring',
+                                    period === preset.value
+                                        ? 'bg-card font-medium text-foreground shadow-sm'
+                                        : 'text-muted-foreground hover:text-foreground'
+                                )}
                             >
                                 {preset.label}
                             </button>
@@ -220,17 +219,23 @@ export function FilterBar({ query }: FilterBarProps) {
                                     type="button"
                                     onClick={() => selectPreset('custom')}
                                     aria-pressed={period === 'custom'}
-                                    className={cn(presetButtonClass(period === 'custom'), 'flex items-center gap-1.5')}
+                                    aria-label={t('filter.date')}
+                                    className={cn(
+                                        'flex items-center gap-1.5 rounded-xl px-2.5 py-1.5 text-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring',
+                                        period === 'custom'
+                                            ? 'bg-card font-medium text-foreground shadow-sm'
+                                            : 'text-muted-foreground hover:text-foreground'
+                                    )}
                                 >
                                     <CalendarDays className="size-4" />
-                                    <span className="max-w-48 truncate">{customLabel}</span>
+                                    <span className="max-w-40 truncate">{customLabel}</span>
                                 </button>
                             </PopoverTrigger>
                             <PopoverContent
                                 align="start"
                                 side="bottom"
                                 sideOffset={8}
-                                className="w-fit rounded-2xl border border-border/60 shadow-xl overflow-hidden bg-card p-0"
+                                className="w-fit overflow-hidden rounded-2xl border border-border/60 bg-card p-0 shadow-xl"
                             >
                                 <Calendar
                                     mode="range"
@@ -241,138 +246,154 @@ export function FilterBar({ query }: FilterBarProps) {
                             </PopoverContent>
                         </Popover>
                     </div>
-                    {customInvalid && (
-                        <p role="alert" className="text-xs text-destructive">{customInvalid}</p>
-                    )}
+                    {customInvalid && <p role="alert" className="text-xs text-destructive">{customInvalid}</p>}
                 </div>
 
-                {/* 请求模型 */}
-                <div className="flex grow flex-col gap-1.5 sm:grow-0">
-                    <span className="text-xs text-muted-foreground">{t('filter.requestModel')}</span>
-                    <Select
-                        value={model === null ? ALL_VALUE : model === '' ? UNKNOWN_VALUE : model}
-                        onValueChange={(value) => {
-                            if (value === ALL_VALUE) setModel(null);
-                            else if (value === UNKNOWN_VALUE) setModel('');
-                            else setModel(value);
-                        }}
-                        disabled={dimensionsFailed}
-                    >
-                        <SelectTrigger aria-label={t('filter.requestModel')} className="min-w-40 w-full rounded-xl">
-                            <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent className="rounded-xl">
-                            <SelectItem className="rounded-xl" value={ALL_VALUE}>{t('filter.all')}</SelectItem>
-                            {modelOptions.map((name) => (
-                                <SelectItem className="rounded-xl" key={name || UNKNOWN_VALUE} value={name === '' ? UNKNOWN_VALUE : name}>
-                                    {name === '' ? t('filter.unknown') : name}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                </div>
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-6">
+                    <div className="flex min-w-0 flex-col gap-1.5">
+                        <span className="text-xs text-muted-foreground">{t('filter.requestModel')}</span>
+                        <Select
+                            value={model === null ? ALL_VALUE : model === '' ? UNKNOWN_VALUE : model}
+                            onValueChange={(value) => {
+                                if (value === ALL_VALUE) setModel(null);
+                                else if (value === UNKNOWN_VALUE) setModel('');
+                                else setModel(value);
+                            }}
+                            disabled={dimensionsFailed}
+                        >
+                            <SelectTrigger aria-label={t('filter.requestModel')} className="w-full min-w-0 rounded-xl">
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent className="rounded-xl">
+                                <SelectItem className="rounded-xl" value={ALL_VALUE}>{t('filter.all')}</SelectItem>
+                                {modelOptions.map((name) => (
+                                    <SelectItem className="rounded-xl" key={name || UNKNOWN_VALUE} value={name === '' ? UNKNOWN_VALUE : name}>
+                                        {name === '' ? t('filter.unknown') : name}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
 
-                {/* 实际上游模型 */}
-                <div className="flex grow flex-col gap-1.5 sm:grow-0">
-                    <span className="text-xs text-muted-foreground">{t('filter.actualModel')}</span>
-                    <Select
-                        value={actualModel === null ? ALL_VALUE : actualModel === '' ? UNKNOWN_VALUE : actualModel}
-                        onValueChange={(value) => {
-                            if (value === ALL_VALUE) setActualModel(null);
-                            else if (value === UNKNOWN_VALUE) setActualModel('');
-                            else setActualModel(value);
-                        }}
-                        disabled={dimensionsFailed}
-                    >
-                        <SelectTrigger aria-label={t('filter.actualModel')} className="min-w-40 w-full rounded-xl">
-                            <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent className="rounded-xl">
-                            <SelectItem className="rounded-xl" value={ALL_VALUE}>{t('filter.all')}</SelectItem>
-                            {actualModelOptions.map((name) => (
-                                <SelectItem className="rounded-xl" key={name || UNKNOWN_VALUE} value={name === '' ? UNKNOWN_VALUE : name}>
-                                    {name === '' ? t('filter.unknown') : name}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                </div>
+                    <div className="flex min-w-0 flex-col gap-1.5">
+                        <span className="text-xs text-muted-foreground">{t('filter.actualModel')}</span>
+                        <Select
+                            value={actualModel === null ? ALL_VALUE : actualModel === '' ? UNKNOWN_VALUE : actualModel}
+                            onValueChange={(value) => {
+                                if (value === ALL_VALUE) setActualModel(null);
+                                else if (value === UNKNOWN_VALUE) setActualModel('');
+                                else setActualModel(value);
+                            }}
+                            disabled={dimensionsFailed}
+                        >
+                            <SelectTrigger aria-label={t('filter.actualModel')} className="w-full min-w-0 rounded-xl">
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent className="rounded-xl">
+                                <SelectItem className="rounded-xl" value={ALL_VALUE}>{t('filter.all')}</SelectItem>
+                                {actualModelOptions.map((name) => (
+                                    <SelectItem className="rounded-xl" key={name || UNKNOWN_VALUE} value={name === '' ? UNKNOWN_VALUE : name}>
+                                        {name === '' ? t('filter.unknown') : name}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
 
-                {/* API Key */}
-                <div className="flex grow flex-col gap-1.5 sm:grow-0">
-                    <span className="text-xs text-muted-foreground">{t('filter.apiKey')}</span>
-                    <Select
-                        value={apiKey === null ? ALL_VALUE : String(apiKey.id)}
-                        onValueChange={(value) => {
-                            if (value === ALL_VALUE) {
-                                setApiKey(null);
-                                return;
-                            }
-                            const selected = apiKeyOptions.find((item) => String(item.id) === value);
-                            setApiKey(selected ? { id: selected.id, name: selected.name } : null);
-                        }}
-                        disabled={dimensionsFailed}
-                    >
-                        <SelectTrigger aria-label={t('filter.apiKey')} className="min-w-40 w-full rounded-xl">
-                            <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent className="rounded-xl">
-                            <SelectItem className="rounded-xl" value={ALL_VALUE}>{t('filter.all')}</SelectItem>
-                            {apiKeyOptions.map((item) => (
-                                <SelectItem className="rounded-xl" key={item.id} value={String(item.id)}>
-                                    {item.name || t('filter.unassigned')}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                </div>
+                    <div className="flex min-w-0 flex-col gap-1.5">
+                        <span className="text-xs text-muted-foreground">{t('filter.apiKey')}</span>
+                        <Select
+                            value={apiKey === null ? ALL_VALUE : String(apiKey.id)}
+                            onValueChange={(value) => {
+                                if (value === ALL_VALUE) {
+                                    setApiKey(null);
+                                    return;
+                                }
+                                const selected = apiKeyOptions.find((item) => String(item.id) === value);
+                                setApiKey(selected ? { id: selected.id, name: selected.name } : null);
+                            }}
+                            disabled={dimensionsFailed}
+                        >
+                            <SelectTrigger aria-label={t('filter.apiKey')} className="w-full min-w-0 rounded-xl">
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent className="rounded-xl">
+                                <SelectItem className="rounded-xl" value={ALL_VALUE}>{t('filter.all')}</SelectItem>
+                                {apiKeyOptions.map((item) => (
+                                    <SelectItem className="rounded-xl" key={item.id} value={String(item.id)}>
+                                        {item.name || t('filter.unassigned')}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
 
-                {/* 渠道 */}
-                <div className="flex grow flex-col gap-1.5 sm:grow-0">
-                    <span className="text-xs text-muted-foreground">{t('filter.channel')}</span>
-                    <Select
-                        value={channel === null ? ALL_VALUE : String(channel.id)}
-                        onValueChange={(value) => {
-                            if (value === ALL_VALUE) {
-                                setChannel(null);
-                                return;
-                            }
-                            const selected = channelOptions.find((item) => String(item.id) === value);
-                            setChannel(selected ? { id: selected.id, name: selected.name } : null);
-                        }}
-                        disabled={dimensionsFailed}
-                    >
-                        <SelectTrigger aria-label={t('filter.channel')} className="min-w-40 w-full rounded-xl">
-                            <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent className="rounded-xl">
-                            <SelectItem className="rounded-xl" value={ALL_VALUE}>{t('filter.all')}</SelectItem>
-                            {channelOptions.map((item) => (
-                                <SelectItem className="rounded-xl" key={item.id} value={String(item.id)}>
-                                    {item.name || t('filter.unassigned')}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                </div>
+                    <div className="flex min-w-0 flex-col gap-1.5">
+                        <span className="text-xs text-muted-foreground">{t('filter.channel')}</span>
+                        <Select
+                            value={channel === null ? ALL_VALUE : String(channel.id)}
+                            onValueChange={(value) => {
+                                if (value === ALL_VALUE) {
+                                    setChannel(null);
+                                    return;
+                                }
+                                const selected = channelOptions.find((item) => String(item.id) === value);
+                                setChannel(selected ? { id: selected.id, name: selected.name } : null);
+                            }}
+                            disabled={dimensionsFailed}
+                        >
+                            <SelectTrigger aria-label={t('filter.channel')} className="w-full min-w-0 rounded-xl">
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent className="rounded-xl">
+                                <SelectItem className="rounded-xl" value={ALL_VALUE}>{t('filter.all')}</SelectItem>
+                                {channelOptions.map((item) => (
+                                    <SelectItem className="rounded-xl" key={item.id} value={String(item.id)}>
+                                        {item.name || t('filter.unassigned')}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
 
-                {/* 状态 */}
-                <div className="flex grow flex-col gap-1.5 sm:grow-0">
-                    <span className="text-xs text-muted-foreground">{t('filter.status')}</span>
-                    <Select value={status} onValueChange={(value) => setStatus(value as typeof status)}>
-                        <SelectTrigger aria-label={t('filter.status')} className="min-w-40 w-full rounded-xl">
-                            <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent className="rounded-xl">
-                            <SelectItem className="rounded-xl" value="all">{t('filter.statusOption.all')}</SelectItem>
-                            <SelectItem className="rounded-xl" value="success">{t('filter.statusOption.success')}</SelectItem>
-                            <SelectItem className="rounded-xl" value="failed">{t('filter.statusOption.failed')}</SelectItem>
-                        </SelectContent>
-                    </Select>
+                    <div className="flex min-w-0 flex-col gap-1.5">
+                        <span className="text-xs text-muted-foreground">{t('filter.status')}</span>
+                        <Select value={status} onValueChange={(value) => setStatus(value as typeof status)}>
+                            <SelectTrigger aria-label={t('filter.status')} className="w-full min-w-0 rounded-xl">
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent className="rounded-xl">
+                                <SelectItem className="rounded-xl" value="all">{t('filter.statusOption.all')}</SelectItem>
+                                <SelectItem className="rounded-xl" value="success">{t('filter.statusOption.success')}</SelectItem>
+                                <SelectItem className="rounded-xl" value="failed">{t('filter.statusOption.failed')}</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+
+                    <div className="col-span-2 flex items-end sm:col-span-1">
+                        <button
+                            type="button"
+                            onClick={() => setAdvancedOpen((value) => !value)}
+                            aria-expanded={advancedOpen}
+                            className={cn(
+                                'flex h-9 w-full items-center justify-center gap-1.5 rounded-xl border px-3 text-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring',
+                                advancedOpen || advancedCount > 0
+                                    ? 'border-primary/30 bg-primary/10 text-foreground'
+                                    : 'border-border bg-muted/20 text-muted-foreground hover:bg-muted/30 hover:text-foreground'
+                            )}
+                        >
+                            <SlidersHorizontal className="size-4" />
+                            <span>{t('filter.advanced')}</span>
+                            {advancedCount > 0 && (
+                                <span className="rounded-full bg-primary px-1.5 text-xs font-medium text-primary-foreground">{advancedCount}</span>
+                            )}
+                            <ChevronDown className={cn('size-4 transition-transform', advancedOpen && 'rotate-180')} />
+                        </button>
+                    </div>
                 </div>
             </div>
 
-            <MetadataFilters dimensions={dimensions} disabled={dimensionsFailed} />
+            {advancedOpen && <MetadataFilters dimensions={dimensions} disabled={dimensionsFailed} />}
 
             {dimensionsFailed && (
                 <div role="alert" className="mt-3 flex items-center justify-between gap-3 rounded-2xl border border-destructive/30 bg-destructive/5 px-4 py-2.5 text-sm text-muted-foreground">
@@ -387,48 +408,48 @@ export function FilterBar({ query }: FilterBarProps) {
                 </div>
             )}
 
-            {chips.length > 0 && (
-                <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border/50 pt-3">
-                    <div role="group" aria-label={t('filter.activeFilters')} className="flex flex-wrap items-center gap-2">
-                        {chips.map((chip) => (
-                            <span
-                                key={chip.key}
-                                className="rounded-full border border-border bg-muted/20 px-3 py-1 text-xs text-muted-foreground"
+            {(chips.length > 0 || hasMetadata) && (
+                <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-border/50 pt-3">
+                    {chips.length > 0 && (
+                        <div role="group" aria-label={t('filter.activeFilters')} className="flex flex-wrap items-center gap-1.5">
+                            {chips.map((chip) => (
+                                <span
+                                    key={chip.key}
+                                    className="max-w-56 truncate rounded-full border border-border bg-muted/20 px-2.5 py-1 text-xs text-muted-foreground"
+                                >
+                                    {chip.label}
+                                </span>
+                            ))}
+                            <button
+                                type="button"
+                                onClick={clearFilters}
+                                className="rounded-full border border-border bg-muted/20 px-2.5 py-1 text-xs text-foreground transition-colors hover:bg-muted/40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                             >
-                                {chip.label}
+                                {t('feedback.clearFilters')}
+                            </button>
+                        </div>
+                    )}
+                    <div className="ml-auto flex items-center gap-3 text-xs text-muted-foreground">
+                        {data?.available_from && (
+                            <span>{t('availableFrom', { date: formatDisplayDate(data.available_from) })}</span>
+                        )}
+                        {showResolvedRange && data && (
+                            <span className="hidden sm:inline">
+                                {t('resolvedRange', {
+                                    start: formatDisplayDate(data.resolved_start_date),
+                                    end: formatDisplayDate(data.resolved_end_date),
+                                })}
                             </span>
-                        ))}
+                        )}
                         <button
                             type="button"
-                            onClick={clearFilters}
-                            className="rounded-full border border-border bg-muted/20 px-3 py-1 text-xs text-foreground transition-colors hover:bg-muted/40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                            onClick={() => void query.refetch()}
+                            aria-label={t('feedback.refresh')}
+                            className="rounded-xl border border-border p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                         >
-                            {t('feedback.clearFilters')}
+                            <RefreshCw className={cn('size-3.5', query.isFetching && 'animate-spin')} />
                         </button>
                     </div>
-                </div>
-            )}
-            {hasMetadata && (
-                <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-border/50 pt-3 text-xs text-muted-foreground">
-                    {data?.available_from && (
-                        <span>{t('availableFrom', { date: formatDisplayDate(data.available_from) })}</span>
-                    )}
-                    {showResolvedRange && data && (
-                        <span>
-                            {t('resolvedRange', {
-                                start: formatDisplayDate(data.resolved_start_date),
-                                end: formatDisplayDate(data.resolved_end_date),
-                            })}
-                        </span>
-                    )}
-                    <button
-                        type="button"
-                        onClick={() => void query.refetch()}
-                        aria-label={t('feedback.refresh')}
-                        className="ml-auto rounded-xl border border-border p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-                    >
-                        <RefreshCw className={cn('size-4', query.isFetching && 'animate-spin')} />
-                    </button>
                 </div>
             )}
         </div>

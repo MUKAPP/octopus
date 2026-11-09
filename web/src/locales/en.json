@@ -57,7 +57,8 @@
             "unassigned": "Unassigned",
             "activeFilters": "Active filters",
             "dimensionLoadFailed": "Failed to load filter options",
-            "dimensionRetry": "Retry options"
+            "dimensionRetry": "Retry options",
+            "advanced": "More filters"
         },
         "summary": {
             "requests": "Requests",

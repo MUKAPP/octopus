@@ -32,6 +32,8 @@ export function TrendChart({ query }: TrendChartProps) {
     const config = { value: { label: t(`metricType.${chartMetric}`) } };
     const formatValue = (value: number) => {
         if (chartMetric === 'cacheRatio' || chartMetric === 'success') return `${value.toFixed(1)}%`;
+        // 极小成本用有效数字，避免纵轴出现一排相同的 0.00$
+        if (chartMetric === 'cost' && value > 0 && value < 0.01) return `${value.toPrecision(2)}$`;
         const formatted = chartMetric === 'cost' ? formatMoney(value) : chartMetric === 'latency' ? formatTime(value) : formatCount(value);
         return `${formatted.formatted.value}${formatted.formatted.unit}`;
     };
