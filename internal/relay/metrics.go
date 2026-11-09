@@ -137,8 +137,9 @@ func (m *RelayMetrics) Save(ctx context.Context, success bool, err error, attemp
 		CachedToken:      m.CachedTokens,
 		StatsMetrics:     globalStats,
 	}
-	if err := op.StatsUsageUpdate(usage); err != nil {
-		log.Warnf("failed to update usage stats: %v", err)
+	metadata := m.buildRequestMetadata(success, err, duration, attempts, channelID, channelName, rateMultiplier, apiKeyName)
+	if err := op.StatsUsageRecordRequest(persistenceCtx, usage, &metadata); err != nil {
+		log.Warnf("failed to record request usage: %v", err)
 	}
 
 	log.Infof("relay complete: model=%s, channel=%d(%s), success=%t, duration=%dms, input_token=%d, output_token=%d, input_cost=%f, output_cost=%f, total_cost=%f, attempts=%d",
@@ -147,7 +148,6 @@ func (m *RelayMetrics) Save(ctx context.Context, success bool, err error, attemp
 		m.Stats.InputCost, m.Stats.OutputCost, m.Stats.InputCost+m.Stats.OutputCost,
 		len(attempts))
 
-	m.saveMetadata(persistenceCtx, success, err, duration, attempts, channelID, channelName, rateMultiplier, apiKeyName)
 	m.saveLog(persistenceCtx, err, duration, attempts, channelID, channelName, rateMultiplier, apiKeyName)
 }
 

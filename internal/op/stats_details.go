@@ -10,12 +10,18 @@ import (
 	"gorm.io/gorm"
 )
 
-// RequestMetadataCreate preserves audit metadata independently of log retention and entity deletion.
-// The usage lock coordinates backups/imports and inserts; persistence failures are reported to the relay caller.
-func RequestMetadataCreate(ctx context.Context, row *model.RequestMetadata) error {
+// StatsUsageRecordRequest makes a completed request indivisible to usage backups/imports.
+// Preserve the aggregate delta even if metadata persistence fails, and report the error to the relay.
+func StatsUsageRecordRequest(ctx context.Context, usage model.StatsUsage, row *model.RequestMetadata) error {
 	statsUsageDeltaCacheLock.Lock()
 	defer statsUsageDeltaCacheLock.Unlock()
-	return db.GetDB().WithContext(ctx).Create(row).Error
+	if err := statsUsageUpdateLocked(usage); err != nil {
+		return fmt.Errorf("update usage stats: %w", err)
+	}
+	if err := db.GetDB().WithContext(ctx).Create(row).Error; err != nil {
+		return fmt.Errorf("persist request metadata: %w", err)
+	}
+	return nil
 }
 
 type StatsDistribution struct {

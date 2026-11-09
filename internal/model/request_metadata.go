@@ -21,7 +21,8 @@ type RequestAttemptMetadata struct {
 // Only explicitly selected scalar metadata and typed attempts belong here; never add bodies,
 // headers, URLs, raw errors, parameter overrides or API key values.
 type RequestMetadata struct {
-	ID                int64                    `json:"id" gorm:"primaryKey;autoIncrement:false"`
+	ID                string                   `json:"id" gorm:"primaryKey;size:32"`
+	RequestID         int64                    `json:"request_id" gorm:"index"`
 	StartedAtMS       int64                    `json:"started_at_ms" gorm:"index"`
 	EndedAtMS         int64                    `json:"ended_at_ms"`
 	Date              string                   `json:"date" gorm:"size:8;index"`

@@ -2,14 +2,13 @@ package relay
 
 import (
 	"context"
+	"crypto/rand"
 	"errors"
 	"net"
 	"strings"
 	"time"
 
 	"github.com/bestruirui/octopus/internal/model"
-	"github.com/bestruirui/octopus/internal/op"
-	"github.com/bestruirui/octopus/internal/utils/log"
 )
 
 // metadataErrorCategory uses typed error facts; raw upstream text never enters durable storage.
@@ -46,10 +45,10 @@ func metadataErrorCategory(success bool, err error, code int, executed int64) st
 	return "internal_error"
 }
 
-func (m *RelayMetrics) saveMetadata(ctx context.Context, success bool, relayErr error, duration time.Duration, attempts []model.ChannelAttempt, channelID int, channelName string, rate float64, apiKeyName string) {
+func (m *RelayMetrics) buildRequestMetadata(success bool, relayErr error, duration time.Duration, attempts []model.ChannelAttempt, channelID int, channelName string, rate float64, apiKeyName string) model.RequestMetadata {
 	start := m.StartTime.In(time.Local)
 	row := model.RequestMetadata{
-		ID: m.ID, StartedAtMS: m.StartTime.UnixMilli(), EndedAtMS: m.StartTime.Add(duration).UnixMilli(),
+		ID: rand.Text(), RequestID: m.ID, StartedAtMS: m.StartTime.UnixMilli(), EndedAtMS: m.StartTime.Add(duration).UnixMilli(),
 		Date: start.Format("20060102"), Hour: start.Format("2006-01-02T15:00:00Z07:00"), Minute: start.Format("2006-01-02T15:04:00Z07:00"),
 		RequestModelName: m.RequestModel, ActualModelName: m.ActualModel, UpstreamModelName: m.UpstreamModel, ResponseModelName: m.ResponseModel,
 		APIKeyID: m.APIKeyID, APIKeyName: apiKeyName, ChannelID: channelID, ChannelName: channelName, RateMultiplier: rate,
@@ -96,7 +95,5 @@ func (m *RelayMetrics) saveMetadata(ctx context.Context, success bool, relayErr 
 	} else if row.ErrorCategory == "canceled" {
 		row.Status = "canceled"
 	}
-	if err := op.RequestMetadataCreate(ctx, &row); err != nil {
-		log.Warnf("failed to persist request metadata: %v", err)
-	}
+	return row
 }

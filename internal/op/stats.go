@@ -47,6 +47,13 @@ var statsUsageDeltaCacheLock sync.RWMutex
 // StatsUsageUpdate 把一行多维日聚合增量并入有界 delta cache。
 // hash 生成失败时原样返回且不改动 cache，绝不退化为只累加 metrics 的零值身份。
 func StatsUsageUpdate(usage model.StatsUsage) error {
+	statsUsageDeltaCacheLock.Lock()
+	defer statsUsageDeltaCacheLock.Unlock()
+	return statsUsageUpdateLocked(usage)
+}
+
+// statsUsageUpdateLocked also serves the request metadata write boundary used by backups.
+func statsUsageUpdateLocked(usage model.StatsUsage) error {
 	key := usage.Key()
 	keyHash, err := key.Hash()
 	if err != nil {
@@ -54,8 +61,6 @@ func StatsUsageUpdate(usage model.StatsUsage) error {
 	}
 	usage.KeyHash = keyHash
 
-	statsUsageDeltaCacheLock.Lock()
-	defer statsUsageDeltaCacheLock.Unlock()
 	if existing, ok := statsUsageDeltaCache[key]; ok {
 		existing.Add(usage)
 		statsUsageDeltaCache[key] = existing
