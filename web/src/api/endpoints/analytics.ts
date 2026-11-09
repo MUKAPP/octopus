@@ -39,6 +39,7 @@ interface AnalyticsMetrics {
     cached_token: number;
     observed_cached_token: number | null;
     cache_read_sample_count: number;
+    cache_ratio_sample_count: number;
     cache_read_ratio: number | null;
 }
 
@@ -148,6 +149,7 @@ export interface AnalyticsMetricsFormatted {
     cached_token: FormattedValue;
     observed_cached_token: FormattedValue | null;
     cache_read_sample_count: number;
+    cache_ratio_sample_count: number;
     request_count: FormattedValue;
     total_token: FormattedValue;
     total_cost: FormattedValue;
@@ -241,6 +243,7 @@ function formatMetrics(metrics: AnalyticsMetrics): AnalyticsMetricsFormatted {
         cached_token: formatCount(metrics.cached_token),
         observed_cached_token: metrics.observed_cached_token === null ? null : formatCount(metrics.observed_cached_token),
         cache_read_sample_count: metrics.cache_read_sample_count,
+        cache_ratio_sample_count: metrics.cache_ratio_sample_count,
         request_count: formatCount(requestCount),
         total_token: formatCount(totalToken),
         total_cost: formatMoney(totalCost),

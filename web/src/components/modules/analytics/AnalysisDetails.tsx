@@ -86,7 +86,7 @@ export function AnalysisDetails({ query }: Props) {
                 <dl className="mt-3 grid grid-cols-2 gap-x-6 md:grid-cols-4">
                     <Metric label={t('inputTokens')} value={display(summary.input_token)} />
                     <Metric label={t('outputTokens')} value={display(summary.output_token)} />
-                    <Metric label={t('cacheRead')} value={summary.observed_cached_token === null ? '—' : display(summary.observed_cached_token)} hint={t('cacheRatio') + ': ' + summary.cache_read_ratio.formatted + ' · ' + samples(summary.cache_read_sample_count)} />
+                    <Metric label={t('cacheRead')} value={summary.observed_cached_token === null ? '—' : display(summary.observed_cached_token)} hint={t('cacheRatio') + ': ' + summary.cache_read_ratio.formatted + ' · ' + samples(summary.cache_ratio_sample_count)} />
                     <Metric label={t('averageCost')} value={summary.request_count.raw > 0 ? display(summary.average_cost) : '—'} />
                     <Metric label={t('inputCost')} value={display(summary.input_cost)} hint={t('costShare') + ': ' + ratio(summary.input_cost.raw, summary.total_cost.raw)} />
                     <Metric label={t('outputCost')} value={display(summary.output_cost)} hint={t('costShare') + ': ' + ratio(summary.output_cost.raw, summary.total_cost.raw)} />

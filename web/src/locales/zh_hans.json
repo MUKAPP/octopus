@@ -127,7 +127,7 @@
             "outputCost": "输出成本",
             "costShare": "费用占比",
             "reasoningTokens": "推理 Token",
-            "cacheNote": "缓存读取量和占比仅使用上游明确提供缓存读取字段的已采集请求；占比为同一批样本的缓存读取 Token ÷ 输入 Token，与请求命中率不同。缓存写入和推理 Token 同样仅统计明确上报的字段；推理 Token 可能已包含在输出 Token 中。",
+            "cacheNote": "缓存读取量和占比仅使用上游明确提供缓存读取字段的已采集请求；占比为同一批样本的缓存读取 Token ÷ 输入 Token，与请求命中率不同。缓存写入和推理 Token 同样仅统计明确上报的字段；推理 Token 可能已包含在输出 Token 中。 缓存占比不包含尚无标准化输入量的部分流式用量，比例样本数单独显示。",
             "averageDuration": "平均总耗时",
             "totalDuration": "请求总耗时",
             "firstToken": "首字延迟",

@@ -127,7 +127,7 @@
             "outputCost": "輸出成本",
             "costShare": "費用佔比",
             "reasoningTokens": "推理 Token",
-            "cacheNote": "快取讀取量和佔比僅使用上游明確提供快取讀取欄位的已採集請求；佔比為同一批樣本的快取讀取 Token ÷ 輸入 Token，與請求命中率不同。快取寫入和推理 Token 同樣僅統計明確回報的欄位；推理 Token 可能已包含在輸出 Token 中。",
+            "cacheNote": "快取讀取量和佔比僅使用上游明確提供快取讀取欄位的已採集請求；佔比為同一批樣本的快取讀取 Token ÷ 輸入 Token，與請求命中率不同。快取寫入和推理 Token 同樣僅統計明確回報的欄位；推理 Token 可能已包含在輸出 Token 中。 快取佔比不包含尚無標準化輸入量的部分串流用量，比例樣本數單獨顯示。",
             "averageDuration": "平均總耗時",
             "totalDuration": "請求總耗時",
             "firstToken": "首字延遲",

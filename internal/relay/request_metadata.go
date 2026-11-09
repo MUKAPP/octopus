@@ -53,10 +53,14 @@ func (m *RelayMetrics) buildRequestMetadata(success bool, relayErr error, durati
 		RequestModelName: m.RequestModel, ActualModelName: m.ActualModel, UpstreamModelName: m.UpstreamModel, ResponseModelName: m.ResponseModel,
 		APIKeyID: m.APIKeyID, APIKeyName: apiKeyName, ChannelID: channelID, ChannelName: channelName, RateMultiplier: rate,
 		ClientProtocol: m.ClientProtocol, Success: success, StatusCode: m.UpstreamStatusCode,
-		UsagePresent: m.usageMetadata.Present, InputToken: m.Stats.InputToken, OutputToken: m.Stats.OutputToken,
+		UsagePresent: m.usageMetadata.Present && m.usageRecorded, InputToken: m.Stats.InputToken, OutputToken: m.Stats.OutputToken,
 		InputCost: m.Stats.InputCost, OutputCost: m.Stats.OutputCost, TotalDurationMS: duration.Milliseconds(), ReasoningToken: m.usageMetadata.ReasoningToken,
 		CacheReadToken: m.usageMetadata.CacheReadToken, CacheWriteToken: m.usageMetadata.CacheWriteToken,
 		Attempts: make([]model.RequestAttemptMetadata, 0, len(attempts)),
+	}
+	if row.UsagePresent {
+		input := m.Stats.InputToken
+		row.CacheReadInputToken = &input
 	}
 	if m.InternalRequest != nil {
 		row.Stream = m.InternalRequest.Stream != nil && *m.InternalRequest.Stream

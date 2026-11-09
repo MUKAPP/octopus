@@ -5,20 +5,25 @@ import "context"
 // Cache ratios use only requests whose upstream explicitly reported cache reads.
 // Daily aggregate zeroes cannot distinguish an uncached request from missing usage.
 type statsCacheCoverageRow struct {
-	ID          int
-	Name        string
-	SampleCount int64
-	CachedToken *int64
-	InputToken  int64
+	ID               int
+	Name             string
+	SampleCount      int64
+	CachedToken      *int64
+	InputToken       int64
+	RatioSampleCount int64
+	RatioCachedToken int64
 }
 
-const statsCacheCoverageSelect = "COUNT(*) AS sample_count,SUM(cache_read_token) AS cached_token,COALESCE(SUM(input_token),0) AS input_token"
+const statsCacheCoverageSelect = "COUNT(*) AS sample_count,SUM(cache_read_token) AS cached_token," +
+	"COUNT(cache_read_input_token) AS ratio_sample_count,COALESCE(SUM(cache_read_input_token),0) AS input_token," +
+	"COALESCE(SUM(CASE WHEN cache_read_input_token IS NOT NULL THEN cache_read_token ELSE 0 END),0) AS ratio_cached_token"
 
 func applyStatsCacheCoverage(target *StatsAnalyticsMetrics, row statsCacheCoverageRow) {
 	target.ObservedCachedToken = row.CachedToken
 	target.CacheReadSampleCount = row.SampleCount
-	if row.CachedToken != nil && row.InputToken > 0 {
-		value := float64(*row.CachedToken) / float64(row.InputToken) * 100
+	target.CacheRatioSampleCount = row.RatioSampleCount
+	if row.RatioSampleCount > 0 && row.InputToken > 0 {
+		value := float64(row.RatioCachedToken) / float64(row.InputToken) * 100
 		target.CacheReadRatio = &value
 	}
 }

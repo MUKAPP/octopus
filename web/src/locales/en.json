@@ -127,7 +127,7 @@
             "outputCost": "Output cost",
             "costShare": "Share of cost",
             "reasoningTokens": "Reasoning tokens",
-            "cacheNote": "Cache read tokens and share use only collected requests whose upstream explicitly reported cache reads. The share is cached input / input tokens within those same samples, not the share of requests hitting the cache. Cache writes and reasoning tokens also require explicit upstream fields; reasoning tokens may already be included in output tokens.",
+            "cacheNote": "Cache read tokens and share use only collected requests whose upstream explicitly reported cache reads. The share is cached input / input tokens within those same samples, not the share of requests hitting the cache. Cache writes and reasoning tokens also require explicit upstream fields; reasoning tokens may already be included in output tokens. Cache share excludes partial stream usage without a known normalized input count; its sample count is shown separately.",
             "averageDuration": "Average total duration",
             "totalDuration": "Total duration",
             "firstToken": "Time to first token",

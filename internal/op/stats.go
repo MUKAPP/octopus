@@ -664,17 +664,18 @@ type StatsAnalyticsFilter struct {
 // StatsAnalyticsMetrics 与分析响应中的原子指标，前端派生请求数、总 token、
 // 总成本、成功率和平均耗时。
 type StatsAnalyticsMetrics struct {
-	InputToken           int64    `json:"input_token"`
-	OutputToken          int64    `json:"output_token"`
-	InputCost            float64  `json:"input_cost"`
-	OutputCost           float64  `json:"output_cost"`
-	WaitTime             int64    `json:"wait_time"`
-	RequestSuccess       int64    `json:"request_success"`
-	RequestFailed        int64    `json:"request_failed"`
-	CachedToken          int64    `json:"cached_token"`
-	ObservedCachedToken  *int64   `json:"observed_cached_token"`
-	CacheReadSampleCount int64    `json:"cache_read_sample_count"`
-	CacheReadRatio       *float64 `json:"cache_read_ratio"`
+	InputToken            int64    `json:"input_token"`
+	OutputToken           int64    `json:"output_token"`
+	InputCost             float64  `json:"input_cost"`
+	OutputCost            float64  `json:"output_cost"`
+	WaitTime              int64    `json:"wait_time"`
+	RequestSuccess        int64    `json:"request_success"`
+	RequestFailed         int64    `json:"request_failed"`
+	CachedToken           int64    `json:"cached_token"`
+	ObservedCachedToken   *int64   `json:"observed_cached_token"`
+	CacheReadSampleCount  int64    `json:"cache_read_sample_count"`
+	CacheRatioSampleCount int64    `json:"cache_ratio_sample_count"`
+	CacheReadRatio        *float64 `json:"cache_read_ratio"`
 }
 
 type StatsAnalyticsTrendPoint struct {

@@ -39,6 +39,7 @@ type RelayMetrics struct {
 	CachedTokens       int64
 	CacheWriteTokens   int64
 	usageMetadata      relayUsageMetadata
+	usageRecorded      bool
 	ClientProtocol     string
 
 	// 参数覆盖 / 参数追加
@@ -51,6 +52,7 @@ func (m *RelayMetrics) RecordUsage(usage *llm.Usage) {
 		return
 	}
 
+	m.usageRecorded = true
 	// usage 已由 axonhub/llm 标准化；octopus 仍使用本地模型价格表计算成本，所以这里只做用量落点和价格换算。
 	m.Stats.InputToken = usage.PromptTokens
 	m.Stats.OutputToken = usage.CompletionTokens

@@ -407,6 +407,7 @@ func (r *relayRun) preparedAttempt(item dbmodel.GroupItem, channel *dbmodel.Chan
 	r.metrics.FirstTokenTime = time.Time{}
 	r.metrics.UpstreamStatusCode = 0
 	r.metrics.usageMetadata = relayUsageMetadata{}
+	r.metrics.usageRecorded = false
 	r.metrics.CachedTokens, r.metrics.CacheWriteTokens = 0, 0
 	r.metrics.ParamOverride = ""
 	r.metrics.ParamAppend = ""
