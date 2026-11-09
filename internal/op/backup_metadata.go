@@ -68,7 +68,9 @@ func statsUsageOfRequestMetadata(row model.RequestMetadata) model.StatsUsage {
 		StatsMetrics: model.StatsMetrics{InputToken: row.InputToken, OutputToken: row.OutputToken,
 			InputCost: row.InputCost, OutputCost: row.OutputCost, WaitTime: row.TotalDurationMS},
 	}
-	if row.CacheReadToken != nil {
+	// Partial raw cache counts are retained for detailed analytics, but the legacy
+	// aggregate only accounted usage that reached normalized RecordUsage.
+	if row.UsagePresent && row.CacheReadToken != nil {
 		usage.CachedToken = *row.CacheReadToken
 	}
 	if row.Success {
