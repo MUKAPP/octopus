@@ -136,6 +136,11 @@ export interface AnalyticsDimensions {
     error_categories: string[];
 }
 
+/** 与后端历史统计一致：同 ID 的不同名称属于不同实体快照。 */
+export function analyticsEntityKey(entity: { id: number; name: string }): string {
+    return JSON.stringify([entity.id, entity.name]);
+}
+
 export type FormattedValue = { raw: number; formatted: { value: string; unit: string } };
 
 export interface AnalyticsMetricsFormatted {

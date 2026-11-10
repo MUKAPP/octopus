@@ -6,7 +6,7 @@ import type { UseQueryResult } from '@tanstack/react-query';
 import { Tabs, TabsList, TabsTrigger, TabsContents, TabsContent } from '@/components/animate-ui/components/animate/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import type { AnalyticsMetricsFormatted, AnalyticsResponseFormatted } from '@/api/endpoints/analytics';
+import { analyticsEntityKey, type AnalyticsMetricsFormatted, type AnalyticsResponseFormatted } from '@/api/endpoints/analytics';
 import { useAnalyticsViewStore, type AnalyticsBreakdownTab, type AnalyticsSortMetric } from './store';
 import { cn } from '@/lib/utils';
 import { InlineRetry } from '@/components/common/InlineRetry';
@@ -79,7 +79,7 @@ export function BreakdownTable({ query }: BreakdownTableProps) {
             return {
                 kind: 'entity',
                 rows: data.by_api_key.map((item) => ({
-                    key: `api-key:${item.id}`,
+                    key: `api-key:${analyticsEntityKey(item)}`,
                     name: item.name,
                     id: item.id,
                     metrics: item.metrics,
@@ -89,7 +89,7 @@ export function BreakdownTable({ query }: BreakdownTableProps) {
         return {
             kind: 'entity',
             rows: data.by_channel.map((item) => ({
-                key: `channel:${item.id}`,
+                key: `channel:${analyticsEntityKey(item)}`,
                 name: item.name,
                 id: item.id,
                 metrics: item.metrics,

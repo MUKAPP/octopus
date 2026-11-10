@@ -8,6 +8,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
+    analyticsEntityKey,
     useAnalyticsDimensions,
     type AnalyticsPeriod,
     type AnalyticsResponseFormatted,
@@ -142,7 +143,7 @@ export function FilterBar({ query }: FilterBarProps) {
     const apiKeyOptions = useMemo(() => {
         if (!dimensions) return [];
         const list = [...dimensions.api_keys];
-        if (apiKey && !list.some((item) => item.id === apiKey.id)) {
+        if (apiKey && !list.some((item) => analyticsEntityKey(item) === analyticsEntityKey(apiKey))) {
             list.push(apiKey);
         }
         return list.sort((a, b) => a.name.localeCompare(b.name) || a.id - b.id);
@@ -151,7 +152,7 @@ export function FilterBar({ query }: FilterBarProps) {
     const channelOptions = useMemo(() => {
         if (!dimensions) return [];
         const list = [...dimensions.channels];
-        if (channel && !list.some((item) => item.id === channel.id)) {
+        if (channel && !list.some((item) => analyticsEntityKey(item) === analyticsEntityKey(channel))) {
             list.push(channel);
         }
         return list.sort((a, b) => a.name.localeCompare(b.name) || a.id - b.id);
@@ -323,13 +324,13 @@ export function FilterBar({ query }: FilterBarProps) {
                     <div className="flex min-w-0 flex-col gap-1.5">
                         <span className="text-xs text-muted-foreground">{t('filter.apiKey')}</span>
                         <Select
-                            value={apiKey === null ? ALL_VALUE : String(apiKey.id)}
+                            value={apiKey === null ? ALL_VALUE : analyticsEntityKey(apiKey)}
                             onValueChange={(value) => {
                                 if (value === ALL_VALUE) {
                                     setApiKey(null);
                                     return;
                                 }
-                                const selected = apiKeyOptions.find((item) => String(item.id) === value);
+                                const selected = apiKeyOptions.find((item) => analyticsEntityKey(item) === value);
                                 setApiKey(selected ? { id: selected.id, name: selected.name } : null);
                             }}
                             disabled={dimensionsFailed}
@@ -340,7 +341,7 @@ export function FilterBar({ query }: FilterBarProps) {
                             <SelectContent>
                                 <SelectItem value={ALL_VALUE}>{t('filter.all')}</SelectItem>
                                 {apiKeyOptions.map((item) => (
-                                    <SelectItem key={item.id} value={String(item.id)}>
+                                    <SelectItem key={analyticsEntityKey(item)} value={analyticsEntityKey(item)}>
                                         {item.name || t('filter.unassigned')}
                                     </SelectItem>
                                 ))}
@@ -351,13 +352,13 @@ export function FilterBar({ query }: FilterBarProps) {
                     <div className="flex min-w-0 flex-col gap-1.5">
                         <span className="text-xs text-muted-foreground">{t('filter.channel')}</span>
                         <Select
-                            value={channel === null ? ALL_VALUE : String(channel.id)}
+                            value={channel === null ? ALL_VALUE : analyticsEntityKey(channel)}
                             onValueChange={(value) => {
                                 if (value === ALL_VALUE) {
                                     setChannel(null);
                                     return;
                                 }
-                                const selected = channelOptions.find((item) => String(item.id) === value);
+                                const selected = channelOptions.find((item) => analyticsEntityKey(item) === value);
                                 setChannel(selected ? { id: selected.id, name: selected.name } : null);
                             }}
                             disabled={dimensionsFailed}
@@ -368,7 +369,7 @@ export function FilterBar({ query }: FilterBarProps) {
                             <SelectContent>
                                 <SelectItem value={ALL_VALUE}>{t('filter.all')}</SelectItem>
                                 {channelOptions.map((item) => (
-                                    <SelectItem key={item.id} value={String(item.id)}>
+                                    <SelectItem key={analyticsEntityKey(item)} value={analyticsEntityKey(item)}>
                                         {item.name || t('filter.unassigned')}
                                     </SelectItem>
                                 ))}
