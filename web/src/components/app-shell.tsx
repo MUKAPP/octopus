@@ -5,6 +5,7 @@ import Logo from '@/components/modules/logo';
 import { NavBar, useNavStore } from '@/components/modules/navbar';
 import {
     DURATION,
+    EASING,
     REDUCED_MOTION_ROUTE_TITLE_VARIANTS,
     REDUCED_MOTION_TRANSITION,
     ROUTE_TITLE_VARIANTS,
@@ -22,17 +23,17 @@ export function AppShell({ children, actions }: { children: ReactNode; actions?:
     return (
         <motion.div
             key="main-app"
-            initial={{ opacity: 0 }}
+            initial={shouldReduceMotion ? { opacity: 1 } : { opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ duration: DURATION.page }}
+            transition={shouldReduceMotion ? REDUCED_MOTION_TRANSITION : { duration: DURATION.page }}
             className="mx-auto flex h-dvh max-w-6xl flex-col overflow-hidden pt-(--safe-area-top) pl-[calc(0.75rem+var(--safe-area-left))] pr-[calc(0.75rem+var(--safe-area-right))] md:grid md:grid-cols-[auto_1fr] md:gap-6 md:pl-[calc(1.5rem+var(--safe-area-left))] md:pr-[calc(1.5rem+var(--safe-area-right))]"
         >
             <NavBar />
             <main className="flex min-h-0 w-full min-w-0 flex-1 flex-col">
                 <header className="my-3 md:my-6 flex flex-none items-center gap-x-2 px-2">
                     <Logo size={48} />
-                    <div className="min-w-0 flex-1 overflow-hidden">
-                        <AnimatePresence mode="wait" custom={direction}>
+                    <div className="relative min-w-0 flex-1 overflow-hidden">
+                        <AnimatePresence mode="popLayout" custom={direction} initial={false}>
                             <motion.div
                                 key={activeItem}
                                 custom={direction}
@@ -40,10 +41,10 @@ export function AppShell({ children, actions }: { children: ReactNode; actions?:
                                 initial="initial"
                                 animate="animate"
                                 exit="exit"
-                                transition={shouldReduceMotion ? REDUCED_MOTION_TRANSITION : { duration: DURATION.page }}
+                                transition={shouldReduceMotion ? REDUCED_MOTION_TRANSITION : { duration: DURATION.page, ease: EASING.easeOutCubic }}
                                 className="flex items-center"
                             >
-                                <span className="mt-1 truncate text-3xl font-bold">{t(activeItem)}</span>
+                                <h1 className="mt-1 truncate text-3xl font-bold">{t(activeItem)}</h1>
                             </motion.div>
                         </AnimatePresence>
                     </div>

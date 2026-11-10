@@ -19,8 +19,8 @@ export function SummaryCards({ query }: SummaryCardsProps) {
     if (query.isLoading && !query.data) {
         return (
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-                <div className="col-span-full flex min-h-40 items-center justify-center rounded-3xl border border-card-border bg-card text-muted-foreground">
-                    <Loader2 className="size-8 animate-spin" role="status" aria-label={tFeedback('loading')} />
+                <div className="col-span-full flex min-h-40 items-center justify-center rounded-3xl border border-border bg-card text-muted-foreground">
+                    <Loader2 className="size-8 animate-spin motion-reduce:animate-none" role="status" aria-label={tFeedback('loading')} />
                 </div>
             </div>
         );
@@ -85,13 +85,13 @@ export function SummaryCards({ query }: SummaryCardsProps) {
             {cards.map((card, index) => (
                 <motion.section
                     key={card.title}
-                    className="flex min-w-0 flex-col gap-3 rounded-3xl border border-card-border bg-card p-3 text-card-foreground sm:flex-row sm:items-center sm:gap-4 sm:p-5"
-                    initial={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: 20, filter: 'blur(8px)' }}
+                    className="flex min-w-0 flex-col gap-3 rounded-3xl border border-border bg-card p-3 text-card-foreground sm:flex-row sm:items-center sm:gap-4 sm:p-5"
+                    initial={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: 12, filter: 'blur(8px)' }}
                     animate={shouldReduceMotion ? { opacity: 1 } : { opacity: 1, y: 0, filter: 'blur(0px)' }}
                     transition={shouldReduceMotion ? REDUCED_MOTION_TRANSITION : {
                         duration: DURATION.page,
                         ease: EASING.easeOutExpo,
-                        delay: index * 0.08,
+                        delay: index * 0.04,
                     }}
                 >
                     <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${card.bgColor} ${card.color}`}>

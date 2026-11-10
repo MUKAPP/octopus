@@ -1,5 +1,5 @@
-import { useEffect, useState, useRef } from 'react';
-import { useTranslations } from 'use-intl';
+import { useEffect, useId, useState, useRef } from 'react';
+import { useLocale, useTranslations } from 'use-intl';
 import { DollarSign, Clock, RefreshCw } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -9,6 +9,8 @@ import { toast } from '@/components/common/Toast';
 
 export function SettingLLMPrice() {
     const t = useTranslations('setting');
+    const locale = useLocale();
+    const intervalId = useId();
     const { data: settings } = useSettingList();
     const setSetting = useSetSetting();
     const updatePrice = useUpdateModelPrice();
@@ -34,7 +36,12 @@ export function SettingLLMPrice() {
             onSuccess: () => {
                 toast.success(t('saved'));
                 initialUpdateInterval.current = value;
-            }
+            },
+            onError: (error) => {
+                toast.error(t('saveFailed'), {
+                    description: error instanceof Error ? error.message : String(error),
+                });
+            },
         });
     };
 
@@ -53,7 +60,7 @@ export function SettingLLMPrice() {
         if (!timeStr) return t('llmPrice.neverUpdated');
         const date = new Date(timeStr);
         if (date.getFullYear() === 1) return t('llmPrice.neverUpdated');
-        return date.toLocaleString();
+        return date.toLocaleString(locale);
     };
 
     return (
@@ -64,26 +71,29 @@ export function SettingLLMPrice() {
             </h2>
 
             {/* 更新间隔 */}
-            <div className="flex items-center justify-between gap-4">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
                 <div className="flex items-center gap-3">
-                    <Clock className="h-5 w-5 text-muted-foreground" />
-                    <span className="text-sm font-medium">{t('llmPrice.updateInterval.label')}</span>
+                    <Clock className="h-5 w-5 shrink-0 text-muted-foreground" />
+                    <label htmlFor={intervalId} className="text-sm font-medium">{t('llmPrice.updateInterval.label')}</label>
                 </div>
                 <Input
+                    id={intervalId}
                     type="number"
+                    min="0"
+                    step="1"
                     value={updateInterval}
                     onChange={(e) => setUpdateInterval(e.target.value)}
                     onBlur={() => handleSave(SettingKey.ModelInfoUpdateInterval, updateInterval, initialUpdateInterval.current)}
                     placeholder={t('llmPrice.updateInterval.placeholder')}
-                    className="w-48 rounded-xl"
+                    className="w-full sm:w-48 text-base sm:text-sm rounded-xl"
                 />
             </div>
 
             {/* 手动更新 */}
-            <div className="flex items-center justify-between gap-4">
+            <div className="flex flex-wrap items-center justify-between gap-3 sm:gap-4">
                 <div className="flex flex-col gap-1">
                     <div className="flex items-center gap-3">
-                        <RefreshCw className="h-5 w-5 text-muted-foreground" />
+                        <RefreshCw className="h-5 w-5 shrink-0 text-muted-foreground" />
                         <span className="text-sm font-medium">{t('llmPrice.manualUpdate.label')}</span>
                     </div>
                     <span className="text-xs text-muted-foreground ml-8">

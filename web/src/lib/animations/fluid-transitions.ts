@@ -55,17 +55,17 @@ export const SPRING = {
 export const DURATION = {
     overlay: 0.16,
     panel: 0.2,
-    page: 0.3,
+    page: 0.42,
 } as const;
 
 /**
- * 固定入场动画：普通模式保留层级反馈，页面内容缩放不低于 0.95。
+ * 固定入场动画：普通模式保留层级反馈与柔和聚焦模糊，页面内容缩放不低于 0.95。
  */
 export const ENTRANCE_VARIANTS = {
     navbar: {
         initial: {
             opacity: 0,
-            scale: 0.2,
+            scale: 0.96,
             filter: "blur(10px)",
         },
         animate: {
@@ -78,23 +78,25 @@ export const ENTRANCE_VARIANTS = {
 
     content: {
         initial: {
-            scale: 0.95,
+            scale: 0.97,
             opacity: 0,
+            filter: "blur(8px)",
         },
         animate: {
             scale: 1,
             opacity: 1,
+            filter: "blur(0px)",
             transition: {
                 duration: DURATION.page,
-                ease: EASING.easeOutExpo,
-                delay: 0.1,
+                ease: EASING.easeOutCubic,
+                delay: 0.04,
             },
         },
     } as Variants,
 
     header: {
         initial: {
-            y: 100,
+            y: 24,
             opacity: 0,
             filter: "blur(10px)",
         },
@@ -105,7 +107,7 @@ export const ENTRANCE_VARIANTS = {
             transition: {
                 duration: DURATION.page,
                 ease: EASING.easeOutExpo,
-                delay: 0.1,
+                delay: 0.06,
             },
         },
     } as Variants,

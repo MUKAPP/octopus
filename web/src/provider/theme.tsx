@@ -38,7 +38,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
         document.documentElement.classList.toggle('dark', resolvedTheme === 'dark');
         document.querySelector('meta[name="theme-color"]')?.setAttribute(
             'content',
-            resolvedTheme === 'dark' ? '#413a2c' : '#eae9e3'
+            resolvedTheme === 'dark' ? '#1f2d23' : '#eae9e3'
         );
         localStorage.setItem('theme', theme);
     }, [resolvedTheme, theme]);

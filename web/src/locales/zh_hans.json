@@ -225,7 +225,6 @@
         "outputCost": "输出成本",
         "successRequests": "成功请求",
         "failedRequests": "失败请求",
-        "quota": "剩余额度",
         "unlimited": "无限制",
         "expireAt": "过期时间",
         "neverExpire": "永不过期",
@@ -280,7 +279,7 @@
                 "model": {
                     "all": "全部模型",
                     "priced": "仅收费",
-                    "free": "仅免费"
+                    "free": "仅零费率"
                 }
             }
         }
@@ -298,7 +297,12 @@
         "remove": "移除",
         "stats": "统计",
         "edit": "编辑",
-        "close": "关闭"
+        "close": "关闭",
+        "cancel": "取消",
+        "enable": "启用",
+        "disable": "禁用",
+        "showPassword": "显示密码",
+        "hidePassword": "隐藏密码"
     },
     "home": {
         "feedback": {
@@ -341,8 +345,8 @@
             },
             "period": {
                 "today": "今天",
-                "last7Days": "7天",
-                "last30Days": "30天"
+                "last7Days": "近 7 天",
+                "last30Days": "近 30 天"
             }
         },
         "rank": {
@@ -375,7 +379,8 @@
         },
         "statsSaveInterval": {
             "label": "统计保存周期（分钟）",
-            "placeholder": "请输入周期（分钟）"
+            "placeholder": "请输入周期（分钟）",
+            "hint": "修改后需重启服务生效"
         },
         "modelFilter": {
             "label": "全局模型过滤",
@@ -385,7 +390,9 @@
         "corsAllowOrigins": {
             "label": "CORS 跨域白名单",
             "hint": "为空禁止跨域，* 允许所有",
-            "example": "只允许指定域名: https://example.com,https://example2.com"
+            "example": "多个来源请用逗号分隔，例如：https://example.com,https://example2.com",
+            "add": "添加",
+            "removeOrigin": "移除 {origin}"
         },
         "circuitBreaker": {
             "title": "熔断器配置",
@@ -419,14 +426,19 @@
                 "failed": "导出失败"
             },
             "import": {
-                "title": "导入（增量）",
+                "title": "导入备份",
                 "selected": "已选择文件",
                 "button": "导入 JSON",
                 "importing": "导入中...",
                 "noFile": "请先选择 JSON 文件",
                 "success": "导入成功",
                 "failed": "导入失败",
-                "result": "导入结果"
+                "result": "导入结果",
+                "confirm": {
+                    "title": "确认导入备份",
+                    "description": "将从 {file} 导入配置并更新匹配记录或写入新增记录，建议提前导出当前备份。",
+                    "confirm": "确认导入"
+                }
             }
         },
         "apiKey": {
@@ -443,8 +455,9 @@
                 "maxCostPlaceholder": "请输入金额",
                 "maxConcurrency": "并发上限",
                 "maxConcurrencyHint": "0 或留空表示不限，超过上限的请求将等待空位。",
+                "maxConcurrencyInvalid": "请输入非负整数",
                 "unlimited": "无限制",
-                "expireAt": "过期日期",
+                "expireAt": "过期时间",
                 "selectDate": "选择日期",
                 "neverExpire": "永不过期",
                 "supportedModels": "支持的模型",
@@ -458,7 +471,8 @@
                 "cancel": "取消",
                 "create": "创建",
                 "save": "保存",
-                "confirm": "确认"
+                "confirm": "确认",
+                "delete": "删除密钥"
             },
             "stats": {
                 "noData": "暂无统计数据",
@@ -530,7 +544,7 @@
                 "oldEmpty": "请输入当前密码",
                 "newEmpty": "请输入新密码",
                 "mismatch": "两次输入的密码不一致",
-                "tooShort": "密码长度至少为6位",
+                "tooShort": "密码长度至少为 6 位",
                 "change": "修改密码",
                 "success": "密码修改成功",
                 "failed": "密码修改失败"
@@ -540,8 +554,6 @@
             "title": "版本信息",
             "currentVersion": "当前版本",
             "latestVersion": "最新版本",
-            "buildTime": "构建时间",
-            "publishedAt": "发布时间",
             "github": "GitHub 仓库",
             "unknown": "未知",
             "versionMismatch": "版本不匹配",
@@ -557,7 +569,12 @@
             "clear": {
                 "label": "清空历史日志",
                 "button": "清空",
-                "clearing": "清空中..."
+                "clearing": "清空中...",
+                "confirm": {
+                    "title": "确认清空历史日志",
+                    "description": "将永久删除所有已保存的请求与尝试日志记录，且无法恢复。",
+                    "confirm": "确认清空"
+                }
             },
             "clearSuccess": "日志已清空",
             "clearFailed": "清空失败"
@@ -572,7 +589,7 @@
             "updated": "更新成功",
             "updateFailed": "更新失败",
             "deleted": "删除成功",
-            "autoAddFailed": "自动添加失败"
+            "deleteFailed": "删除失败"
         },
         "create": {
             "title": "创建分组",
@@ -580,7 +597,8 @@
             "submitting": "创建中..."
         },
         "card": {
-            "empty": "暂无规则"
+            "empty": "暂无已选模型",
+            "fallbackChannel": "渠道 #{id}"
         },
         "detail": {
             "actions": {
@@ -598,17 +616,22 @@
             "matchRegexPlaceholder": "留空则默认按分组名称模糊匹配",
             "matchRegexInvalid": "正则无效",
             "firstTokenTimeOut": "首字超时",
-            "firstTokenTimeOutHint": "单位秒，仅流式响应起效，0 表示不限制",
+            "firstTokenTimeOutHint": "单位秒，仅流式响应生效，0 表示不限制",
             "sessionKeepTime": "会话保持",
             "sessionKeepTimeHint": "单位秒，会话期间保持使用同一渠道，0 表示禁用",
             "items": "已选模型",
+            "search": "搜索渠道或模型",
             "addItem": "添加模型",
             "autoAdd": "自动添加",
             "clear": "清空",
+            "clearConfirm": {
+                "title": "清空已选模型",
+                "description": "将清空当前分组中已添加的所有模型配置，保存后生效。",
+                "confirm": "清空"
+            },
+            "weight": "权重",
             "moveToTop": "移到顶部",
-            "moveToBottom": "移到底部",
-            "selectChannel": "渠道",
-            "selectModel": "模型"
+            "moveToBottom": "移到底部"
         },
         "mode": {
             "roundRobin": "轮询",
@@ -630,11 +653,14 @@
             "output": "输出价格",
             "cacheRead": "缓存读取",
             "cacheWrite": "缓存写入",
+            "priceHint": "单位：美元 / 百万 Token（$ / 1M Tokens）",
             "cancel": "取消",
             "submit": "创建",
             "submitting": "创建中..."
         },
         "toast": {
+            "created": "模型价格已创建",
+            "createFailed": "创建失败",
             "updated": "模型价格已更新",
             "updateFailed": "更新失败",
             "deleted": "模型已删除",
@@ -676,14 +702,12 @@
         },
         "card": {
             "error": "错误",
-            "errorInfo": "错误信息",
             "firstToken": "首字",
             "totalTime": "总耗时",
             "input": "输入",
             "output": "输出",
             "cost": "成本",
             "requestContent": "请求内容",
-            "responseContent": "响应内容",
             "truncated": "内容已截断",
             "modelMismatch": "模型不一致",
             "modelMismatchDetails": "上游请求模型：{upstream}；响应返回模型：{response}",
@@ -693,11 +717,10 @@
             "noRequestContent": "(无请求内容)",
             "noResponseContent": "(无响应内容)",
             "firstTokenTime": "首字时间",
-            "tokens": "tokens",
+            "tokens": "Token",
             "cacheTokens": "缓存",
             "cacheRate": "缓存率",
             "outputSpeed": "速度",
-            "retryDetails": "重试详情",
             "attemptHistory": "尝试历史",
             "attemptNumber": "第 {number} 次尝试",
             "attemptKey": "渠道密钥 #{id}",
@@ -713,7 +736,6 @@
             "waitingResponse": "等待上游响应…",
             "responseStreaming": "响应仍在输出…",
             "detailUnavailable": "详细信息不可用",
-            "cacheWriteTokens": "缓存写入",
             "lossyPreview": "仅显示部分响应",
             "reasonSizeLimit": "内容超出保存上限",
             "reasonInvalidUtf8": "内容不是有效的 UTF-8",
@@ -758,7 +780,7 @@
             "requestCount": "请求次数",
             "totalCost": "总成本",
             "enable": "启用渠道",
-            "disable": "停用渠道",
+            "disable": "禁用渠道",
             "toast": {
                 "enabled": "渠道已启用",
                 "disabled": "渠道已禁用"
@@ -892,7 +914,6 @@
             "type": "渠道类型",
             "baseUrls": "Base URLs",
             "baseUrlUrl": "地址",
-            "baseUrlDelay": "延迟(ms)",
             "advanced": "高级设置",
             "apiKey": "API Key",
             "customHeader": "自定义 Header",
@@ -917,6 +938,11 @@
             "modelSelected": "已选模型",
             "modelNoSelected": "暂未选择模型",
             "modelClearAll": "清除全部",
+            "modelClearConfirm": {
+                "title": "清除已选模型",
+                "description": "将清空当前所有已选模型，清空后需重新选择或获取。",
+                "confirm": "清除全部"
+            },
             "typeOpenAIChat": "OpenAI Chat",
             "typeOpenAIResponse": "OpenAI Response",
             "typeOpenAIEmbedding": "OpenAI Embedding",

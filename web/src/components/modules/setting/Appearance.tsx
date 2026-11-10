@@ -6,7 +6,7 @@ import { useSettingStore, type Locale } from '@/stores/setting';
 
 export function SettingAppearance() {
     const t = useTranslations('setting');
-    const { theme, setTheme } = useTheme();
+    const { theme, resolvedTheme, setTheme } = useTheme();
     const { locale, setLocale } = useSettingStore();
 
     return (
@@ -17,25 +17,25 @@ export function SettingAppearance() {
             </h2>
 
             {/* 主题 */}
-            <div className="flex items-center justify-between gap-4">
+            <div className="flex flex-wrap items-center justify-between gap-3 sm:gap-4">
                 <div className="flex items-center gap-3">
-                    {theme === 'dark' ? <Moon className="h-5 w-5 text-muted-foreground" /> : <Sun className="h-5 w-5 text-muted-foreground" />}
+                    {resolvedTheme === 'dark' ? <Moon className="h-5 w-5 text-muted-foreground" /> : <Sun className="h-5 w-5 text-muted-foreground" />}
                     <span className="text-sm font-medium">{t('theme.label')}</span>
                 </div>
                 <Select value={theme} onValueChange={setTheme}>
-                    <SelectTrigger className="w-36 rounded-xl">
+                    <SelectTrigger className="w-full min-[360px]:w-36" aria-label={t('theme.label')}>
                         <SelectValue />
                     </SelectTrigger>
-                    <SelectContent className="rounded-xl">
-                        <SelectItem value="light" className="rounded-xl">
+                    <SelectContent>
+                        <SelectItem value="light">
                             <Sun className="size-4" />
                             {t('theme.light')}
                         </SelectItem>
-                        <SelectItem value="dark" className="rounded-xl">
+                        <SelectItem value="dark">
                             <Moon className="size-4" />
                             {t('theme.dark')}
                         </SelectItem>
-                        <SelectItem value="system" className="rounded-xl">
+                        <SelectItem value="system">
                             <Monitor className="size-4" />
                             {t('theme.system')}
                         </SelectItem>
@@ -44,19 +44,19 @@ export function SettingAppearance() {
             </div>
 
             {/* 语言 */}
-            <div className="flex items-center justify-between gap-4">
+            <div className="flex flex-wrap items-center justify-between gap-3 sm:gap-4">
                 <div className="flex items-center gap-3">
                     <Languages className="h-5 w-5 text-muted-foreground" />
                     <span className="text-sm font-medium">{t('language.label')}</span>
                 </div>
                 <Select value={locale} onValueChange={(v) => setLocale(v as Locale)}>
-                    <SelectTrigger className="w-36 rounded-xl">
+                    <SelectTrigger className="w-full min-[360px]:w-36" aria-label={t('language.label')}>
                         <SelectValue />
                     </SelectTrigger>
-                    <SelectContent className="rounded-xl">
-                        <SelectItem value="zh_hans" className="rounded-xl">{t('language.zh_hans')}</SelectItem>
-                        <SelectItem value="zh_hant" className="rounded-xl">{t('language.zh_hant')}</SelectItem>
-                        <SelectItem value="en" className="rounded-xl">{t('language.en')}</SelectItem>
+                    <SelectContent>
+                        <SelectItem value="zh_hans">{t('language.zh_hans')}</SelectItem>
+                        <SelectItem value="zh_hant">{t('language.zh_hant')}</SelectItem>
+                        <SelectItem value="en">{t('language.en')}</SelectItem>
                     </SelectContent>
                 </Select>
             </div>

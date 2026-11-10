@@ -426,26 +426,19 @@ function LiveOverviewDetails({ log, brandColor }: { log: RelayLog; brandColor: s
                         "order-1 flex min-h-0 shrink-0 flex-col overflow-hidden rounded-2xl border border-border bg-muted/30 md:order-none md:rounded-none md:border-0 md:bg-transparent",
                         requestExpanded ? "md:hidden" : "md:flex-1",
                     )}>
-                        <div
-                            role="button"
-                            tabIndex={0}
+                        <button
+                            type="button"
                             aria-label={t('attemptHistory')}
                             aria-expanded={attemptHistoryExpanded}
                             aria-controls={`attempt-history-${log.id}`}
                             onClick={() => setAttemptHistoryExpanded((expanded) => !expanded)}
-                            onKeyDown={(event) => {
-                                if (event.key === 'Enter' || event.key === ' ') {
-                                    event.preventDefault();
-                                    setAttemptHistoryExpanded((expanded) => !expanded);
-                                }
-                            }}
-                            className="flex h-fit shrink-0 cursor-pointer flex-wrap items-center gap-2 border-b border-border bg-muted/50 px-3 py-2.5 md:px-4 md:py-3"
+                            className="flex h-fit w-full shrink-0 cursor-pointer flex-wrap items-center gap-2 border-b border-border bg-muted/50 px-3 py-2.5 text-left transition-colors motion-reduce:transition-none hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring md:px-4 md:py-3"
                         >
                             <RotateCw className="size-4 shrink-0 text-muted-foreground" />
                             <span className="min-w-0 text-sm font-medium text-card-foreground">{t('attemptHistory')}</span>
                             <Badge variant="secondary" className="shrink-0 text-xs">{attempts.length} {t('attempts')}</Badge>
-                            <ChevronDown className={cn("ml-auto size-4 text-muted-foreground transition-transform md:hidden", attemptHistoryExpanded && "rotate-180")} />
-                        </div>
+                            <ChevronDown className={cn("ml-auto size-4 text-muted-foreground transition-transform motion-reduce:transition-none md:hidden", attemptHistoryExpanded && "rotate-180")} />
+                        </button>
                         <div
                             id={`attempt-history-${log.id}`}
                             className={cn(
@@ -459,7 +452,7 @@ function LiveOverviewDetails({ log, brandColor }: { log: RelayLog; brandColor: s
                                         const attemptIndex = getAttemptOrder(attempt);
                                         const selected = selectedAttempt !== undefined && attemptIndex === getAttemptOrder(selectedAttempt);
                                         return (
-                                            <button key={`${attemptIndex}-${index}`} type="button" aria-pressed={selected} onClick={() => handleAttemptSelect(attemptIndex)} className={cn("flex w-full min-w-0 flex-col gap-1.5 rounded-xl border p-2.5 text-left text-xs transition-colors", selected ? "border-primary/40 bg-primary/10 ring-1 ring-primary/20" : attempt.status === 'success' ? "border-primary/20 bg-primary/5 hover:border-primary/40" : attempt.status === 'running' ? "border-border/50 bg-secondary/30 hover:border-border" : "border-destructive/20 bg-destructive/5 hover:border-destructive/40")}>
+                                            <button key={`${attemptIndex}-${index}`} type="button" aria-pressed={selected} onClick={() => handleAttemptSelect(attemptIndex)} className={cn("flex w-full min-w-0 flex-col gap-1.5 rounded-xl border p-2.5 text-left text-xs transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring", selected ? "border-primary/40 bg-primary/10 ring-1 ring-primary/20" : attempt.status === 'success' ? "border-primary/20 bg-primary/5 hover:border-primary/40" : attempt.status === 'running' ? "border-border/50 bg-secondary/30 hover:border-border" : "border-destructive/20 bg-destructive/5 hover:border-destructive/40")}>
                                                 <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
                                                     <span className="shrink-0 font-mono text-[10px] text-muted-foreground">{t('attemptNumber', { number: getAttemptDisplayNumber(attempt) })}</span>
                                                     <Badge className={cn("shrink-0 border-0 px-1.5 text-[10px] font-bold uppercase", getAttemptStatusClass(attempt.status))}>{statusT(getAttemptStatusLabelKey(attempt.status))}</Badge>
@@ -467,7 +460,7 @@ function LiveOverviewDetails({ log, brandColor }: { log: RelayLog; brandColor: s
                                                     <span className="min-w-0 break-words font-semibold text-foreground">{attempt.channel_name}</span>
                                                     <ChannelKeyLabel attempt={attempt} />
                                                     {attempt.sticky && <Pin className="size-3.5 shrink-0 text-amber-500" />}
-                                                    {attempt.status === 'running' && <Loader2 className="size-3.5 shrink-0 animate-spin text-muted-foreground" />}
+                                                    {attempt.status === 'running' && <Loader2 className="size-3.5 shrink-0 animate-spin motion-reduce:animate-none text-muted-foreground" />}
                                                     {attempt.duration > 0 && <span className="shrink-0 tabular-nums text-muted-foreground">{formatDuration(attempt.duration)}</span>}
                                                     <span className="shrink-0 tabular-nums text-muted-foreground">{formatAttemptStartedAt(attempt.started_at_ms, locale)}</span>
                                                 </div>
@@ -481,7 +474,7 @@ function LiveOverviewDetails({ log, brandColor }: { log: RelayLog; brandColor: s
                                     })}
                                 </div>
                             ) : isActive ? (
-                                <div className="flex items-center justify-center gap-2 py-3 text-xs text-muted-foreground"><Loader2 className="size-4 animate-spin" />{t('waitingResponse')}</div>
+                                <div className="flex items-center justify-center gap-2 py-3 text-xs text-muted-foreground"><Loader2 className="size-4 animate-spin motion-reduce:animate-none" />{t('waitingResponse')}</div>
                             ) : (
                                 <div className="flex h-full items-center justify-center text-xs text-muted-foreground">{t('noAttempts')}</div>
                             )}
@@ -492,39 +485,34 @@ function LiveOverviewDetails({ log, brandColor }: { log: RelayLog; brandColor: s
                         "order-2 flex h-fit min-h-0 shrink-0 flex-col overflow-hidden rounded-2xl border border-border bg-muted/30 md:order-none md:rounded-none md:border-0 md:bg-transparent",
                         requestExpanded ? "md:flex-1" : "md:shrink-0",
                     )}>
-                        <button type="button" aria-expanded={requestExpanded} aria-label={t('requestContent')} onClick={handleRequestToggle} className="flex w-full shrink-0 flex-wrap items-center gap-2 border-b border-border bg-muted/50 px-3 py-2.5 text-left transition-colors hover:bg-muted md:border-t md:border-b-0 md:px-4 md:py-3">
+                        <button type="button" aria-expanded={requestExpanded} aria-label={t('requestContent')} onClick={handleRequestToggle} className="flex w-full shrink-0 flex-wrap items-center gap-2 border-b border-border bg-muted/50 px-3 py-2.5 text-left transition-colors hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring md:border-t md:border-b-0 md:px-4 md:py-3">
                             <Send className="size-4 shrink-0 text-green-500" />
                             <span className="min-w-0 text-sm font-medium text-card-foreground">{t('requestContent')}</span>
                             {requestTruncated && <Badge variant="outline" className="shrink-0 border-amber-500/40 text-xs text-amber-600 dark:text-amber-400">{t('truncated')}</Badge>}
                             <Badge variant="secondary" className="ml-auto shrink-0 text-xs">{log.input_tokens.toLocaleString()} {t('tokens')}</Badge>
-                            <ChevronDown className={cn("size-4 shrink-0 text-muted-foreground transition-transform", requestExpanded && "rotate-180")} />
+                            <ChevronDown className={cn("size-4 shrink-0 text-muted-foreground transition-transform motion-reduce:transition-none", requestExpanded && "rotate-180")} />
                         </button>
                         {requestExpanded && <div className="scrollbar max-h-[30dvh] overflow-auto border-t border-border bg-background/20 md:min-h-0 md:flex-1 md:max-h-none">{requestBody.error && !requestContent ? <div className="flex h-full items-center justify-center px-4 py-6 text-xs text-destructive">{t('detailUnavailable')}</div> : <LogBodyContent content={requestContent} fallbackText={t('noRequestContent')} storedLabel={`octopus-log-${log.id}-request`} />}</div>}
                     </section>
                 </div>
 
                 <section className="order-3 flex h-fit min-h-0 shrink-0 flex-col overflow-hidden rounded-2xl border border-border bg-muted/30 md:order-none md:h-full md:flex-1">
-                    <div
-                        role="button"
-                        tabIndex={0}
-                        aria-label={t('finalResponse')}
-                        aria-expanded={responseExpanded}
-                        aria-controls={`response-panel-${log.id}`}
-                        onClick={() => setResponseExpanded((expanded) => !expanded)}
-                        onKeyDown={(event) => {
-                            if (event.key === 'Enter' || event.key === ' ') {
-                                event.preventDefault();
-                                setResponseExpanded((expanded) => !expanded);
-                            }
-                        }}
-                        className="flex h-fit shrink-0 cursor-pointer flex-wrap items-center gap-2 border-b border-border bg-muted/50 px-3 py-2.5 md:px-4 md:py-3"
-                    >
-                        <MessageSquare className="size-4 shrink-0 text-purple-500" />
-                        <span className="min-w-0 text-sm font-medium text-card-foreground">{t('selectedAttempt')}</span>
-                        {selectedAttempt && <Badge className={cn("shrink-0 border-0 px-1.5 text-[10px] font-bold uppercase", getAttemptStatusClass(selectedAttempt.status))}>{statusT(getAttemptStatusLabelKey(selectedAttempt.status))}</Badge>}
-                        {(selectedAttempt?.status === 'failed' || selectedAttempt?.status === 'canceled') && <UpstreamStatusBadge code={selectedAttempt.upstream_status_code} />}
-                        <ChevronDown className={cn("ml-auto size-4 text-muted-foreground transition-transform md:hidden", responseExpanded && "rotate-180")} />
-                        {runningAttempt && <button type="button" onClick={(event) => { event.stopPropagation(); void handleStop(); }} disabled={stopAttempt.isPending} className="ml-auto flex shrink-0 items-center gap-1.5 rounded-md px-2 py-1 text-xs text-destructive transition-colors hover:bg-destructive/10 disabled:opacity-50">{stopAttempt.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <Square className="size-3.5" />}{t('stopAttempt')}</button>}
+                    <div className="flex h-fit shrink-0 flex-wrap items-center gap-2 border-b border-border bg-muted/50 px-3 py-2.5 md:px-4 md:py-3">
+                        <button
+                            type="button"
+                            aria-label={t('selectedAttempt')}
+                            aria-expanded={responseExpanded}
+                            aria-controls={`response-panel-${log.id}`}
+                            onClick={() => setResponseExpanded((expanded) => !expanded)}
+                            className="flex min-w-0 flex-1 cursor-pointer flex-wrap items-center gap-2 rounded-md text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                        >
+                            <MessageSquare className="size-4 shrink-0 text-purple-500" />
+                            <span className="min-w-0 text-sm font-medium text-card-foreground">{t('selectedAttempt')}</span>
+                            {selectedAttempt && <Badge className={cn("shrink-0 border-0 px-1.5 text-[10px] font-bold uppercase", getAttemptStatusClass(selectedAttempt.status))}>{statusT(getAttemptStatusLabelKey(selectedAttempt.status))}</Badge>}
+                            {(selectedAttempt?.status === 'failed' || selectedAttempt?.status === 'canceled') && <UpstreamStatusBadge code={selectedAttempt.upstream_status_code} />}
+                            <ChevronDown className={cn("ml-auto size-4 text-muted-foreground transition-transform motion-reduce:transition-none md:hidden", responseExpanded && "rotate-180")} />
+                        </button>
+                        {runningAttempt && <button type="button" onClick={(event) => { event.stopPropagation(); void handleStop(); }} disabled={stopAttempt.isPending} className="ml-auto flex shrink-0 items-center gap-1.5 rounded-md px-2 py-1 text-xs text-destructive transition-colors motion-reduce:transition-none hover:bg-destructive/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:opacity-50">{stopAttempt.isPending ? <Loader2 className="size-3.5 animate-spin motion-reduce:animate-none" /> : <Square className="size-3.5" />}{t('stopAttempt')}</button>}
                     </div>
                     <div id={`response-panel-${log.id}`} className={cn("scrollbar overflow-auto md:min-h-0 md:flex-1 md:max-h-none", responseTruncated && responsePreview ? "max-h-[50dvh]" : "max-h-[30dvh]", !responseExpanded && "hidden md:block")}>
                         {stopError && <p className="border-b border-destructive/20 bg-destructive/5 px-3 py-2 text-xs text-destructive">{stopError}</p>}
@@ -539,7 +527,7 @@ function LiveOverviewDetails({ log, brandColor }: { log: RelayLog; brandColor: s
                             </div>
                             <div className="min-h-0 md:flex-1">
                                 {selectedError && <div className="relative border-b border-destructive/20 bg-destructive/5 p-3"><CopyIconButton text={selectedError} className="absolute right-2 top-2 rounded-md p-1 text-destructive/60 transition-colors hover:bg-destructive/10 hover:text-destructive" copyIconClassName="size-4" checkIconClassName="size-4" /><p className="whitespace-pre-wrap wrap-break-word pr-8 text-sm leading-relaxed text-destructive">{selectedError}</p></div>}
-                                {canShowFinalResponse ? <div className="min-h-0 md:flex-1">{responseTruncated && !responsePreview && <div className="px-3 pt-3"><Badge variant="outline" className="border-amber-500/40 text-xs text-amber-600 dark:text-amber-400">{t('truncated')}</Badge></div>}{responseLoading ? <div className="flex h-full items-center justify-center"><Loader2 className="size-5 animate-spin text-muted-foreground" /></div> : responseBody.error && !responseContent && !selectedIsCommitted ? <div className="flex h-full items-center justify-center px-4 text-xs text-destructive">{t('detailUnavailable')}</div> : <LogBodyContent content={responseContent} preview={responsePreview} truncated={responseTruncated} fallbackText={selectedIsCommitted ? t('responseStreaming') : t('noResponseContent')} storedLabel={storedResponseLabel} images={responseBody.data?.images} />}</div> : selectedAttempt.status === 'running' ? <div className="flex min-h-[8rem] items-center justify-center px-4 text-xs text-muted-foreground">{t('responseStreaming')}</div> : <div className="flex min-h-[8rem] items-center justify-center px-4 text-xs text-muted-foreground">{t('noResponseContent')}</div>}
+                                {canShowFinalResponse ? <div className="min-h-0 md:flex-1">{responseTruncated && !responsePreview && <div className="px-3 pt-3"><Badge variant="outline" className="border-amber-500/40 text-xs text-amber-600 dark:text-amber-400">{t('truncated')}</Badge></div>}{responseLoading ? <div className="flex h-full items-center justify-center"><Loader2 className="size-5 animate-spin motion-reduce:animate-none text-muted-foreground" /></div> : responseBody.error && !responseContent && !selectedIsCommitted ? <div className="flex h-full items-center justify-center px-4 text-xs text-destructive">{t('detailUnavailable')}</div> : <LogBodyContent content={responseContent} preview={responsePreview} truncated={responseTruncated} fallbackText={selectedIsCommitted ? t('responseStreaming') : t('noResponseContent')} storedLabel={storedResponseLabel} images={responseBody.data?.images} />}</div> : selectedAttempt.status === 'running' ? <div className="flex min-h-[8rem] items-center justify-center px-4 text-xs text-muted-foreground">{t('responseStreaming')}</div> : <div className="flex min-h-[8rem] items-center justify-center px-4 text-xs text-muted-foreground">{t('noResponseContent')}</div>}
                             </div>
                         </div> : <div className="min-h-0 md:flex-1">
                             {log.error && <div className="relative border-b border-destructive/20 bg-destructive/5 p-3"><CopyIconButton text={log.error} className="absolute right-2 top-2 rounded-md p-1 text-destructive/60 transition-colors hover:bg-destructive/10 hover:text-destructive" copyIconClassName="size-4" checkIconClassName="size-4" /><p className="whitespace-pre-wrap wrap-break-word pr-8 text-sm leading-relaxed text-destructive">{log.error}</p></div>}
@@ -719,8 +707,8 @@ export function LogCard({ log }: { log: RelayLog }) {
                 </MorphingDialogTrigger>
                 <MorphingDialogContainer>
                     <MorphingDialogContent className="relative flex h-full max-h-full w-full max-w-full flex-col overflow-hidden rounded-3xl bg-card px-4 py-5 text-card-foreground sm:px-6 md:w-[80vw]">
-                        <MorphingDialogClose className="top-4 right-5 text-muted-foreground hover:text-foreground transition-colors" />
-                        <MorphingDialogTitle className="scrollbar mb-4 flex max-h-[40%] min-w-0 shrink-0 flex-wrap items-center gap-2 overflow-y-auto pl-2 pr-10 text-sm">
+                        <MorphingDialogClose className="top-4 right-5 text-muted-foreground hover:text-foreground transition-colors motion-reduce:transition-none" />
+                        <MorphingDialogTitle className="scrollbar mb-4 flex max-h-[40%] min-w-0 shrink-0 flex-wrap items-center gap-2 overflow-y-auto pl-2 pr-12 text-sm">
                             <ModelIcon aria-hidden="true" className={cn(iconClassName, "shrink-0")} width={28} height={28} />
                             <span className="min-w-0 max-w-full break-words font-semibold text-card-foreground">{log.request_model_name}</span>
                             {reasoningEffort && <span className="min-w-0 max-w-full break-words text-xs font-normal text-muted-foreground">{reasoningEffort}</span>}

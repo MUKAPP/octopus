@@ -28,15 +28,9 @@ import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 
 import { toast } from '@/components/common/Toast';
-export function CardContent({ channel, stats }: { channel: Channel; stats: StatsMetricsFormatted }) {
-    const locale = useLocale();
-    const { setIsOpen } = useMorphingDialog();
-    const updateChannel = useUpdateChannel();
-    const deleteChannel = useDeleteChannel();
-    const [isEditing, setIsEditing] = useState(false);
-    const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
-    const [hasDeleteError, setHasDeleteError] = useState(false);
-    const [formData, setFormData] = useState<ChannelFormData>({
+
+function buildInitialFormData(channel: Channel): ChannelFormData {
+    return {
         name: channel.name,
         type: channel.type,
         enabled: channel.enabled,
@@ -64,7 +58,18 @@ export function CardContent({ channel, stats }: { channel: Channel; stats: Stats
         priority: channel.priority ?? 0,
         auto_group: channel.auto_group,
         match_regex: channel.match_regex ?? '',
-    });
+    };
+}
+
+export function CardContent({ channel, stats }: { channel: Channel; stats: StatsMetricsFormatted }) {
+    const locale = useLocale();
+    const { setIsOpen } = useMorphingDialog();
+    const updateChannel = useUpdateChannel();
+    const deleteChannel = useDeleteChannel();
+    const [isEditing, setIsEditing] = useState(false);
+    const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
+    const [hasDeleteError, setHasDeleteError] = useState(false);
+    const [formData, setFormData] = useState<ChannelFormData>(() => buildInitialFormData(channel));
     const t = useTranslations('channel.detail');
 
     const currentView = isEditing ? 'editing' : 'viewing';
@@ -253,18 +258,18 @@ export function CardContent({ channel, stats }: { channel: Channel; stats: Stats
                                         {t('sections.requests')}
                                     </h4>
                                     <dl className="grid gap-3 grid-cols-1 sm:grid-cols-2">
-                                        <div className="rounded-2xl border bg-card p-3 sm:p-4 transition-colors hover:bg-accent/5">
+                                        <div className="rounded-2xl border bg-card p-3 sm:p-4">
                                             <dt className="flex items-center gap-2 mb-2 text-xs text-muted-foreground">
-                                                <CheckCircle2 className="size-4 text-accent" />
+                                                <CheckCircle2 className="size-4 text-emerald-600 dark:text-emerald-400" />
                                                 {t('metrics.successRequests')}
                                             </dt>
-                                            <dd className="text-2xl font-bold text-accent">
+                                            <dd className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
                                                 {stats.request_success.formatted.value}
                                                 <span className="text-sm font-normal ml-1 text-muted-foreground">{stats.request_success.formatted.unit}</span>
                                             </dd>
                                         </div>
 
-                                        <div className="rounded-2xl border bg-card p-3 sm:p-4 transition-colors hover:bg-accent/5">
+                                        <div className="rounded-2xl border bg-card p-3 sm:p-4">
                                             <dt className="flex items-center gap-2 mb-2 text-xs text-muted-foreground">
                                                 <XCircle className="size-4 text-destructive" />
                                                 {t('metrics.failedRequests')}
@@ -284,7 +289,7 @@ export function CardContent({ channel, stats }: { channel: Channel; stats: Stats
                                         {t('sections.tokens')}
                                     </h4>
                                     <dl className="grid gap-3 grid-cols-1 sm:grid-cols-2">
-                                        <div className="rounded-2xl border bg-card p-3 sm:p-4 transition-colors hover:bg-accent/5">
+                                        <div className="rounded-2xl border bg-card p-3 sm:p-4">
                                             <dt className="flex items-center gap-2 mb-2 text-xs text-muted-foreground">
                                                 <div className="size-2 rounded-full bg-chart-1" />
                                                 {t('metrics.inputToken')}
@@ -295,7 +300,7 @@ export function CardContent({ channel, stats }: { channel: Channel; stats: Stats
                                             </dd>
                                         </div>
 
-                                        <div className="rounded-2xl border bg-card p-3 sm:p-4 transition-colors hover:bg-accent/5">
+                                        <div className="rounded-2xl border bg-card p-3 sm:p-4">
                                             <dt className="flex items-center gap-2 mb-2 text-xs text-muted-foreground">
                                                 <div className="size-2 rounded-full bg-chart-3" />
                                                 {t('metrics.outputToken')}
@@ -315,7 +320,7 @@ export function CardContent({ channel, stats }: { channel: Channel; stats: Stats
                                         {t('sections.costs')}
                                     </h4>
                                     <dl className="grid gap-3 grid-cols-1 sm:grid-cols-2">
-                                        <div className="rounded-2xl border bg-card p-3 sm:p-4 transition-colors hover:bg-accent/5">
+                                        <div className="rounded-2xl border bg-card p-3 sm:p-4">
                                             <dt className="flex items-center gap-2 mb-2 text-xs text-muted-foreground">
                                                 <div className="size-2 rounded-full bg-chart-2" />
                                                 {t('metrics.inputCost')}
@@ -326,7 +331,7 @@ export function CardContent({ channel, stats }: { channel: Channel; stats: Stats
                                             </dd>
                                         </div>
 
-                                        <div className="rounded-2xl border bg-card p-3 sm:p-4 transition-colors hover:bg-accent/5">
+                                        <div className="rounded-2xl border bg-card p-3 sm:p-4">
                                             <dt className="flex items-center gap-2 mb-2 text-xs text-muted-foreground">
                                                 <div className="size-2 rounded-full bg-chart-5" />
                                                 {t('metrics.outputCost')}
@@ -347,7 +352,7 @@ export function CardContent({ channel, stats }: { channel: Channel; stats: Stats
                                     </h4>
                                     <div className="rounded-2xl border bg-card overflow-hidden">
                                         {channel.base_urls?.map((url, i) => (
-                                            <div key={i} className="flex items-center justify-between p-3 sm:p-4 border-b last:border-0 hover:bg-accent/5 transition-colors">
+                                            <div key={i} className="flex items-center justify-between p-3 sm:p-4 border-b last:border-0">
                                                 <div className="flex flex-col gap-1 min-w-0">
                                                     <span className="font-mono text-sm truncate select-all">{url.url}</span>
                                                 </div>
@@ -380,7 +385,7 @@ export function CardContent({ channel, stats }: { channel: Channel; stats: Stats
                                     </h4>
                                     <div className="rounded-2xl border bg-card overflow-hidden">
                                         {channel.keys?.map((key) => (
-                                            <div key={key.id} className="flex items-center gap-3 p-3 sm:p-4 border-b last:border-0 hover:bg-accent/5 transition-colors">
+                                            <div key={key.id} className="flex items-center gap-3 p-3 sm:p-4 border-b last:border-0">
                                                 <div className={cn("size-2 shrink-0 rounded-full", key.enabled ? "bg-emerald-500" : "bg-destructive")} />
 
                                                 <span className="font-mono text-sm truncate min-w-0 flex-1">
@@ -435,7 +440,7 @@ export function CardContent({ channel, stats }: { channel: Channel; stats: Stats
                                 </section>
 
                                 {/* 等待时间 */}
-                                <dl className="rounded-2xl border bg-card p-3 sm:p-4 transition-colors hover:bg-accent/5">
+                                <dl className="rounded-2xl border bg-card p-3 sm:p-4">
                                     <dt className="flex items-center gap-2 mb-2 text-xs text-muted-foreground">
                                         <Clock className="size-4 text-primary" />
                                         {t('metrics.avgWaitTime')}
@@ -455,11 +460,14 @@ export function CardContent({ channel, stats }: { channel: Channel; stats: Stats
                                             setIsConfirmingDelete(false);
                                             setHasDeleteError(false);
                                         } else {
+                                            setFormData(buildInitialFormData(channel));
+                                            setIsConfirmingDelete(false);
+                                            setHasDeleteError(false);
                                             setIsEditing(true);
                                         }
                                     }}
                                     variant={isConfirmingDelete ? 'secondary' : 'default'}
-                                    className="w-full rounded-2xl h-12"
+                                    className="w-full rounded-xl h-11"
                                 >
                                     {isConfirmingDelete ? t('actions.cancel') : t('actions.edit')}
                                 </Button>
@@ -467,9 +475,9 @@ export function CardContent({ channel, stats }: { channel: Channel; stats: Stats
                                     onClick={handleDeleteClick}
                                     disabled={deleteChannel.isPending}
                                     variant="destructive"
-                                    className="w-full rounded-2xl h-12"
+                                    className="w-full rounded-xl h-11"
                                 >
-                                    <Trash2 className={`size-4 transition-transform ${isConfirmingDelete ? 'scale-110' : ''}`} />
+                                    <Trash2 className={`size-4 transition-transform motion-reduce:transition-none ${isConfirmingDelete ? 'scale-110 motion-reduce:scale-100' : ''}`} />
                                     {deleteChannel.isPending
                                         ? t('actions.deleting')
                                         : isConfirmingDelete
@@ -489,7 +497,10 @@ export function CardContent({ channel, stats }: { channel: Channel; stats: Stats
                                 isPending={updateChannel.isPending}
                                 submitText={t('actions.save')}
                                 pendingText={t('actions.saving')}
-                                onCancel={() => setIsEditing(false)}
+                                onCancel={() => {
+                                    setFormData(buildInitialFormData(channel));
+                                    setIsEditing(false);
+                                }}
                                 cancelText={t('actions.cancel')}
                                 idPrefix="channel"
                                 allowZeroRateMultiplier

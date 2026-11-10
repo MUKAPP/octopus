@@ -1,6 +1,7 @@
-import { useMemo } from 'react';
+import { Fragment, useMemo, useState } from 'react';
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { useTranslations } from 'use-intl';
-import { Loader2, Inbox, ChevronRight } from 'lucide-react';
+import { ArrowDown, Loader2, Inbox, ChevronRight } from 'lucide-react';
 import type { UseQueryResult } from '@tanstack/react-query';
 import { Tabs, TabsList, TabsTrigger, TabsContents, TabsContent } from '@/components/animate-ui/components/animate/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -9,6 +10,7 @@ import type { AnalyticsMetricsFormatted, AnalyticsResponseFormatted } from '@/ap
 import { useAnalyticsViewStore, type AnalyticsBreakdownTab, type AnalyticsSortMetric } from './store';
 import { cn } from '@/lib/utils';
 import { InlineRetry } from '@/components/common/InlineRetry';
+import { EASING, REDUCED_MOTION_TRANSITION } from '@/lib/animations/fluid-transitions';
 
 interface BreakdownTableProps {
     query: UseQueryResult<AnalyticsResponseFormatted>;
@@ -39,6 +41,12 @@ export function BreakdownTable({ query }: BreakdownTableProps) {
     const tFeedback = useTranslations('analytics.feedback');
     const tDetail = useTranslations('analytics.detail');
     const data = query.data;
+    const shouldReduceMotion = useReducedMotion() ?? false;
+    const [expandedKeys, setExpandedKeys] = useState<Record<string, boolean>>({});
+
+    const toggleRow = (key: string) => {
+        setExpandedKeys((prev) => ({ ...prev, [key]: !prev[key] }));
+    };
 
     const breakdownTab = useAnalyticsViewStore((state) => state.breakdownTab);
     const setBreakdownTab = useAnalyticsViewStore((state) => state.setBreakdownTab);
@@ -119,19 +127,24 @@ export function BreakdownTable({ query }: BreakdownTableProps) {
         { value: 'latency', label: t('avgWaitTime') },
     ];
 
-    const sortableHead = (column: AnalyticsSortMetric, label: string) => (
-        <TableHead aria-sort={sortMetric === column ? 'descending' : 'none'}>
-            <button
-                type="button"
-                onClick={() => setSortMetric(column)}
-                className={cn( 'text-left font-medium transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring',
-                    sortMetric === column ? 'text-foreground' : 'text-muted-foreground'
-                )}
-            >
-                {label}
-            </button>
-        </TableHead>
-    );
+    const sortableHead = (column: AnalyticsSortMetric, label: string) => {
+        const isActive = sortMetric === column;
+        return (
+            <TableHead aria-sort={isActive ? 'descending' : 'none'} className="text-right">
+                <button
+                    type="button"
+                    onClick={() => setSortMetric(column)}
+                    className={cn(
+                        'inline-flex items-center justify-end gap-1 font-medium transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring',
+                        isActive ? 'text-foreground' : 'text-muted-foreground',
+                    )}
+                >
+                    <span>{label}</span>
+                    {isActive && <ArrowDown className="size-3.5 text-primary" aria-hidden="true" />}
+                </button>
+            </TableHead>
+        );
+    };
 
     const renderMetric = (metric: FormattedMetric) => (
         <span className="tabular-nums">
@@ -140,9 +153,9 @@ export function BreakdownTable({ query }: BreakdownTableProps) {
         </span>
     );
 
-    const renderDetails = (row: BreakdownRow) => {
+    const getDetailMetrics = (row: BreakdownRow) => {
         const totalCost = data?.summary.total_cost.raw ?? 0;
-        const metrics = [
+        return [
             { label: tDetail('inputTokens'), value: renderMetric(row.metrics.input_token) },
             { label: tDetail('outputTokens'), value: renderMetric(row.metrics.output_token) },
             { label: tDetail('cacheRead'), value: row.metrics.observed_cached_token === null ? '—' : renderMetric(row.metrics.observed_cached_token) },
@@ -152,14 +165,13 @@ export function BreakdownTable({ query }: BreakdownTableProps) {
             { label: tDetail('averageCost'), value: row.metrics.request_count.raw > 0 ? renderMetric(row.metrics.average_cost) : '—' },
             { label: tDetail('costShare'), value: totalCost > 0 ? (row.metrics.total_cost.raw / totalCost * 100).toFixed(1) + '%' : '—' },
         ];
-        return <details className="group mt-1 text-xs font-normal"><summary className="inline-flex cursor-pointer list-none items-center gap-1 rounded-lg text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"><ChevronRight className="size-3.5 transition-transform group-open:rotate-90" />{t('usageDetails')}</summary><dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-2 sm:w-80">{metrics.map((item) => <div key={item.label}><dt className="text-muted-foreground">{item.label}</dt><dd className="mt-0.5 tabular-nums">{item.value}</dd></div>)}</dl></details>;
     };
 
     const renderList = () => {
         if (query.isLoading && !data) {
             return (
                 <div className="flex items-center justify-center py-8">
-                    <Loader2 className="size-8 animate-spin text-muted-foreground" role="status" aria-label={tFeedback('loading')} />
+                    <Loader2 className="size-8 animate-spin motion-reduce:animate-none text-muted-foreground" role="status" aria-label={tFeedback('loading')} />
                 </div>
             );
         }
@@ -196,52 +208,179 @@ export function BreakdownTable({ query }: BreakdownTableProps) {
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {sortedRows.map((row) => (
-                                <TableRow key={row.key}>
-                                    <TableCell className="font-medium">{displayName(row)}{renderDetails(row)}</TableCell>
-                                    <TableCell>{renderMetric(row.metrics.request_count)}</TableCell>
-                                    <TableCell className="text-right"><span className={cn('tabular-nums', row.metrics.success_rate.raw < 100 && 'text-destructive')}>{row.metrics.success_rate.formatted}</span></TableCell>
-                                    <TableCell>{renderMetric(row.metrics.total_token)}</TableCell>
-                                    <TableCell className="text-right">{row.metrics.observed_cached_token === null ? <span className="text-muted-foreground">—</span> : renderMetric(row.metrics.observed_cached_token)}</TableCell>
-                                    <TableCell>{renderMetric(row.metrics.total_cost)}</TableCell>
-                                    <TableCell>{renderMetric(row.metrics.average_wait_time)}</TableCell>
-                                </TableRow>
-                            ))}
+                            {sortedRows.map((row) => {
+                                const isExpanded = Boolean(expandedKeys[row.key]);
+                                const detailMetrics = isExpanded ? getDetailMetrics(row) : [];
+                                return (
+                                    <Fragment key={row.key}>
+                                        <TableRow
+                                            className={cn(
+                                                isExpanded && 'border-b-0 bg-muted/25 hover:bg-muted/35',
+                                            )}
+                                        >
+                                            <TableCell className="py-3 font-medium">
+                                                <div className="flex flex-col items-start gap-1">
+                                                    <span className="break-all">{displayName(row)}</span>
+                                                    <button
+                                                        type="button"
+                                                        aria-expanded={isExpanded}
+                                                        onClick={() => toggleRow(row.key)}
+                                                        className={cn(
+                                                            '-ml-1.5 inline-flex items-center gap-1 rounded-lg px-1.5 py-0.5 text-xs font-normal transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring',
+                                                            isExpanded
+                                                                ? 'bg-background/80 text-foreground'
+                                                                : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground',
+                                                        )}
+                                                    >
+                                                        <ChevronRight
+                                                            className={cn(
+                                                                'size-3.5 transition-transform duration-200 motion-reduce:transition-none',
+                                                                isExpanded && 'rotate-90',
+                                                            )}
+                                                            aria-hidden="true"
+                                                        />
+                                                        <span>{t('usageDetails')}</span>
+                                                    </button>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell className="text-right">{renderMetric(row.metrics.request_count)}</TableCell>
+                                            <TableCell className="text-right">
+                                                <span className={cn(
+                                                    'tabular-nums',
+                                                    row.metrics.success_rate.raw < 80
+                                                        ? 'text-destructive'
+                                                        : row.metrics.success_rate.raw < 95
+                                                            ? 'text-amber-600 dark:text-amber-400'
+                                                            : '',
+                                                )}>
+                                                    {row.metrics.success_rate.formatted}
+                                                </span>
+                                            </TableCell>
+                                            <TableCell className="text-right">{renderMetric(row.metrics.total_token)}</TableCell>
+                                            <TableCell className="text-right">{row.metrics.observed_cached_token === null ? <span className="text-muted-foreground">—</span> : renderMetric(row.metrics.observed_cached_token)}</TableCell>
+                                            <TableCell className="text-right">{renderMetric(row.metrics.total_cost)}</TableCell>
+                                            <TableCell className="text-right">{renderMetric(row.metrics.average_wait_time)}</TableCell>
+                                        </TableRow>
+                                        <AnimatePresence initial={false}>
+                                            {isExpanded && (
+                                                <TableRow
+                                                    key={`${row.key}-details`}
+                                                    className="bg-muted/20 hover:bg-muted/20"
+                                                >
+                                                    <TableCell colSpan={7} className="p-0">
+                                                        <motion.div
+                                                            initial={shouldReduceMotion ? { opacity: 0 } : { height: 0, opacity: 0, filter: 'blur(4px)' }}
+                                                            animate={shouldReduceMotion ? { opacity: 1 } : { height: 'auto', opacity: 1, filter: 'blur(0px)' }}
+                                                            exit={shouldReduceMotion ? { opacity: 0 } : { height: 0, opacity: 0, filter: 'blur(4px)' }}
+                                                            transition={shouldReduceMotion ? REDUCED_MOTION_TRANSITION : { duration: 0.22, ease: EASING.easeOutCubic }}
+                                                            className="overflow-hidden"
+                                                        >
+                                                            <dl className="grid grid-cols-2 gap-2.5 p-3 lg:grid-cols-4">
+                                                                {detailMetrics.map((item) => (
+                                                                    <div
+                                                                        key={item.label}
+                                                                        className="min-w-0 rounded-2xl border border-border/70 bg-background/80 px-3.5 py-2.5"
+                                                                    >
+                                                                        <dt className="truncate text-xs text-muted-foreground">{item.label}</dt>
+                                                                        <dd className="mt-1 text-sm font-semibold tabular-nums">{item.value}</dd>
+                                                                    </div>
+                                                                ))}
+                                                            </dl>
+                                                        </motion.div>
+                                                    </TableCell>
+                                                </TableRow>
+                                            )}
+                                        </AnimatePresence>
+                                    </Fragment>
+                                );
+                            })}
                         </TableBody>
                     </Table>
                 </div>
                 {/* 小屏堆叠行 */}
-                <div className="space-y-3 md:hidden">
-                    {sortedRows.map((row) => (
-                        <div key={row.key} className="flex items-center gap-3 p-3 rounded-2xl hover:bg-accent/5 transition-colors">
-                            <div className="flex-1 min-w-0">
-                                <p className="truncate text-sm font-medium">{displayName(row)}</p>
-                                {renderDetails(row)}
-                                <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
-                                    <span>{t('successRate')}:</span>
-                                    <span className="tabular-nums">{row.metrics.success_rate.formatted}</span>
+                <div className="space-y-2.5 md:hidden">
+                    {sortedRows.map((row) => {
+                        const isExpanded = Boolean(expandedKeys[row.key]);
+                        const detailMetrics = isExpanded ? getDetailMetrics(row) : [];
+                        return (
+                            <div key={row.key} className="rounded-2xl border border-border/70 bg-background/80 p-3.5">
+                                <div className="flex items-start justify-between gap-3">
+                                    <div className="min-w-0 flex-1">
+                                        <p className="truncate text-sm font-medium">{displayName(row)}</p>
+                                        <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+                                            <span>
+                                                {t('successRate')}:{' '}
+                                                <span className={cn(
+                                                    'tabular-nums font-medium',
+                                                    row.metrics.success_rate.raw < 80
+                                                        ? 'text-destructive'
+                                                        : row.metrics.success_rate.raw < 95
+                                                            ? 'text-amber-600 dark:text-amber-400'
+                                                            : 'text-foreground',
+                                                )}>{row.metrics.success_rate.formatted}</span>
+                                            </span>
+                                            <span>·</span>
+                                            <button
+                                                type="button"
+                                                aria-expanded={isExpanded}
+                                                onClick={() => toggleRow(row.key)}
+                                                className="inline-flex items-center gap-0.5 rounded-md text-xs text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                                            >
+                                                <ChevronRight
+                                                    className={cn(
+                                                        'size-3.5 transition-transform duration-200 motion-reduce:transition-none',
+                                                        isExpanded && 'rotate-90',
+                                                    )}
+                                                    aria-hidden="true"
+                                                />
+                                                <span>{t('usageDetails')}</span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div className="shrink-0 text-right font-semibold">
+                                        {sortMetric === 'count' ? (
+                                            renderMetric(row.metrics.request_count)
+                                        ) : sortMetric === 'tokens' ? (
+                                            renderMetric(row.metrics.total_token)
+                                        ) : sortMetric === 'latency' ? (
+                                            renderMetric(row.metrics.average_wait_time)
+                                        ) : (
+                                            renderMetric(row.metrics.total_cost)
+                                        )}
+                                    </div>
                                 </div>
+                                <AnimatePresence initial={false}>
+                                    {isExpanded && (
+                                        <motion.div
+                                            initial={shouldReduceMotion ? { opacity: 0 } : { height: 0, opacity: 0, filter: 'blur(4px)' }}
+                                            animate={shouldReduceMotion ? { opacity: 1 } : { height: 'auto', opacity: 1, filter: 'blur(0px)' }}
+                                            exit={shouldReduceMotion ? { opacity: 0 } : { height: 0, opacity: 0, filter: 'blur(4px)' }}
+                                            transition={shouldReduceMotion ? REDUCED_MOTION_TRANSITION : { duration: 0.22, ease: EASING.easeOutCubic }}
+                                            className="overflow-hidden"
+                                        >
+                                            <div className="pt-3">
+                                                <dl className="grid grid-cols-2 gap-2 border-t border-border/50 pt-3">
+                                                    {detailMetrics.map((item) => (
+                                                        <div key={item.label} className="min-w-0 rounded-xl border border-border/50 bg-muted/25 px-2.5 py-2">
+                                                            <dt className="truncate text-[11px] text-muted-foreground">{item.label}</dt>
+                                                            <dd className="mt-0.5 text-xs font-semibold tabular-nums">{item.value}</dd>
+                                                        </div>
+                                                    ))}
+                                                </dl>
+                                            </div>
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>
                             </div>
-                            <div className="flex items-center gap-1 text-right shrink-0">
-                                {sortMetric === 'count' ? (
-                                    renderMetric(row.metrics.request_count)
-                                ) : sortMetric === 'tokens' ? (
-                                    renderMetric(row.metrics.total_token)
-                                ) : sortMetric === 'latency' ? (
-                                    renderMetric(row.metrics.average_wait_time)
-                                ) : (
-                                    renderMetric(row.metrics.total_cost)
-                                )}
-                            </div>
-                        </div>
-                    ))}
+                        );
+                    })}
                 </div>
             </>
         );
     };
 
     return (
-        <div className="rounded-3xl bg-card text-card-foreground border-card-border border p-4">
+        <div className="rounded-3xl bg-card text-card-foreground border-border border p-4">
             <Tabs value={breakdownTab} onValueChange={(value) => setBreakdownTab(value as AnalyticsBreakdownTab)}>
                 <div className="flex flex-wrap items-center justify-between gap-3">
                     <TabsList>
@@ -251,12 +390,12 @@ export function BreakdownTable({ query }: BreakdownTableProps) {
                     </TabsList>
                     <div className="ml-auto flex items-center gap-2">
                         <Select value={sortMetric} onValueChange={(value) => setSortMetric(value as AnalyticsSortMetric)}>
-                            <SelectTrigger aria-label={sortOptions.find((option) => option.value === sortMetric)?.label} size="sm" className="min-w-36 rounded-xl">
+                            <SelectTrigger aria-label={sortOptions.find((option) => option.value === sortMetric)?.label} size="sm" className="min-w-36">
                                 <SelectValue />
                             </SelectTrigger>
-                            <SelectContent className="rounded-xl">
+                            <SelectContent>
                                 {sortOptions.map((option) => (
-                                    <SelectItem className="rounded-xl" key={option.value} value={option.value}>{option.label}</SelectItem>
+                                    <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
                                 ))}
                             </SelectContent>
                         </Select>

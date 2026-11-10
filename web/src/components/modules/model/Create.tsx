@@ -10,10 +10,12 @@ import {
     useMorphingDialog,
 } from '@/components/ui/morphing-dialog';
 import { useTranslations } from 'use-intl';
+import { toast } from '@/components/common/Toast';
 
 export function CreateDialogContent() {
     const { setIsOpen } = useMorphingDialog();
     const t = useTranslations('model.create');
+    const tToast = useTranslations('model.toast');
     const createModel = useCreateModel();
 
     const [formData, setFormData] = useState({
@@ -38,6 +40,9 @@ export function CreateDialogContent() {
             onSuccess: () => {
                 setFormData({ name: '', input: '', output: '', cache_read: '', cache_write: '' });
                 setIsOpen(false);
+            },
+            onError: (error) => {
+                toast.error(tToast('createFailed'), { description: error.message });
             }
         });
     };
@@ -66,7 +71,8 @@ export function CreateDialogContent() {
                                 id="model-name"
                                 value={formData.name}
                                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                                className="rounded-xl"
+                                className="rounded-xl text-base sm:text-sm"
+                                required
                             />
                         </Field>
                         <div className="grid grid-cols-1 gap-4 min-[360px]:grid-cols-2">
@@ -76,9 +82,10 @@ export function CreateDialogContent() {
                                     id="model-input"
                                     type="number"
                                     step="any"
+                                    min="0"
                                     value={formData.input}
                                     onChange={(e) => setFormData({ ...formData, input: e.target.value })}
-                                    className="rounded-xl"
+                                    className="rounded-xl text-base sm:text-sm"
                                 />
                             </Field>
                             <Field>
@@ -87,9 +94,10 @@ export function CreateDialogContent() {
                                     id="model-output"
                                     type="number"
                                     step="any"
+                                    min="0"
                                     value={formData.output}
                                     onChange={(e) => setFormData({ ...formData, output: e.target.value })}
-                                    className="rounded-xl"
+                                    className="rounded-xl text-base sm:text-sm"
                                 />
                             </Field>
                             <Field>
@@ -98,9 +106,10 @@ export function CreateDialogContent() {
                                     id="model-cache-read"
                                     type="number"
                                     step="any"
+                                    min="0"
                                     value={formData.cache_read}
                                     onChange={(e) => setFormData({ ...formData, cache_read: e.target.value })}
-                                    className="rounded-xl"
+                                    className="rounded-xl text-base sm:text-sm"
                                 />
                             </Field>
                             <Field>
@@ -109,12 +118,14 @@ export function CreateDialogContent() {
                                     id="model-cache-write"
                                     type="number"
                                     step="any"
+                                    min="0"
                                     value={formData.cache_write}
                                     onChange={(e) => setFormData({ ...formData, cache_write: e.target.value })}
-                                    className="rounded-xl"
+                                    className="rounded-xl text-base sm:text-sm"
                                 />
                             </Field>
                         </div>
+                        <p className="text-xs text-muted-foreground">{t('priceHint')}</p>
                         <div className="flex gap-2 pt-4">
                             <Button
                                 type="button"

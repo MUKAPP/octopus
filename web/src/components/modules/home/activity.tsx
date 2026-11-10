@@ -113,7 +113,7 @@ export function Activity() {
     }, [pinnedDateStr, hideTooltip]);
 
     return (
-        <div ref={containerRef} className="rounded-3xl bg-card border-card-border border text-card-foreground">
+        <div ref={containerRef} className="rounded-3xl bg-card border-border border text-card-foreground">
             {isError && statsDailyFormatted && (
                 <div role="alert" className="mx-4 mt-4 flex items-center justify-between gap-3 rounded-2xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-muted-foreground">
                     <span>{tHome('feedback.loadFailed')}</span>
@@ -127,11 +127,11 @@ export function Activity() {
                 style={{ maskImage, WebkitMaskImage: maskImage }}
             >
                 {isLoading && !statsDailyFormatted ? (
-                    <div className="flex h-[7.375rem] min-w-[47.25rem] items-center justify-center">
-                        <Loader2 className="size-8 animate-spin text-muted-foreground" role="status" aria-label={tHome('feedback.loading')} />
+                    <div className="flex h-[7.375rem] items-center justify-center">
+                        <Loader2 className="size-8 animate-spin motion-reduce:animate-none text-muted-foreground" role="status" aria-label={tHome('feedback.loading')} />
                     </div>
                 ) : isError && !statsDailyFormatted ? (
-                    <div role="alert" className="flex h-[7.375rem] min-w-[47.25rem] flex-col items-center justify-center gap-3 text-sm text-muted-foreground">
+                    <div role="alert" className="flex h-[7.375rem] flex-col items-center justify-center gap-3 text-sm text-muted-foreground">
                         <p>{tHome('feedback.loadFailed')}</p>
                         <InlineRetry onRetry={() => void refetch()} label={tHome('feedback.retry')} />
                     </div>
@@ -183,7 +183,7 @@ export function Activity() {
                                 >
                                     <span
                                         aria-hidden="true"
-                                        className="size-full rounded-sm transition-[transform,background-color] motion-safe:group-hover:scale-150 motion-safe:group-focus-visible:scale-150"
+                                        className="size-full rounded-sm transition-[transform,background-color] motion-reduce:transition-none motion-safe:[@media(hover:hover)_and_(pointer:fine)]:group-hover:scale-150 motion-safe:group-focus-visible:scale-150"
                                         style={{ backgroundColor: level === 0 ? 'var(--muted)' : `color-mix(in oklch, var(--primary) ${level * 25}%, var(--muted))` }}
                                     />
                                 </button>
@@ -216,7 +216,7 @@ export function Activity() {
 
                     return (
                         <div
-                            className={`fixed z-50 w-fit min-w-max text-sm bg-background text-foreground border rounded-3xl p-3 transition-opacity duration-200 pointer-events-none ${tooltip.visible ? 'opacity-100' : 'opacity-0'}`}
+                            className={`fixed z-50 w-fit min-w-max text-sm bg-background text-foreground border rounded-3xl p-3 transition-opacity duration-200 motion-reduce:transition-none pointer-events-none ${tooltip.visible ? 'opacity-100' : 'opacity-0'}`}
                             style={{
                                 left: tooltip.x,
                                 top: tooltip.y,

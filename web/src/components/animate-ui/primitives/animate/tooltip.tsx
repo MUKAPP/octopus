@@ -1,6 +1,7 @@
 import * as React from 'react';
 import {
   motion,
+  useReducedMotion,
   LayoutGroup,
   type Transition,
   type HTMLMotionProps,
@@ -265,6 +266,7 @@ function TooltipPositioner({
 }: TooltipPositionerProps) {
   const arrowRef = React.useRef<SVGSVGElement | null>(null);
   const { showTooltip, hideTooltip } = useGlobalTooltip();
+  const shouldReduceMotion = useReducedMotion() ?? false;
   const scrollable = 'data-scrollable-tooltip' in data.contentProps;
 
   const { refs, x, y, strategy, context, update, isPositioned } = useFloating({
@@ -295,6 +297,12 @@ function TooltipPositioner({
   const ready = x != null && y != null;
   const Component = data.contentAsChild ? Slot : motion.div;
   const resolvedSide = getResolvedSide(context.placement);
+  const closedState = shouldReduceMotion
+    ? { opacity: 0 }
+    : { opacity: 0, scale: 0.96, ...initialFromSide(resolvedSide) };
+  const openState = shouldReduceMotion
+    ? { opacity: 1 }
+    : { opacity: 1, scale: 1, x: 0, y: 0 };
 
   if (!ready) return null;
 
@@ -328,29 +336,13 @@ function TooltipPositioner({
               data-side={resolvedSide}
               data-align={data.align}
               data-state={open ? 'open' : 'closed'}
-              initial={{
-                opacity: 0,
-                scale: 0.96,
-                ...initialFromSide(data.side),
-              }}
-              animate={
-                open
-                  ? { opacity: 1, scale: 1, x: 0, y: 0 }
-                  : {
-                      opacity: 0,
-                      scale: 0.96,
-                      ...initialFromSide(data.side),
-                    }
-              }
-              exit={{
-                opacity: 0,
-                scale: 0.96,
-                ...initialFromSide(data.side),
-              }}
+              initial={closedState}
+              animate={open ? openState : closedState}
+              exit={closedState}
               onAnimationComplete={() => {
                 if (!open) onExitComplete();
               }}
-              transition={transition}
+              transition={shouldReduceMotion ? { duration: 0.12 } : transition}
               {...data.contentProps}
               onMouseEnter={(event: React.MouseEvent<HTMLDivElement>) => {
                 data.contentProps.onMouseEnter?.(event);

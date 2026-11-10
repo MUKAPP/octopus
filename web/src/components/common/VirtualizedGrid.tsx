@@ -13,8 +13,8 @@ import { useVirtualizer } from '@tanstack/react-virtual';
 const BREAKPOINTS = {
     sm: 640,
     md: 768,
-    // 与 Tailwind 默认 lg 断点保持一致：改前写 960，会导致列数切换早于周边布局变化。
-    lg: 1024,
+    // containerWidth 测量的是滚动容器自身的 clientWidth（AppShell 在 max-w-6xl=1152px 下扣除侧边导航与内边距后上限约 996px），并非视口宽度。
+    lg: 960,
     xl: 1280, '2xl': 1536,
 } as const;
 

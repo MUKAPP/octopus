@@ -148,6 +148,9 @@ export function Card({
 								</dt>
 								<dd className="text-sm font-semibold">
 									{stats.request_success.formatted.value}
+									<span className="ml-1 text-xs text-muted-foreground">
+										{stats.request_success.formatted.unit}
+									</span>
 								</dd>
 							</div>
 							<div className="rounded-2xl border border-border/70 bg-background/80 p-2">
@@ -157,6 +160,9 @@ export function Card({
 								</dt>
 								<dd className="text-sm font-semibold">
 									{stats.request_failed.formatted.value}
+									<span className="ml-1 text-xs text-muted-foreground">
+										{stats.request_failed.formatted.unit}
+									</span>
 								</dd>
 							</div>
 							<div className="rounded-2xl border border-border/70 bg-background/80 p-2">

@@ -76,7 +76,7 @@ export function GroupCard({ group }: { group: Group }) {
     const [confirmDelete, setConfirmDelete] = useState(false);
     const [members, setMembers] = useState<SelectedMember[]>([]);
     const isDragging = useRef(false);
-    const weightTimerRef = useRef<NodeJS.Timeout | null>(null);
+    const weightTimersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
     const membersRef = useRef<SelectedMember[]>([]);
 
     const channelNameByKey = useMemo(() => buildChannelNameByModelKey(modelChannels), [modelChannels]);
@@ -103,12 +103,12 @@ export function GroupCard({ group }: { group: Group }) {
                 name: item.model_name,
                 enabled: enabledByKey.get(modelChannelKey(item.channel_id, item.model_name)) ?? true,
                 channel_id: item.channel_id,
-                channel_name: channelNameByKey.get(modelChannelKey(item.channel_id, item.model_name)) ?? `Channel ${item.channel_id}`,
+                channel_name: channelNameByKey.get(modelChannelKey(item.channel_id, item.model_name)) ?? t('card.fallbackChannel', { id: item.channel_id }),
                 rate_multiplier: rateByKey.get(modelChannelKey(item.channel_id, item.model_name)) ?? 1,
                 item_id: item.id,
                 weight: item.weight,
             })),
-        [group.items, channelNameByKey, enabledByKey, rateByKey]
+        [group.items, channelNameByKey, enabledByKey, rateByKey, t]
     );
 
     useEffect(() => {
@@ -121,7 +121,11 @@ export function GroupCard({ group }: { group: Group }) {
     }, [members]);
 
     useEffect(() => {
-        return () => { if (weightTimerRef.current) clearTimeout(weightTimerRef.current); };
+        const timers = weightTimersRef.current;
+        return () => {
+            timers.forEach((timer) => clearTimeout(timer));
+            timers.clear();
+        };
     }, []);
 
     const onSuccess = useCallback(() => toast.success(t('toast.updated')), [t]);
@@ -159,14 +163,21 @@ export function GroupCard({ group }: { group: Group }) {
     }, [group.id, priorityByItemId, updateGroup, onSuccess, onError]);
 
     const handleRemoveMember = useCallback((id: string) => {
+        const pendingWeightTimer = weightTimersRef.current.get(id);
+        if (pendingWeightTimer) {
+            clearTimeout(pendingWeightTimer);
+            weightTimersRef.current.delete(id);
+        }
         const member = members.find((m) => m.id === id);
         if (member?.item_id !== undefined) updateGroup.mutate({ id: group.id!, items_to_delete: [member.item_id] }, { onSuccess, onError });
     }, [members, group.id, updateGroup, onSuccess, onError]);
 
     const handleWeightChange = useCallback((id: string, weight: number) => {
         setMembers((prev) => prev.map((m) => m.id === id ? { ...m, weight } : m));
-        if (weightTimerRef.current) clearTimeout(weightTimerRef.current);
-        weightTimerRef.current = setTimeout(() => {
+        const existingTimer = weightTimersRef.current.get(id);
+        if (existingTimer) clearTimeout(existingTimer);
+        const timer = setTimeout(() => {
+            weightTimersRef.current.delete(id);
             const member = membersRef.current.find((m) => m.id === id);
             if (!member?.item_id) return;
             const priority = priorityByItemId.get(member.item_id);
@@ -176,6 +187,7 @@ export function GroupCard({ group }: { group: Group }) {
                 { onSuccess, onError }
             );
         }, 500);
+        weightTimersRef.current.set(id, timer);
     }, [group.id, priorityByItemId, updateGroup, onSuccess, onError]);
 
     const handleSubmitEdit = useCallback((values: GroupEditorValues, onDone?: () => void) => {
@@ -262,17 +274,17 @@ export function GroupCard({ group }: { group: Group }) {
 
                 <div className="flex items-center gap-1 shrink-0">
                     <MorphingDialog>
-                        <MorphingDialogTrigger
-                            className="p-1.5 rounded-lg transition-colors hover:bg-muted text-muted-foreground hover:text-foreground"
-                            ariaLabel={t('detail.actions.edit')}
-                        >
-                            <Tooltip side="top" sideOffset={10} align="center">
-                                <TooltipTrigger asChild>
+                        <Tooltip side="top" sideOffset={10} align="center">
+                            <TooltipTrigger>
+                                <MorphingDialogTrigger
+                                    className="inline-flex p-1.5 rounded-lg transition-colors motion-reduce:transition-none hover:bg-muted text-muted-foreground hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                                    ariaLabel={t('detail.actions.edit')}
+                                >
                                     <Pencil className="size-4" />
-                                </TooltipTrigger>
-                                <TooltipContent>{t('detail.actions.edit')}</TooltipContent>
-                            </Tooltip>
-                        </MorphingDialogTrigger>
+                                </MorphingDialogTrigger>
+                            </TooltipTrigger>
+                            <TooltipContent>{t('detail.actions.edit')}</TooltipContent>
+                        </Tooltip>
 
                         <MorphingDialogContainer>
                             <MorphingDialogContent className="relative flex h-full max-h-full w-full flex-col overflow-hidden rounded-3xl bg-card px-4 py-5 text-card-foreground sm:px-6 md:max-w-4xl">
@@ -290,7 +302,7 @@ export function GroupCard({ group }: { group: Group }) {
                         <TooltipTrigger>
                             <CopyIconButton
                                 text={group.name}
-                                className="p-1.5 rounded-lg transition-colors hover:bg-muted text-muted-foreground hover:text-foreground"
+                                className="p-1.5 rounded-lg transition-colors motion-reduce:transition-none hover:bg-muted text-muted-foreground hover:text-foreground"
                                 copyIconClassName="size-4"
                                 checkIconClassName="size-4 text-primary"
                             />
@@ -300,7 +312,13 @@ export function GroupCard({ group }: { group: Group }) {
                     {!confirmDelete && (
                         <Tooltip side="top" sideOffset={10} align="center">
                             <TooltipTrigger>
-                                <motion.button layoutId={`delete-btn-group-${group.id}`} type="button" onClick={() => setConfirmDelete(true)} className="p-1.5 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors">
+                                <motion.button
+                                    layoutId={`delete-btn-group-${group.id}`}
+                                    type="button"
+                                    aria-label={t('detail.actions.delete')}
+                                    onClick={() => setConfirmDelete(true)}
+                                    className="p-1.5 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                                >
                                     <Trash2 className="size-4" />
                                 </motion.button>
                             </TooltipTrigger>
@@ -312,10 +330,18 @@ export function GroupCard({ group }: { group: Group }) {
                 <AnimatePresence>
                     {confirmDelete && (
                         <motion.div layoutId={`delete-btn-group-${group.id}`} className="absolute inset-0 flex items-center justify-center gap-2 bg-destructive p-2 rounded-xl" transition={SPRING.morph}>
-                            <button type="button" onClick={() => setConfirmDelete(false)} className="focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring flex h-7 w-7 items-center justify-center rounded-lg bg-destructive-foreground/20 text-destructive-foreground transition-[background-color,transform] hover:bg-destructive-foreground/30 active:scale-95">
+                            <button type="button" aria-label={t('detail.actions.cancel')} onClick={() => setConfirmDelete(false)} className="focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring flex h-7 w-7 items-center justify-center rounded-lg bg-destructive-foreground/20 text-destructive-foreground transition-[background-color,transform] motion-reduce:transition-none hover:bg-destructive-foreground/30 active:scale-95">
                                 <X className="size-4" />
                             </button>
-                            <button type="button" onClick={() => group.id && deleteGroup.mutate(group.id, { onSuccess: () => toast.success(t('toast.deleted')) })} disabled={deleteGroup.isPending} className="focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring flex-1 h-7 flex items-center justify-center gap-2 rounded-lg bg-destructive-foreground text-destructive text-sm font-semibold transition-[background-color,transform] hover:bg-destructive-foreground/90 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed">
+                            <button
+                                type="button"
+                                onClick={() => group.id && deleteGroup.mutate(group.id, {
+                                    onSuccess: () => toast.success(t('toast.deleted')),
+                                    onError: (error) => toast.error(t('toast.deleteFailed'), { description: error.message }),
+                                })}
+                                disabled={deleteGroup.isPending}
+                                className="focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring flex-1 h-7 flex items-center justify-center gap-2 rounded-lg bg-destructive-foreground text-destructive text-sm font-semibold transition-[background-color,transform] motion-reduce:transition-none hover:bg-destructive-foreground/90 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
                                 <Trash2 className="size-3.5" />
                                 {t('detail.actions.confirmDelete')}
                             </button>
@@ -336,7 +362,7 @@ export function GroupCard({ group }: { group: Group }) {
                             if (m === group.mode) return;
                             updateGroup.mutate({ id: group.id!, mode: m }, { onSuccess, onError });
                         }}
-                        className={cn("focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring", 'flex-1 py-1 text-xs rounded-lg transition-colors',
+                        className={cn("focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring", 'flex-1 py-1 text-xs rounded-lg transition-colors motion-reduce:transition-none',
                             group.mode === m ? 'bg-primary text-primary-foreground' : 'bg-muted hover:bg-muted/80',
                             // Keep visuals stable (no opacity/disabled flicker) while still preventing double-submit via onClick guard.
                             (!group.id) && 'cursor-not-allowed opacity-50'

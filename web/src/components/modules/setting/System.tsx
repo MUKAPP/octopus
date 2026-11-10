@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useTranslations } from 'use-intl';
 import { Monitor, Globe, Clock, Shield, HelpCircle, X, Filter } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useSettingList, useSetSetting, SettingKey } from '@/api/setting';
@@ -9,6 +10,9 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 
 export function SettingSystem() {
     const t = useTranslations('setting');
+    const proxyUrlId = useId();
+    const statsSaveIntervalId = useId();
+    const modelFilterId = useId();
     const { data: settings } = useSettingList();
     const setSetting = useSetSetting();
 
@@ -135,48 +139,68 @@ export function SettingSystem() {
             </h2>
 
             {/* 代理地址 */}
-            <div className="flex items-center justify-between gap-4">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
                 <div className="flex items-center gap-3">
-                    <Globe className="h-5 w-5 text-muted-foreground" />
-                    <span className="text-sm font-medium">{t('proxyUrl.label')}</span>
+                    <Globe className="h-5 w-5 shrink-0 text-muted-foreground" />
+                    <label htmlFor={proxyUrlId} className="text-sm font-medium">{t('proxyUrl.label')}</label>
                 </div>
                 <Input
+                    id={proxyUrlId}
                     value={proxyUrl}
                     onChange={(e) => setProxyUrl(e.target.value)}
                     onBlur={() => handleSave('proxy_url', proxyUrl, initialProxyUrl.current)}
                     placeholder={t('proxyUrl.placeholder')}
-                    className="w-48 rounded-xl"
+                    className="w-full sm:w-48 text-base sm:text-sm rounded-xl"
                 />
             </div>
 
             {/* 统计保存周期 */}
-            <div className="flex items-center justify-between gap-4">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
                 <div className="flex items-center gap-3">
-                    <Clock className="h-5 w-5 text-muted-foreground" />
-                    <span className="text-sm font-medium">{t('statsSaveInterval.label')}</span>
+                    <Clock className="h-5 w-5 shrink-0 text-muted-foreground" />
+                    <label htmlFor={statsSaveIntervalId} className="text-sm font-medium">{t('statsSaveInterval.label')}</label>
+                    <TooltipProvider>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <button
+                                    type="button"
+                                    aria-label={t('statsSaveInterval.hint')}
+                                    className="-m-1 rounded-md p-1 text-muted-foreground outline-none transition-colors motion-reduce:transition-none hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                                >
+                                    <HelpCircle className="size-4 cursor-help" />
+                                </button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                                {t('statsSaveInterval.hint')}
+                            </TooltipContent>
+                        </Tooltip>
+                    </TooltipProvider>
                 </div>
                 <Input
+                    id={statsSaveIntervalId}
                     type="number"
+                    min="1"
+                    step="1"
                     value={statsSaveInterval}
                     onChange={(e) => setStatsSaveInterval(e.target.value)}
                     onBlur={() => handleSave('stats_save_interval', statsSaveInterval, initialStatsSaveInterval.current)}
                     placeholder={t('statsSaveInterval.placeholder')}
-                    className="w-48 rounded-xl"
+                    className="w-full sm:w-48 text-base sm:text-sm rounded-xl"
                 />
             </div>
 
             {/* 全局模型过滤 */}
-            <div className="flex items-center justify-between gap-4">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
                 <div className="flex items-center gap-3">
-                    <Filter className="h-5 w-5 text-muted-foreground" />
-                    <label htmlFor="model-filter" className="text-sm font-medium">{t('modelFilter.label')}</label>
+                    <Filter className="h-5 w-5 shrink-0 text-muted-foreground" />
+                    <label htmlFor={modelFilterId} className="text-sm font-medium">{t('modelFilter.label')}</label>
                     <TooltipProvider>
                         <Tooltip>
                             <TooltipTrigger asChild>
                                 <button
                                     type="button"
                                     aria-label={t('modelFilter.hint')}
-                                    className="-m-1 rounded-md p-1 text-muted-foreground outline-none transition-colors hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                                    className="-m-1 rounded-md p-1 text-muted-foreground outline-none transition-colors motion-reduce:transition-none hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50"
                                 >
                                     <HelpCircle className="size-4 cursor-help" />
                                 </button>
@@ -188,24 +212,30 @@ export function SettingSystem() {
                     </TooltipProvider>
                 </div>
                 <Input
-                    id="model-filter"
+                    id={modelFilterId}
                     value={modelFilter}
                     onChange={(e) => setModelFilter(e.target.value)}
                     onBlur={() => handleSave(SettingKey.ModelFilter, modelFilter, initialModelFilter.current)}
                     placeholder={t('modelFilter.placeholder')}
-                    className="w-48 rounded-xl"
+                    className="w-full sm:w-48 text-base sm:text-sm rounded-xl"
                 />
             </div>
 
             {/* CORS 跨域白名单 */}
-            <div className="flex items-center justify-between gap-4">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
                 <div className="flex items-center gap-3">
-                    <Shield className="h-5 w-5 text-muted-foreground" />
+                    <Shield className="h-5 w-5 shrink-0 text-muted-foreground" />
                     <span className="text-sm font-medium">{t('corsAllowOrigins.label')}</span>
                     <TooltipProvider>
                         <Tooltip>
                             <TooltipTrigger asChild>
-                                <HelpCircle className="size-4 text-muted-foreground cursor-help" />
+                                <button
+                                    type="button"
+                                    aria-label={`${t('corsAllowOrigins.hint')} ${t('corsAllowOrigins.example')}`}
+                                    className="-m-1 rounded-md p-1 text-muted-foreground outline-none transition-colors motion-reduce:transition-none hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                                >
+                                    <HelpCircle className="size-4 cursor-help" />
+                                </button>
                             </TooltipTrigger>
                             <TooltipContent>
                                 {t('corsAllowOrigins.hint')}
@@ -219,7 +249,8 @@ export function SettingSystem() {
                     <PopoverTrigger asChild>
                         <button
                             type="button"
-                            className="border-input focus-visible:border-ring focus-visible:ring-ring/50 w-48 min-h-9 rounded-xl border bg-transparent px-3 py-2 text-left text-sm shadow-xs transition-[color,box-shadow] outline-none focus-visible:ring-[3px]"
+                            aria-label={t('corsAllowOrigins.label')}
+                            className="border-input focus-visible:border-ring focus-visible:ring-ring/50 w-full sm:w-48 min-h-9 rounded-xl border bg-transparent px-3 py-2 text-left text-sm shadow-xs transition-[color,box-shadow] motion-reduce:transition-none outline-none focus-visible:ring-[3px]"
                             title={corsAllowOriginsDisplay}
                         >
                             <span className={`block overflow-hidden text-ellipsis whitespace-nowrap ${corsAllowOriginsList.length === 0 ? 'text-muted-foreground' : ''}`}>
@@ -228,19 +259,31 @@ export function SettingSystem() {
                         </button>
                     </PopoverTrigger>
                     <PopoverContent className="w-72 space-y-2 rounded-3xl p-3 bg-card">
-                        <Input
-                            value={corsInputValue}
-                            onChange={(e) => setCorsInputValue(e.target.value)}
-                            onKeyDown={(e) => {
-                                if (e.key === 'Enter') {
-                                    e.preventDefault();
-                                    handleAddCorsOrigin();
-                                }
-                            }}
-                            placeholder={t('corsAllowOrigins.example')}
-                            className="h-9 rounded-xl"
-                            autoFocus
-                        />
+                        <div className="flex gap-1.5">
+                            <Input
+                                value={corsInputValue}
+                                onChange={(e) => setCorsInputValue(e.target.value)}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                        e.preventDefault();
+                                        handleAddCorsOrigin();
+                                    }
+                                }}
+                                placeholder={t('corsAllowOrigins.example')}
+                                aria-label={t('corsAllowOrigins.label')}
+                                className="h-9 flex-1 text-base sm:text-sm rounded-xl"
+                                autoFocus
+                            />
+                            <Button
+                                type="button"
+                                size="sm"
+                                className="h-9 shrink-0 rounded-xl"
+                                onClick={handleAddCorsOrigin}
+                                disabled={!corsInputValue.trim()}
+                            >
+                                {t('corsAllowOrigins.add')}
+                            </Button>
+                        </div>
                         <div className="scrollbar max-h-48 space-y-1 overflow-y-auto">
                             {corsAllowOriginsList.length > 0 && (
                                 corsAllowOriginsList.map((origin) => (
@@ -249,8 +292,8 @@ export function SettingSystem() {
                                         <button
                                             type="button"
                                             onClick={() => handleRemoveCorsOrigin(origin)}
-                                            className="focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring text-muted-foreground transition-colors hover:text-destructive"
-                                            aria-label={`remove ${origin}`}
+                                            className="focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring size-7 flex shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors motion-reduce:transition-none hover:text-destructive"
+                                            aria-label={t('corsAllowOrigins.removeOrigin', { origin })}
                                         >
                                             <X className="size-4" />
                                         </button>

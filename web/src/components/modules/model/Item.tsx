@@ -1,7 +1,7 @@
 import { memo, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { Pencil, Trash2, ArrowDownToLine, ArrowUpFromLine } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { useTranslations } from 'use-intl';
+import { useLocale, useTranslations } from 'use-intl';
 import { useUpdateModel, useDeleteModel, type LLMInfo } from '@/api/model';
 import { getModelIcon } from '@/lib/model-icons';
 import { toast } from '@/components/common/Toast';
@@ -17,8 +17,19 @@ interface ModelItemProps {
     layout?: 'grid' | 'list';
 }
 
+function formatModelPrice(price: number, locale: string): string {
+    if (!Number.isFinite(price)) return '—';
+    const abs = Math.abs(price);
+    const maximumFractionDigits = abs > 0 && abs < 0.01 ? 6 : 4;
+    return price.toLocaleString(locale, {
+        minimumFractionDigits: 2,
+        maximumFractionDigits,
+    });
+}
+
 export const ModelItem = memo(function ModelItem({ model, layout = 'grid' }: ModelItemProps) {
     const t = useTranslations('model');
+    const locale = useLocale();
     const insets = useSafeAreaInsets();
     const isListLayout = layout === 'list';
     const [isEditOpen, setIsEditOpen] = useState(false);
@@ -187,13 +198,13 @@ export const ModelItem = memo(function ModelItem({ model, layout = 'grid' }: Mod
                         <span className="inline-flex items-center gap-1">
                             <ArrowDownToLine className="size-3.5 shrink-0" style={{ color: brandColor }} />
                             {t('card.inputCache')}
-                            <span className="tabular-nums">{model.input.toFixed(2)}/{model.cache_read.toFixed(2)}$</span>
+                            <span className="tabular-nums">${formatModelPrice(model.input, locale)} / ${formatModelPrice(model.cache_read, locale)}</span>
                         </span>
                         <span className="text-muted-foreground/60">|</span>
                         <span className="inline-flex items-center gap-1 overflow-hidden">
                             <ArrowUpFromLine className="size-3.5 shrink-0" style={{ color: brandColor }} />
                             {t('card.outputCache')}
-                            <span className="tabular-nums truncate">{model.output.toFixed(2)}/{model.cache_write.toFixed(2)}$</span>
+                            <span className="tabular-nums truncate">${formatModelPrice(model.output, locale)} / ${formatModelPrice(model.cache_write, locale)}</span>
                         </span>
                     </p>
                 ) : (
@@ -201,13 +212,13 @@ export const ModelItem = memo(function ModelItem({ model, layout = 'grid' }: Mod
                         <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
                             <ArrowDownToLine className="size-3.5" style={{ color: brandColor }} />
                             {t('card.inputCache')}
-                            <span className="tabular-nums">{model.input.toFixed(2)}/{model.cache_read.toFixed(2)}$</span>
+                            <span className="tabular-nums">${formatModelPrice(model.input, locale)} / ${formatModelPrice(model.cache_read, locale)}</span>
                         </p>
 
                         <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
                             <ArrowUpFromLine className="size-3.5" style={{ color: brandColor }} />
                             {t('card.outputCache')}
-                            <span className="tabular-nums">{model.output.toFixed(2)}/{model.cache_write.toFixed(2)}$</span>
+                            <span className="tabular-nums">${formatModelPrice(model.output, locale)} / ${formatModelPrice(model.cache_write, locale)}</span>
                         </p>
                     </>
                 )}
@@ -227,7 +238,8 @@ export const ModelItem = memo(function ModelItem({ model, layout = 'grid' }: Mod
                     type="button"
                     onClick={handleEditClick}
                     disabled={isEditOpen || confirmDelete}
-                    className="h-9 w-9 flex items-center justify-center rounded-lg bg-muted/60 text-muted-foreground transition-colors hover:bg-muted disabled:opacity-50"
+                    className="h-9 w-9 flex items-center justify-center rounded-lg bg-muted/60 text-muted-foreground transition-colors motion-reduce:transition-none hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:opacity-50"
+                    aria-label={t('card.edit')}
                     title={t('card.edit')}
                 >
                     <Pencil className="size-4" />
@@ -238,7 +250,8 @@ export const ModelItem = memo(function ModelItem({ model, layout = 'grid' }: Mod
                     type="button"
                     onClick={handleDeleteClick}
                     disabled={isEditOpen || confirmDelete}
-                    className="h-9 w-9 flex items-center justify-center rounded-lg bg-destructive/10 text-destructive transition-colors hover:bg-destructive hover:text-destructive-foreground disabled:opacity-50"
+                    className="h-9 w-9 flex items-center justify-center rounded-lg bg-destructive/10 text-destructive transition-colors motion-reduce:transition-none hover:bg-destructive hover:text-destructive-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:opacity-50"
+                    aria-label={t('card.delete')}
                     title={t('card.delete')}
                 >
                     <Trash2 className="size-4" />
@@ -273,7 +286,6 @@ export const ModelItem = memo(function ModelItem({ model, layout = 'grid' }: Mod
                                     layoutId={editLayoutId}
                                     onHeightChange={handleOverlayHeightChange}
                                     modelName={model.name}
-                                    brandColor={brandColor}
                                     editValues={editValues}
                                     isPending={updateModel.isPending}
                                     onChange={setEditValues}

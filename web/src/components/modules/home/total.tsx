@@ -28,8 +28,8 @@ export function Total() {
     if (isLoading && !statsTotalFormatted) {
         return (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="col-span-full flex min-h-40 items-center justify-center rounded-3xl border border-card-border bg-card text-muted-foreground">
-                    <Loader2 className="size-8 animate-spin" role="status" aria-label={tHome('feedback.loading')} />
+                <div className="col-span-full flex min-h-40 items-center justify-center rounded-3xl border border-border bg-card text-muted-foreground">
+                    <Loader2 className="size-8 animate-spin motion-reduce:animate-none" role="status" aria-label={tHome('feedback.loading')} />
                 </div>
             </div>
         );
@@ -148,18 +148,18 @@ export function Total() {
             {cards.map((card, index) => (
                 <motion.section
                     key={index}
-                    className="rounded-3xl bg-card border-card-border border p-5 text-card-foreground flex flex-row items-center gap-4"
-                    initial={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: 20, filter: 'blur(8px)' }}
+                    className="rounded-3xl bg-card border-border border p-5 text-card-foreground flex flex-col gap-4"
+                    initial={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: 12, filter: 'blur(8px)' }}
                     animate={shouldReduceMotion ? { opacity: 1 } : { opacity: 1, y: 0, filter: 'blur(0px)' }}
                     transition={shouldReduceMotion ? REDUCED_MOTION_TRANSITION : {
                         duration: DURATION.page,
                         ease: EASING.easeOutExpo,
-                        delay: index * 0.08,
+                        delay: index * 0.04,
                     }}
                 >
-                    <div className="flex flex-col items-center justify-center gap-3 border-r border-border/50 pr-4 py-1 self-stretch">
-                        <card.headerIcon className="w-4 h-4" />
-                        <h3 className="font-medium text-sm [writing-mode:vertical-lr]">{card.title}</h3>
+                    <div className="flex items-center gap-2 border-b border-border/50 pb-3">
+                        <card.headerIcon className="size-4 text-muted-foreground" aria-hidden="true" />
+                        <h3 className="font-medium text-sm">{card.title}</h3>
                     </div>
 
                     <div className="flex flex-col gap-4 flex-1 min-w-0">

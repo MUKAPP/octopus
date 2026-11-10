@@ -22,7 +22,7 @@
       document.documentElement.classList.toggle('dark', isDark);
       document.querySelector('meta[name="theme-color"]').setAttribute(
         'content',
-        isDark ? '#413a2c' : '#eae9e3',
+        isDark ? '#1f2d23' : '#eae9e3',
       );
     </script>
     <style>
@@ -33,9 +33,13 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        background: hsl(var(--background));
-        color: hsl(var(--primary));
+        background: #eae9e3;
+        color: #549957;
         transition: opacity 200ms ease;
+      }
+      html.dark #initial-loader {
+        background: #1f2d23;
+        color: #67b36a;
       }
       #initial-loader.octo-hide {
         opacity: 0;
@@ -75,6 +79,9 @@
       }
 
       @media (prefers-reduced-motion: reduce) {
+        #initial-loader {
+          transition: none;
+        }
         #initial-loader .octo-group,
         #initial-loader path {
           animation: none !important;

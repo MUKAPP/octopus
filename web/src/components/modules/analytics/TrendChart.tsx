@@ -40,7 +40,7 @@ export function TrendChart({ query }: TrendChartProps) {
     };
 
     if (query.isLoading && !data) {
-        return <div className="flex h-64 items-center justify-center rounded-3xl border border-card-border bg-card"><Loader2 className="size-8 animate-spin" role="status" aria-label={tFeedback('loading')} /></div>;
+        return <div className="flex h-64 items-center justify-center rounded-3xl border border-border bg-card"><Loader2 className="size-8 animate-spin" role="status" aria-label={tFeedback('loading')} /></div>;
     }
     if (query.isError && !data) {
         return (
@@ -51,13 +51,13 @@ export function TrendChart({ query }: TrendChartProps) {
         );
     }
     return (
-        <section className="rounded-3xl border border-card-border bg-card pt-4 pb-2 text-card-foreground">
+        <section className="rounded-3xl border border-border bg-card pt-4 pb-2 text-card-foreground">
             {query.isError && data && <p role="alert" className="px-4 pb-2 text-sm text-destructive">{tFeedback('loadFailed')}</p>}
             <div className="flex flex-wrap items-center justify-between gap-3 px-4 pb-3">
                 <h3 className="text-base font-semibold">{t('title')}</h3>
                 <Select value={chartMetric} onValueChange={(value) => setChartMetric(value as AnalyticsChartMetric)}>
-                    <SelectTrigger aria-label={t('metricLabel')} className="w-44 rounded-xl"><SelectValue /></SelectTrigger>
-                    <SelectContent className="rounded-xl">
+                    <SelectTrigger aria-label={t('metricLabel')} className="w-44"><SelectValue /></SelectTrigger>
+                    <SelectContent>
                         {(Object.keys(METRIC_KEYS) as AnalyticsChartMetric[]).map((metric) => <SelectItem key={metric} value={metric}>{t(`metricType.${metric}`)}</SelectItem>)}
                     </SelectContent>
                 </Select>

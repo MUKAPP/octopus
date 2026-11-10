@@ -74,6 +74,7 @@ function MemberItem({
     const t = useTranslations('group');
     const { Icon: ModelIcon, className: iconClassName } = getModelIcon(member.name);
     const [confirmDelete, setConfirmDelete] = useState(false);
+    const [weightDraft, setWeightDraft] = useState<string | null>(null);
     const isDisabled = member.enabled === false;
 
     return (
@@ -84,7 +85,7 @@ function MemberItem({
             ref={dnd.innerRef}
             // eslint-disable-next-line react-hooks/refs
             {...dnd.draggableProps}
-            className={cn('rounded-lg grid transition-[grid-template-rows] duration-200', isRemoving ? 'grid-rows-[0fr]' : 'grid-rows-[1fr]')}
+            className={cn('rounded-lg grid transition-[grid-template-rows] duration-200 motion-reduce:transition-none', isRemoving ? 'grid-rows-[0fr]' : 'grid-rows-[1fr]')}
             // eslint-disable-next-line react-hooks/refs
             style={{
                 /* eslint-disable-next-line react-hooks/refs */
@@ -92,7 +93,7 @@ function MemberItem({
                 ...(isDragging ? { zIndex: 50, boxShadow: '0 8px 32px rgba(0,0,0,0.15)' } : null),
             }}
         >
-            <div className={cn( 'flex items-center gap-2 rounded-lg bg-background border border-border/50 px-2.5 py-2 select-none transition-opacity duration-200 relative overflow-hidden',
+            <div className={cn( 'flex items-center gap-2 rounded-lg bg-background border border-border/50 px-2.5 py-2 select-none transition-opacity duration-200 motion-reduce:transition-none relative overflow-hidden',
                 isRemoving && 'opacity-0',
                 isDisabled && 'opacity-60 grayscale'
             )}>
@@ -138,11 +139,29 @@ function MemberItem({
 
                 {showWeight && (
                     <input
-                        type="number"
-                        min={1}
-                        value={member.weight ?? 1}
-                        onChange={(e) => onWeightChange?.(member.id, Math.max(1, parseInt(e.target.value) || 1))}
-                        className={cn( 'w-12 h-6 text-xs text-center rounded border border-border bg-muted/50 focus:outline-none focus:ring-1 focus:ring-primary',
+                        type="text"
+                        inputMode="numeric"
+                        aria-label={t('form.weight')}
+                        value={weightDraft ?? String(member.weight ?? 1)}
+                        onFocus={() => setWeightDraft(String(member.weight ?? 1))}
+                        onChange={(e) => {
+                            const raw = e.target.value;
+                            if (!/^\d*$/.test(raw)) return;
+                            setWeightDraft(raw);
+                            const parsed = Number.parseInt(raw, 10);
+                            if (Number.isFinite(parsed) && parsed >= 1) {
+                                onWeightChange?.(member.id, parsed);
+                            }
+                        }}
+                        onBlur={() => {
+                            const parsed = Number.parseInt(weightDraft ?? '', 10);
+                            const normalized = Number.isFinite(parsed) && parsed >= 1 ? parsed : Math.max(1, member.weight ?? 1);
+                            setWeightDraft(null);
+                            if (normalized !== member.weight) {
+                                onWeightChange?.(member.id, normalized);
+                            }
+                        }}
+                        className={cn( 'w-12 h-6 text-base sm:text-xs text-center tabular-nums rounded border border-border bg-muted/50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary',
                             isDisabled && 'text-muted-foreground'
                         )}
                     />
@@ -181,8 +200,9 @@ function MemberItem({
                     <motion.button
                         layoutId={`delete-btn-member-${layoutScope ?? 'default'}-${member.id}`}
                         type="button"
+                        aria-label={t('detail.actions.delete')}
                         onClick={() => showConfirmDelete ? setConfirmDelete(true) : onRemove(member.id)}
-                        className="p-1 rounded hover:bg-destructive/10 hover:text-destructive transition-colors"
+                        className="inline-flex size-10 sm:size-6 shrink-0 items-center justify-center rounded hover:bg-destructive/10 hover:text-destructive transition-colors motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                         initial={false}
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ duration: 0.15 }}
@@ -201,15 +221,17 @@ function MemberItem({
                         >
                             <button
                                 type="button"
+                                aria-label={t('detail.actions.cancel')}
                                 onClick={() => setConfirmDelete(false)}
-                                className="focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring flex h-6 w-6 items-center justify-center rounded-md bg-destructive-foreground/20 text-destructive-foreground transition-all hover:bg-destructive-foreground/30 active:scale-95"
+                                className="focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring flex h-6 w-6 items-center justify-center rounded-md bg-destructive-foreground/20 text-destructive-foreground transition-[background-color,transform] motion-reduce:transition-none hover:bg-destructive-foreground/30 active:scale-95"
                             >
                                 <X className="h-3 w-3" />
                             </button>
                             <button
                                 type="button"
+                                aria-label={t('detail.actions.confirmDelete')}
                                 onClick={() => onRemove(member.id)}
-                                className="focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring flex-1 h-6 flex items-center justify-center gap-1.5 rounded-md bg-destructive-foreground text-destructive text-xs font-semibold transition-all hover:bg-destructive-foreground/90 active:scale-[0.98]"
+                                className="focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring flex-1 h-6 flex items-center justify-center gap-1.5 rounded-md bg-destructive-foreground text-destructive text-xs font-semibold transition-[background-color,transform] motion-reduce:transition-none hover:bg-destructive-foreground/90 active:scale-[0.98]"
                             >
                                 <Trash2 className="h-3 w-3" />
                             </button>

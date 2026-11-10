@@ -65,6 +65,17 @@ import {
     AccordionItem,
     AccordionTrigger,
 } from "@/components/ui/accordion";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 export function ChannelForm({
     formData,
@@ -81,8 +92,7 @@ export function ChannelForm({
     const t = useTranslations('channel.form');
     const tCommon = useTranslations('common');
 
-    // Ensure the form always shows at least 1 row for base_urls / keys / custom_header.
-    // This avoids "empty list" UI and also keeps URL + APIKEY layout consistent.
+    // Ensure base_urls / keys always keep at least 1 row; custom_header allows 0 rows.
     useEffect(() => {
         if (!formData.base_urls || formData.base_urls.length === 0) {
             onFormDataChange({ ...formData, base_urls: [{ url: '', delay: 0 }] });
@@ -90,10 +100,6 @@ export function ChannelForm({
         }
         if (!formData.keys || formData.keys.length === 0) {
             onFormDataChange({ ...formData, keys: [{ enabled: true, channel_key: '' }] });
-            return;
-        }
-        if (!formData.custom_header || formData.custom_header.length === 0) {
-            onFormDataChange({ ...formData, custom_header: [{ header_key: '', header_value: '' }] });
         }
     }, [formData, onFormDataChange]);
 
@@ -108,6 +114,8 @@ export function ChannelForm({
     // 倍率用字符串草稿，避免 type=number + 即时 parse 时无法输入 0.0x
     const [rateMultiplierDraft, setRateMultiplierDraft] = useState(() => String(formData.rate_multiplier));
     const rateMultiplierFocusedRef = useRef(false);
+    // 优先级在聚焦期间保留字符串草稿，允许清空重输而不回弹为 0
+    const [priorityDraft, setPriorityDraft] = useState<string | null>(null);
 
     const fetchModel = useFetchModel();
 
@@ -266,7 +274,6 @@ export function ChannelForm({
 
     const handleRemoveHeader = (idx: number) => {
         const curr = formData.custom_header ?? [];
-        if (curr.length <= 1) return;
         onFormDataChange({ ...formData, custom_header: curr.filter((_, i) => i !== idx) });
     };
 
@@ -298,13 +305,13 @@ export function ChannelForm({
                         <SelectTrigger id={`${idPrefix}-type`} className="rounded-xl w-full border border-border px-4 py-2 text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                             <SelectValue />
                         </SelectTrigger>
-                        <SelectContent className='rounded-xl'>
-                            <SelectItem className='rounded-xl' value={String(ChannelType.OpenAIChat)}>{t('typeOpenAIChat')}</SelectItem>
-                            <SelectItem className='rounded-xl' value={String(ChannelType.OpenAIResponse)}>{t('typeOpenAIResponse')}</SelectItem>
-                            <SelectItem className='rounded-xl' value={String(ChannelType.Anthropic)}>{t('typeAnthropic')}</SelectItem>
-                            <SelectItem className='rounded-xl' value={String(ChannelType.Gemini)}>{t('typeGemini')}</SelectItem>
-                            <SelectItem className='rounded-xl' value={String(ChannelType.Volcengine)}>{t('typeVolcengine')}</SelectItem>
-                            <SelectItem className='rounded-xl' value={String(ChannelType.OpenAIEmbedding)}>{t('typeOpenAIEmbedding')}</SelectItem>
+                        <SelectContent>
+                            <SelectItem value={String(ChannelType.OpenAIChat)}>{t('typeOpenAIChat')}</SelectItem>
+                            <SelectItem value={String(ChannelType.OpenAIResponse)}>{t('typeOpenAIResponse')}</SelectItem>
+                            <SelectItem value={String(ChannelType.Anthropic)}>{t('typeAnthropic')}</SelectItem>
+                            <SelectItem value={String(ChannelType.Gemini)}>{t('typeGemini')}</SelectItem>
+                            <SelectItem value={String(ChannelType.Volcengine)}>{t('typeVolcengine')}</SelectItem>
+                            <SelectItem value={String(ChannelType.OpenAIEmbedding)}>{t('typeOpenAIEmbedding')}</SelectItem>
                         </SelectContent>
                     </Select>
                 </div>
@@ -338,16 +345,28 @@ export function ChannelForm({
                     </label>
                     <Input
                         id={`${idPrefix}-priority`}
-                        type="number"
-                        min={0}
-                        step={1}
-                        value={String(formData.priority)}
+                        type="text"
+                        inputMode="numeric"
+                        autoComplete="off"
+                        value={priorityDraft ?? String(formData.priority)}
+                        onFocus={() => setPriorityDraft(String(formData.priority))}
                         onChange={(event) => {
-                            const value = Number.parseInt(event.target.value, 10);
-                            onFormDataChange({
-                                ...formData,
-                                priority: Number.isFinite(value) && value >= 0 ? value : 0,
-                            });
+                            const raw = event.target.value;
+                            if (!/^\d*$/.test(raw)) return;
+                            setPriorityDraft(raw);
+                            if (raw === '') return;
+                            const value = Number.parseInt(raw, 10);
+                            if (Number.isFinite(value) && value >= 0 && value !== formData.priority) {
+                                onFormDataChange({ ...formData, priority: value });
+                            }
+                        }}
+                        onBlur={() => {
+                            const parsed = Number.parseInt(priorityDraft ?? '', 10);
+                            const normalized = Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
+                            setPriorityDraft(null);
+                            if (normalized !== formData.priority) {
+                                onFormDataChange({ ...formData, priority: normalized });
+                            }
                         }}
                         className="rounded-xl"
                     />
@@ -388,8 +407,9 @@ export function ChannelForm({
                                 size="sm"
                                 onClick={() => handleRemoveBaseUrl(idx)}
                                 disabled={(formData.base_urls ?? []).length <= 1}
-                                className="h-8 w-8 p-0 rounded-xl text-muted-foreground hover:text-destructive disabled:opacity-40 hover:bg-transparent"
+                                className="h-8 w-8 p-0 rounded-xl text-muted-foreground hover:text-destructive disabled:opacity-40 hover:bg-transparent motion-reduce:transition-none"
                                 title={tCommon('remove')}
+                                aria-label={tCommon('remove')}
                             >
                                 <X className="h-4 w-4" />
                             </Button>
@@ -435,6 +455,7 @@ export function ChannelForm({
                             <Switch
                                 checked={k.enabled}
                                 onCheckedChange={(checked) => handleUpdateKey(idx, { enabled: checked })}
+                                aria-label={k.enabled ? tCommon('disable') : tCommon('enable')}
                             />
                             <Button
                                 type="button"
@@ -442,8 +463,9 @@ export function ChannelForm({
                                 size="sm"
                                 onClick={() => handleRemoveKey(idx)}
                                 disabled={(formData.keys ?? []).length <= 1}
-                                className="h-8 w-8 p-0 rounded-xl text-muted-foreground hover:text-destructive hover:bg-transparent disabled:opacity-40"
+                                className="h-8 w-8 p-0 rounded-xl text-muted-foreground hover:text-destructive hover:bg-transparent disabled:opacity-40 motion-reduce:transition-none"
                                 title={tCommon('remove')}
+                                aria-label={tCommon('remove')}
                             >
                                 <X className="h-4 w-4" />
                             </Button>
@@ -463,7 +485,7 @@ export function ChannelForm({
                         disabled={!formData.base_urls?.[0]?.url || !effectiveKey || fetchModel.isPending}
                         className="h-6 px-2 text-xs text-muted-foreground/50 hover:text-muted-foreground hover:bg-transparent"
                     >
-                        <RefreshCw className={`h-3 w-3 mr-1 ${fetchModel.isPending ? 'animate-spin' : ''}`} />
+                        <RefreshCw className={`h-3 w-3 mr-1 motion-reduce:animate-none ${fetchModel.isPending ? 'animate-spin' : ''}`} />
                         {t('modelRefresh')}
                     </Button>
                 </div>
@@ -486,8 +508,9 @@ export function ChannelForm({
                             variant="ghost"
                             size="sm"
                             onClick={() => handleAddModel(inputValue)}
-                            className="absolute rounded-lg right-1 top-1/2 -translate-y-1/2 h-7 w-7 p-0 text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
+                            className="absolute rounded-lg right-1 top-1/2 -translate-y-1/2 h-7 w-7 p-0 text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors motion-reduce:transition-none"
                             title={t('modelAdd')}
+                            aria-label={t('modelAdd')}
                         >
                             <Plus className="size-4" />
                         </Button>
@@ -500,17 +523,30 @@ export function ChannelForm({
                             {t('modelSelected')} {(autoModels.length + customModels.length) > 0 && `(${autoModels.length + customModels.length})`}
                         </label>
                         {(autoModels.length + customModels.length) > 0 && (
-                            <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => {
-                                    updateModels([], []);
-                                }}
-                                className="h-6 px-2 text-xs text-muted-foreground/50 hover:text-muted-foreground hover:bg-transparent"
-                            >
-                                {t('modelClearAll')}
-                            </Button>
+                            <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-6 px-2 text-xs text-muted-foreground/50 hover:text-muted-foreground hover:bg-transparent"
+                                    >
+                                        {t('modelClearAll')}
+                                    </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                        <AlertDialogTitle>{t('modelClearConfirm.title')}</AlertDialogTitle>
+                                        <AlertDialogDescription>{t('modelClearConfirm.description')}</AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                        <AlertDialogCancel>{tCommon('cancel')}</AlertDialogCancel>
+                                        <AlertDialogAction variant="destructive" onClick={() => updateModels([], [])}>
+                                            {t('modelClearConfirm.confirm')}
+                                        </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                </AlertDialogContent>
+                            </AlertDialog>
                         )}
                     </div>
                     <div className="scrollbar rounded-xl border border-border bg-muted/30 p-2.5 max-h-40 min-h-12 overflow-y-auto">
@@ -522,7 +558,8 @@ export function ChannelForm({
                                         <button
                                             type="button"
                                             onClick={() => handleRemoveAutoModel(model)}
-                                            className="ml-1 rounded-sm opacity-70 hover:opacity-100 focus:outline-none focus:ring-1 focus:ring-ring"
+                                            aria-label={`${tCommon('remove')} ${model}`}
+                                            className="ml-1 rounded-sm opacity-70 hover:opacity-100 focus-visible:outline-2 focus-visible:outline-ring"
                                         >
                                             <X className="h-3 w-3" />
                                         </button>
@@ -534,7 +571,8 @@ export function ChannelForm({
                                         <button
                                             type="button"
                                             onClick={() => handleRemoveCustomModel(model)}
-                                            className="ml-1 rounded-sm opacity-70 hover:opacity-100 focus:outline-none focus:ring-1 focus:ring-ring"
+                                            aria-label={`${tCommon('remove')} ${model}`}
+                                            className="ml-1 rounded-sm opacity-70 hover:opacity-100 focus-visible:outline-2 focus-visible:outline-ring"
                                         >
                                             <X className="h-3 w-3" />
                                         </button>
@@ -552,7 +590,7 @@ export function ChannelForm({
 
             <Accordion type="single" collapsible className="w-full border rounded-xl bg-card">
                 <AccordionItem value="advanced" className="border-none">
-                    <AccordionTrigger className="text-sm font-medium text-card-foreground py-3 px-4 hover:no-underline hover:bg-muted/30 rounded-xl transition-colors">
+                    <AccordionTrigger className="text-sm font-medium text-card-foreground py-3 px-4 hover:no-underline hover:bg-muted/30 rounded-xl transition-colors motion-reduce:transition-none">
                         {t('advanced')}
                     </AccordionTrigger>
                     <AccordionContent className="pt-4 px-4 pb-4 space-y-4 border-t">
@@ -568,11 +606,11 @@ export function ChannelForm({
                                     <SelectTrigger id={`${idPrefix}-auto-group`} className="rounded-xl w-full border border-border px-4 py-2 text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                                         <SelectValue />
                                     </SelectTrigger>
-                                    <SelectContent className='rounded-xl'>
-                                        <SelectItem className='rounded-xl' value={String(AutoGroupType.None)}>{t('autoGroupNone')}</SelectItem>
-                                        <SelectItem className='rounded-xl' value={String(AutoGroupType.Fuzzy)}>{t('autoGroupFuzzy')}</SelectItem>
-                                        <SelectItem className='rounded-xl' value={String(AutoGroupType.Exact)}>{t('autoGroupExact')}</SelectItem>
-                                        <SelectItem className='rounded-xl' value={String(AutoGroupType.Regex)}>{t('autoGroupRegex')}</SelectItem>
+                                    <SelectContent>
+                                        <SelectItem value={String(AutoGroupType.None)}>{t('autoGroupNone')}</SelectItem>
+                                        <SelectItem value={String(AutoGroupType.Fuzzy)}>{t('autoGroupFuzzy')}</SelectItem>
+                                        <SelectItem value={String(AutoGroupType.Exact)}>{t('autoGroupExact')}</SelectItem>
+                                        <SelectItem value={String(AutoGroupType.Regex)}>{t('autoGroupRegex')}</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
@@ -608,37 +646,39 @@ export function ChannelForm({
                                     {t('customHeaderAdd')}
                                 </Button>
                             </div>
-                            <div className="space-y-2">
-                                {(formData.custom_header ?? []).map((h, idx) => (
-                                    <div key={`hdr-${idx}`} className="flex items-center gap-2">
-                                        <Input
-                                            type="text"
-                                            value={h.header_key}
-                                            onChange={(e) => handleUpdateHeader(idx, { header_key: e.target.value })}
-                                            placeholder={t('customHeaderKey')}
-                                            className="rounded-xl flex-1"
-                                        />
-                                        <Input
-                                            type="text"
-                                            value={h.header_value}
-                                            onChange={(e) => handleUpdateHeader(idx, { header_value: e.target.value })}
-                                            placeholder={t('customHeaderValue')}
-                                            className="rounded-xl flex-1"
-                                        />
-                                        <Button
-                                            type="button"
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={() => handleRemoveHeader(idx)}
-                                            disabled={(formData.custom_header ?? []).length <= 1}
-                                            className="h-8 w-8 p-0 rounded-xl text-muted-foreground hover:text-destructive hover:bg-transparent disabled:opacity-40"
-                                            title={tCommon('remove')}
-                                        >
-                                            <X className="h-4 w-4" />
-                                        </Button>
-                                    </div>
-                                ))}
-                            </div>
+                            {(formData.custom_header ?? []).length > 0 && (
+                                <div className="space-y-2">
+                                    {(formData.custom_header ?? []).map((h, idx) => (
+                                        <div key={`hdr-${idx}`} className="flex items-center gap-2">
+                                            <Input
+                                                type="text"
+                                                value={h.header_key}
+                                                onChange={(e) => handleUpdateHeader(idx, { header_key: e.target.value })}
+                                                placeholder={t('customHeaderKey')}
+                                                className="rounded-xl flex-1"
+                                            />
+                                            <Input
+                                                type="text"
+                                                value={h.header_value}
+                                                onChange={(e) => handleUpdateHeader(idx, { header_value: e.target.value })}
+                                                placeholder={t('customHeaderValue')}
+                                                className="rounded-xl flex-1"
+                                            />
+                                            <Button
+                                                type="button"
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() => handleRemoveHeader(idx)}
+                                                className="h-8 w-8 p-0 rounded-xl text-muted-foreground hover:text-destructive hover:bg-transparent motion-reduce:transition-none"
+                                                title={tCommon('remove')}
+                                                aria-label={tCommon('remove')}
+                                            >
+                                                <X className="h-4 w-4" />
+                                            </Button>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
                         </div>
 
                         <div className="space-y-2">
@@ -664,7 +704,7 @@ export function ChannelForm({
                                 value={formData.param_override}
                                 onChange={(e) => onFormDataChange({ ...formData, param_override: e.target.value })}
                                 placeholder={t('paramOverridePlaceholder')}
-                                className="scrollbar min-h-28 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                className="scrollbar min-h-28 w-full rounded-xl border border-border bg-background px-3 py-2 text-base sm:text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                             />
                         </div>
 
@@ -677,7 +717,7 @@ export function ChannelForm({
                                 value={formData.param_append}
                                 onChange={(e) => onFormDataChange({ ...formData, param_append: e.target.value })}
                                 placeholder={t('paramAppendPlaceholder')}
-                                className="scrollbar min-h-28 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                className="scrollbar min-h-28 w-full rounded-xl border border-border bg-background px-3 py-2 text-base sm:text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                             />
                         </div>
                     </AccordionContent>
@@ -716,7 +756,7 @@ export function ChannelForm({
                         type="button"
                         variant="secondary"
                         onClick={onCancel}
-                        className="w-full sm:flex-1 rounded-2xl h-12"
+                        className="w-full sm:flex-1 rounded-xl h-11"
                     >
                         {cancelText}
                     </Button>
@@ -724,7 +764,7 @@ export function ChannelForm({
                 <Button
                     type="submit"
                     disabled={isPending}
-                    className="w-full sm:flex-1 rounded-2xl h-12"
+                    className="w-full sm:flex-1 rounded-xl h-11"
                 >
                     {isPending ? pendingText : submitText}
                 </Button>

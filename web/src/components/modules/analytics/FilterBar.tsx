@@ -1,7 +1,9 @@
 import { useMemo, useState } from 'react';
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { useTranslations } from 'use-intl';
 import { RefreshCw, CalendarDays, ChevronDown, SlidersHorizontal } from 'lucide-react';
 import type { UseQueryResult } from '@tanstack/react-query';
+import { Highlight, HighlightItem } from '@/components/animate-ui/primitives/effects/highlight';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -14,6 +16,7 @@ import { useAnalyticsViewStore } from './store';
 import { MetadataFilters } from './MetadataFilters';
 import { cn } from '@/lib/utils';
 import { InlineRetry } from '@/components/common/InlineRetry';
+import { EASING, REDUCED_MOTION_TRANSITION } from '@/lib/animations/fluid-transitions';
 
 /** UI 哨兵值：仅存在于 Select 值层，绝不发送到后端 */
 const ALL_VALUE = '__all__';
@@ -56,6 +59,7 @@ export function FilterBar({ query }: FilterBarProps) {
     const hasMetadata = Boolean(data?.available_from || showResolvedRange);
 
     const t = useTranslations('analytics');
+    const shouldReduceMotion = useReducedMotion() ?? false;
     const [customOpen, setCustomOpen] = useState(false);
     const [advancedOpen, setAdvancedOpen] = useState(false);
 
@@ -86,12 +90,15 @@ export function FilterBar({ query }: FilterBarProps) {
     const dimensions = dimensionsQuery.data;
     const dimensionsFailed = dimensionsQuery.isError && !dimensions;
 
-    const presetButtons: { value: AnalyticsPeriod; label: string }[] = [
-        { value: 'today', label: t('filter.datePreset.today') },
-        { value: '7d', label: t('filter.datePreset.last7Days') },
-        { value: '30d', label: t('filter.datePreset.last30Days') },
-        { value: 'all', label: t('filter.datePreset.all') },
-    ];
+    const presetButtons = useMemo<{ value: AnalyticsPeriod; label: string }[]>(
+        () => [
+            { value: 'today', label: t('filter.datePreset.today') },
+            { value: '7d', label: t('filter.datePreset.last7Days') },
+            { value: '30d', label: t('filter.datePreset.last30Days') },
+            { value: 'all', label: t('filter.datePreset.all') },
+        ],
+        [t],
+    );
 
     const customRange = useMemo(() => {
         if (period !== 'custom') return undefined;
@@ -168,7 +175,8 @@ export function FilterBar({ query }: FilterBarProps) {
     const chips = useMemo(() => {
         const list: { key: string; label: string }[] = [];
         if (period !== '30d') {
-            list.push({ key: 'period', label: period === 'custom' ? customLabel : t(`filter.datePreset.${period}`) });
+            const presetLabel = presetButtons.find((item) => item.value === period)?.label;
+            list.push({ key: 'period', label: period === 'custom' ? customLabel : (presetLabel ?? customLabel) });
         }
         if (model !== null) {
             list.push({ key: 'model', label: model === '' ? t('filter.unknown') : model });
@@ -190,60 +198,73 @@ export function FilterBar({ query }: FilterBarProps) {
             if (value !== null) list.push({ key, label: `${t(`detail.${key}`)}: ${value || t('filter.unknown')}` });
         }
         return list;
-    }, [period, customLabel, model, actualModel, apiKey, channel, status, stream, reasoningEffort, taskType, clientProtocol, errorCategory, t]);
+    }, [period, presetButtons, customLabel, model, actualModel, apiKey, channel, status, stream, reasoningEffort, taskType, clientProtocol, errorCategory, t]);
 
     return (
-        <div className="rounded-3xl border border-card-border bg-card p-3 text-card-foreground sm:p-4">
+        <div className="rounded-3xl border border-border bg-card p-3 text-card-foreground sm:p-4">
             {/* 主筛选：日期分段 + 关键维度 */}
             <div className="flex flex-col gap-3">
                 <div className="flex flex-wrap items-center gap-2">
                     <div className="flex items-center gap-1 rounded-2xl bg-muted/40 p-1">
-                        {presetButtons.map((preset) => (
-                            <button
-                                key={preset.value}
-                                type="button"
-                                onClick={() => selectPreset(preset.value)}
-                                aria-pressed={period === preset.value}
-                                className={cn( 'rounded-xl px-2.5 py-1.5 text-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring',
-                                    period === preset.value
-                                        ? 'bg-card font-medium text-foreground shadow-sm'
-                                        : 'text-muted-foreground hover:text-foreground'
-                                )}
-                            >
-                                {preset.label}
-                            </button>
-                        ))}
-                        <Popover open={customOpen} onOpenChange={setCustomOpen}>
-                            <PopoverTrigger asChild>
-                                <button
-                                    type="button"
-                                    onClick={() => selectPreset('custom')}
-                                    aria-pressed={period === 'custom'}
-                                    aria-label={t('filter.date')}
-                                    className={cn( 'flex items-center gap-1.5 rounded-xl px-2.5 py-1.5 text-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring',
-                                        period === 'custom'
-                                            ? 'bg-card font-medium text-foreground shadow-sm'
-                                            : 'text-muted-foreground hover:text-foreground'
-                                    )}
+                        <Highlight
+                            controlledItems
+                            value={period}
+                            click={false}
+                            transition={shouldReduceMotion ? { duration: 0 } : { type: 'spring', stiffness: 200, damping: 25 }}
+                            className="absolute inset-0 z-0 rounded-xl bg-card shadow-sm"
+                        >
+                            {presetButtons.map((preset) => (
+                                <HighlightItem key={preset.value} value={preset.value}>
+                                    <button
+                                        type="button"
+                                        onClick={() => selectPreset(preset.value)}
+                                        aria-pressed={period === preset.value}
+                                        className={cn(
+                                            'rounded-xl px-2.5 py-1.5 text-sm transition-colors duration-150 ease-out motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring',
+                                            period === preset.value
+                                                ? 'font-medium text-foreground'
+                                                : 'text-muted-foreground hover:text-foreground'
+                                        )}
+                                    >
+                                        {preset.label}
+                                    </button>
+                                </HighlightItem>
+                            ))}
+                            <Popover open={customOpen} onOpenChange={setCustomOpen}>
+                                <HighlightItem value="custom">
+                                    <PopoverTrigger asChild>
+                                        <button
+                                            type="button"
+                                            onClick={() => selectPreset('custom')}
+                                            aria-pressed={period === 'custom'}
+                                            aria-label={t('filter.date')}
+                                            className={cn(
+                                                'flex items-center gap-1.5 rounded-xl px-2.5 py-1.5 text-sm transition-colors duration-150 ease-out motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring',
+                                                period === 'custom'
+                                                    ? 'font-medium text-foreground'
+                                                    : 'text-muted-foreground hover:text-foreground'
+                                            )}
+                                        >
+                                            <CalendarDays className="size-4" />
+                                            <span className="max-w-40 truncate">{customLabel}</span>
+                                        </button>
+                                    </PopoverTrigger>
+                                </HighlightItem>
+                                <PopoverContent
+                                    align="start"
+                                    side="bottom"
+                                    sideOffset={8}
+                                    className="w-fit overflow-hidden rounded-2xl border border-border/60 bg-card p-0 shadow-xl"
                                 >
-                                    <CalendarDays className="size-4" />
-                                    <span className="max-w-40 truncate">{customLabel}</span>
-                                </button>
-                            </PopoverTrigger>
-                            <PopoverContent
-                                align="start"
-                                side="bottom"
-                                sideOffset={8}
-                                className="w-fit overflow-hidden rounded-2xl border border-border/60 bg-card p-0 shadow-xl"
-                            >
-                                <Calendar
-                                    mode="range"
-                                    selected={customRange}
-                                    onSelect={handleRangeSelect}
-                                    classNames={{ today: '' }}
-                                />
-                            </PopoverContent>
-                        </Popover>
+                                    <Calendar
+                                        mode="range"
+                                        selected={customRange}
+                                        onSelect={handleRangeSelect}
+                                        classNames={{ today: '' }}
+                                    />
+                                </PopoverContent>
+                            </Popover>
+                        </Highlight>
                     </div>
                     {customInvalid && <p role="alert" className="text-xs text-destructive">{customInvalid}</p>}
                 </div>
@@ -260,13 +281,13 @@ export function FilterBar({ query }: FilterBarProps) {
                             }}
                             disabled={dimensionsFailed}
                         >
-                            <SelectTrigger aria-label={t('filter.requestModel')} className="w-full min-w-0 rounded-xl">
+                            <SelectTrigger aria-label={t('filter.requestModel')} className="w-full min-w-0">
                                 <SelectValue />
                             </SelectTrigger>
-                            <SelectContent className="rounded-xl">
-                                <SelectItem className="rounded-xl" value={ALL_VALUE}>{t('filter.all')}</SelectItem>
+                            <SelectContent>
+                                <SelectItem value={ALL_VALUE}>{t('filter.all')}</SelectItem>
                                 {modelOptions.map((name) => (
-                                    <SelectItem className="rounded-xl" key={name || UNKNOWN_VALUE} value={name === '' ? UNKNOWN_VALUE : name}>
+                                    <SelectItem key={name || UNKNOWN_VALUE} value={name === '' ? UNKNOWN_VALUE : name}>
                                         {name === '' ? t('filter.unknown') : name}
                                     </SelectItem>
                                 ))}
@@ -285,13 +306,13 @@ export function FilterBar({ query }: FilterBarProps) {
                             }}
                             disabled={dimensionsFailed}
                         >
-                            <SelectTrigger aria-label={t('filter.actualModel')} className="w-full min-w-0 rounded-xl">
+                            <SelectTrigger aria-label={t('filter.actualModel')} className="w-full min-w-0">
                                 <SelectValue />
                             </SelectTrigger>
-                            <SelectContent className="rounded-xl">
-                                <SelectItem className="rounded-xl" value={ALL_VALUE}>{t('filter.all')}</SelectItem>
+                            <SelectContent>
+                                <SelectItem value={ALL_VALUE}>{t('filter.all')}</SelectItem>
                                 {actualModelOptions.map((name) => (
-                                    <SelectItem className="rounded-xl" key={name || UNKNOWN_VALUE} value={name === '' ? UNKNOWN_VALUE : name}>
+                                    <SelectItem key={name || UNKNOWN_VALUE} value={name === '' ? UNKNOWN_VALUE : name}>
                                         {name === '' ? t('filter.unknown') : name}
                                     </SelectItem>
                                 ))}
@@ -313,13 +334,13 @@ export function FilterBar({ query }: FilterBarProps) {
                             }}
                             disabled={dimensionsFailed}
                         >
-                            <SelectTrigger aria-label={t('filter.apiKey')} className="w-full min-w-0 rounded-xl">
+                            <SelectTrigger aria-label={t('filter.apiKey')} className="w-full min-w-0">
                                 <SelectValue />
                             </SelectTrigger>
-                            <SelectContent className="rounded-xl">
-                                <SelectItem className="rounded-xl" value={ALL_VALUE}>{t('filter.all')}</SelectItem>
+                            <SelectContent>
+                                <SelectItem value={ALL_VALUE}>{t('filter.all')}</SelectItem>
                                 {apiKeyOptions.map((item) => (
-                                    <SelectItem className="rounded-xl" key={item.id} value={String(item.id)}>
+                                    <SelectItem key={item.id} value={String(item.id)}>
                                         {item.name || t('filter.unassigned')}
                                     </SelectItem>
                                 ))}
@@ -341,13 +362,13 @@ export function FilterBar({ query }: FilterBarProps) {
                             }}
                             disabled={dimensionsFailed}
                         >
-                            <SelectTrigger aria-label={t('filter.channel')} className="w-full min-w-0 rounded-xl">
+                            <SelectTrigger aria-label={t('filter.channel')} className="w-full min-w-0">
                                 <SelectValue />
                             </SelectTrigger>
-                            <SelectContent className="rounded-xl">
-                                <SelectItem className="rounded-xl" value={ALL_VALUE}>{t('filter.all')}</SelectItem>
+                            <SelectContent>
+                                <SelectItem value={ALL_VALUE}>{t('filter.all')}</SelectItem>
                                 {channelOptions.map((item) => (
-                                    <SelectItem className="rounded-xl" key={item.id} value={String(item.id)}>
+                                    <SelectItem key={item.id} value={String(item.id)}>
                                         {item.name || t('filter.unassigned')}
                                     </SelectItem>
                                 ))}
@@ -358,13 +379,13 @@ export function FilterBar({ query }: FilterBarProps) {
                     <div className="flex min-w-0 flex-col gap-1.5">
                         <span className="text-xs text-muted-foreground">{t('filter.status')}</span>
                         <Select value={status} onValueChange={(value) => setStatus(value as typeof status)}>
-                            <SelectTrigger aria-label={t('filter.status')} className="w-full min-w-0 rounded-xl">
+                            <SelectTrigger aria-label={t('filter.status')} className="w-full min-w-0">
                                 <SelectValue />
                             </SelectTrigger>
-                            <SelectContent className="rounded-xl">
-                                <SelectItem className="rounded-xl" value="all">{t('filter.statusOption.all')}</SelectItem>
-                                <SelectItem className="rounded-xl" value="success">{t('filter.statusOption.success')}</SelectItem>
-                                <SelectItem className="rounded-xl" value="failed">{t('filter.statusOption.failed')}</SelectItem>
+                            <SelectContent>
+                                <SelectItem value="all">{t('filter.statusOption.all')}</SelectItem>
+                                <SelectItem value="success">{t('filter.statusOption.success')}</SelectItem>
+                                <SelectItem value="failed">{t('filter.statusOption.failed')}</SelectItem>
                             </SelectContent>
                         </Select>
                     </div>
@@ -385,13 +406,28 @@ export function FilterBar({ query }: FilterBarProps) {
                             {advancedCount > 0 && (
                                 <span className="rounded-full bg-primary px-1.5 text-xs font-medium text-primary-foreground">{advancedCount}</span>
                             )}
-                            <ChevronDown className={cn('size-4 transition-transform', advancedOpen && 'rotate-180')} />
+                            <ChevronDown className={cn('size-4 transition-transform duration-200 motion-reduce:transition-none', advancedOpen && 'rotate-180')} />
                         </button>
                     </div>
                 </div>
             </div>
 
-            {advancedOpen && <MetadataFilters dimensions={dimensions} disabled={dimensionsFailed} />}
+            <AnimatePresence initial={false}>
+                {advancedOpen && (
+                    <motion.div
+                        key="advanced-filters"
+                        initial={shouldReduceMotion ? { opacity: 0 } : { height: 0, opacity: 0, filter: 'blur(4px)' }}
+                        animate={shouldReduceMotion ? { opacity: 1 } : { height: 'auto', opacity: 1, filter: 'blur(0px)' }}
+                        exit={shouldReduceMotion ? { opacity: 0 } : { height: 0, opacity: 0, filter: 'blur(4px)' }}
+                        transition={shouldReduceMotion ? REDUCED_MOTION_TRANSITION : { duration: 0.24, ease: EASING.easeOutCubic }}
+                        className="-mx-1 -mb-1 overflow-hidden px-1 pb-1"
+                    >
+                        <div className="pt-3">
+                            <MetadataFilters dimensions={dimensions} disabled={dimensionsFailed} />
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
 
             {dimensionsFailed && (
                 <div role="alert" className="mt-3 flex items-center justify-between gap-3 rounded-2xl border border-destructive/30 bg-destructive/5 px-4 py-2.5 text-sm text-muted-foreground">
@@ -437,9 +473,9 @@ export function FilterBar({ query }: FilterBarProps) {
                             type="button"
                             onClick={() => void query.refetch()}
                             aria-label={t('feedback.refresh')}
-                            className="rounded-xl border border-border p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                            className="rounded-xl border border-border p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                         >
-                            <RefreshCw className={cn('size-3.5', query.isFetching && 'animate-spin')} />
+                            <RefreshCw className={cn('size-3.5', query.isFetching && 'animate-spin motion-reduce:animate-none')} />
                         </button>
                     </div>
                 </div>

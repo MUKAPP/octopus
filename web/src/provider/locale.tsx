@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, type ReactNode } from 'react';
 import { IntlProvider } from 'use-intl';
 import { useSettingStore, type Locale } from '@/stores/setting';
 
@@ -30,20 +30,15 @@ const documentLangs: Record<Locale, string> = {
 
 export function LocaleProvider({ children }: { children: ReactNode }) {
     const { locale } = useSettingStore();
-    const [currentLocale, setCurrentLocale] = useState<Locale>('zh_hans');
 
     useEffect(() => {
-        setCurrentLocale(locale);
+        document.documentElement.lang = documentLangs[locale];
     }, [locale]);
-
-    useEffect(() => {
-        document.documentElement.lang = documentLangs[currentLocale];
-    }, [currentLocale]);
 
     return (
         <IntlProvider
-            locale={intlLocales[currentLocale]}
-            messages={messages[currentLocale]}
+            locale={intlLocales[locale]}
+            messages={messages[locale]}
             timeZone="Asia/Shanghai"
         >
             {children}

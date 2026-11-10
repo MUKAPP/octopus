@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils';
 import { useNavStore, type NavItem } from "@/components/modules/navbar"
 import { ROUTES } from "@/route/config"
 import { usePreload } from "@/route/use-preload"
-import { DURATION, ENTRANCE_VARIANTS, REDUCED_MOTION_TRANSITION } from "@/lib/animations/fluid-transitions"
+import { DURATION, ENTRANCE_VARIANTS, REDUCED_MOTION_ENTRANCE_VARIANTS, REDUCED_MOTION_TRANSITION } from "@/lib/animations/fluid-transitions"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/animate-ui/components/animate/tooltip"
 import { useTranslations } from "use-intl"
 import { useIsMobile } from "@/hooks/use-mobile"
@@ -31,14 +31,14 @@ export function NavBar() {
                     "md:sticky md:top-30 md:left-auto md:bottom-auto md:translate-x-0 md:flex-col md:gap-3",
                     "bg-sidebar text-sidebar-foreground border border-sidebar-border rounded-3xl",
                 )}
-                variants={ENTRANCE_VARIANTS.navbar}
+                variants={shouldReduceMotion ? REDUCED_MOTION_ENTRANCE_VARIANTS.navbar : ENTRANCE_VARIANTS.navbar}
                 initial="initial"
                 animate="animate"
                 onMouseLeave={() => setIsNavHovered(false)}
             >
                 <span
                     aria-hidden="true"
-                    className="pointer-events-none absolute left-3 top-3 z-10 size-10 rounded-2xl bg-sidebar-primary transition-transform duration-300 ease-out [transform:translateX(var(--nav-offset-x))] md:size-12 md:[transform:translateY(var(--nav-offset-y))]"
+                    className="pointer-events-none absolute left-3 top-3 z-10 size-10 rounded-2xl bg-sidebar-primary transition-transform duration-300 ease-out motion-reduce:transition-none [transform:translateX(var(--nav-offset-x))] md:size-12 md:[transform:translateY(var(--nav-offset-y))]"
                     style={{
                         '--nav-offset-x': `${activeIndex * 2.75}rem`,
                         '--nav-offset-y': `${activeIndex * 3.75}rem`,
@@ -48,7 +48,7 @@ export function NavBar() {
                     ref={hoverIndicatorRef}
                     aria-hidden="true"
                     className={cn(
-                        'pointer-events-none absolute left-3 top-3 z-0 size-10 [transform:translateX(var(--nav-offset-x))] md:size-12 md:[transform:translateY(var(--nav-offset-y))]',
+                        'pointer-events-none absolute left-3 top-3 z-0 size-10 motion-reduce:transition-none [transform:translateX(var(--nav-offset-x))] md:size-12 md:[transform:translateY(var(--nav-offset-y))]',
                         isNavHovered ? 'transition-transform duration-300 ease-out' : 'transition-none',
                     )}
                     style={{
@@ -57,7 +57,7 @@ export function NavBar() {
                     } as CSSProperties}
                 >
                     <span
-                        className="absolute inset-0 rounded-2xl bg-sidebar-accent transition-opacity duration-300 ease-linear"
+                        className="absolute inset-0 rounded-2xl bg-sidebar-accent transition-opacity duration-300 ease-linear motion-reduce:transition-none"
                         style={{ opacity: isNavHovered ? 1 : 0 }}
                     />
                 </span>
@@ -77,6 +77,8 @@ export function NavBar() {
                                         setActiveItem(route.id as NavItem);
                                     }}
                                     onMouseEnter={() => {
+                                        preload(route.id);
+                                        if (!window.matchMedia('(hover: hover) and (pointer: fine)').matches) return;
                                         // 首次进入先在不可见状态下定位，避免背景从上一次位置移动过来。
                                         if (isNavHovered) {
                                             setHoveredIndex(index);
@@ -85,13 +87,12 @@ export function NavBar() {
                                             hoverIndicatorRef.current?.getBoundingClientRect();
                                             setIsNavHovered(true);
                                         }
-                                        preload(route.id);
                                     }}
                                     onFocus={() => preload(route.id)}
                                     onTouchStart={() => preload(route.id)}
                                     className={cn(
-                                        "relative z-20 flex size-10 items-center justify-center rounded-2xl p-2 transition-[color,scale] duration-150 ease-linear hover:z-30 hover:scale-110 active:scale-95 md:size-12 md:p-3",
-                                        isActive ? "text-sidebar-primary-foreground" : "text-sidebar-foreground/60"
+                                        "relative z-20 flex size-10 items-center justify-center rounded-2xl p-2 transition-[color,scale] duration-150 ease-linear motion-reduce:transition-none hover:z-30 [@media(hover:hover)_and_(pointer:fine)]:hover:scale-110 md:size-12 md:p-3",
+                                        isActive ? "text-sidebar-primary-foreground" : "text-sidebar-foreground/75"
                                     )}
                                     initial={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.8 }}
                                     animate={{

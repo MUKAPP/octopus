@@ -225,7 +225,6 @@
         "outputCost": "Output Cost",
         "successRequests": "Successful",
         "failedRequests": "Failed",
-        "quota": "Remaining Quota",
         "unlimited": "Unlimited",
         "expireAt": "Expires",
         "neverExpire": "Never",
@@ -246,7 +245,7 @@
         "key": "Key",
         "model": "Price",
         "log": "Log",
-        "setting": "Setting"
+        "setting": "Settings"
     },
     "toolbar": {
         "search": "Search",
@@ -280,7 +279,7 @@
                 "model": {
                     "all": "All models",
                     "priced": "Priced only",
-                    "free": "Free only"
+                    "free": "Zero-price only"
                 }
             }
         }
@@ -298,7 +297,12 @@
         "remove": "Remove",
         "stats": "Statistics",
         "edit": "Edit",
-        "close": "Close"
+        "close": "Close",
+        "cancel": "Cancel",
+        "enable": "Enable",
+        "disable": "Disable",
+        "showPassword": "Show password",
+        "hidePassword": "Hide password"
     },
     "home": {
         "feedback": {
@@ -341,8 +345,8 @@
             },
             "period": {
                 "today": "Today",
-                "last7Days": "7 Days",
-                "last30Days": "30 Days"
+                "last7Days": "Last 7 days",
+                "last30Days": "Last 30 days"
             }
         },
         "rank": {
@@ -374,8 +378,9 @@
             "placeholder": "Enter proxy URL"
         },
         "statsSaveInterval": {
-            "label": "Stats Save Interval",
-            "placeholder": "Enter interval in minutes"
+            "label": "Stats Save Interval (minutes)",
+            "placeholder": "Enter interval in minutes",
+            "hint": "Requires a service restart to take effect."
         },
         "modelFilter": {
             "label": "Global Model Filter",
@@ -385,7 +390,9 @@
         "corsAllowOrigins": {
             "label": "CORS Allowed Origins",
             "hint": "Empty = deny all, * = allow all",
-            "example": "Only allow specific domains: https://example.com,https://example2.com"
+            "example": "Comma-separated origins, e.g. https://example.com,https://example2.com",
+            "add": "Add",
+            "removeOrigin": "Remove {origin}"
         },
         "circuitBreaker": {
             "title": "Circuit Breaker",
@@ -419,14 +426,19 @@
                 "failed": "Export failed"
             },
             "import": {
-                "title": "Import (Incremental)",
+                "title": "Import Backup",
                 "selected": "File selected",
                 "button": "Import JSON",
                 "importing": "Importing...",
                 "noFile": "Please select a JSON file first",
                 "success": "Import successful",
                 "failed": "Import failed",
-                "result": "Import result"
+                "result": "Import result",
+                "confirm": {
+                    "title": "Confirm backup import",
+                    "description": "Import settings from {file}. Matching records will be updated and new records inserted. Exporting a current backup first is recommended.",
+                    "confirm": "Import"
+                }
             }
         },
         "apiKey": {
@@ -443,8 +455,9 @@
                 "maxCostPlaceholder": "Enter amount",
                 "maxConcurrency": "Max Concurrency",
                 "maxConcurrencyHint": "0 or empty means unlimited. Requests over the limit wait for a slot.",
+                "maxConcurrencyInvalid": "Enter a non-negative integer",
                 "unlimited": "Unlimited",
-                "expireAt": "Expire Date",
+                "expireAt": "Expiration Time",
                 "selectDate": "Select date",
                 "neverExpire": "Never Expire",
                 "supportedModels": "Supported Models",
@@ -458,12 +471,13 @@
                 "cancel": "Cancel",
                 "create": "Create",
                 "save": "Save",
-                "confirm": "Confirm"
+                "confirm": "Confirm",
+                "delete": "Delete key"
             },
             "stats": {
                 "noData": "No statistics available",
-                "inputToken": "Input Token",
-                "outputToken": "Output Token",
+                "inputToken": "Input Tokens",
+                "outputToken": "Output Tokens",
                 "inputCost": "Input Cost",
                 "outputCost": "Output Cost",
                 "requestSuccess": "Request Success",
@@ -540,8 +554,6 @@
             "title": "Version Info",
             "currentVersion": "Current Version",
             "latestVersion": "Latest Version",
-            "buildTime": "Build Time",
-            "publishedAt": "Published At",
             "github": "GitHub Repository",
             "unknown": "Unknown",
             "versionMismatch": "Version Mismatch",
@@ -557,7 +569,12 @@
             "clear": {
                 "label": "Clear History Logs",
                 "button": "Clear",
-                "clearing": "Clearing..."
+                "clearing": "Clearing...",
+                "confirm": {
+                    "title": "Clear request logs",
+                    "description": "Permanently delete all stored request and attempt logs. This cannot be undone.",
+                    "confirm": "Clear logs"
+                }
             },
             "clearSuccess": "Logs cleared",
             "clearFailed": "Failed to clear logs"
@@ -572,7 +589,7 @@
             "updated": "Updated successfully",
             "updateFailed": "Update failed",
             "deleted": "Deleted successfully",
-            "autoAddFailed": "Auto add failed"
+            "deleteFailed": "Delete failed"
         },
         "create": {
             "title": "Create Group",
@@ -580,7 +597,8 @@
             "submitting": "Creating..."
         },
         "card": {
-            "empty": "No rules"
+            "empty": "No selected models",
+            "fallbackChannel": "Channel #{id}"
         },
         "detail": {
             "actions": {
@@ -602,13 +620,18 @@
             "sessionKeepTime": "Session Keep Time",
             "sessionKeepTimeHint": "Unit: seconds, keeps using the same channel within a session, 0 = disabled",
             "items": "Selected Models",
+            "search": "Search channel or model",
             "addItem": "Add Model",
             "autoAdd": "Auto Add",
             "clear": "Clear",
+            "clearConfirm": {
+                "title": "Clear selected models",
+                "description": "This removes all configured models from this group once saved.",
+                "confirm": "Clear"
+            },
+            "weight": "Weight",
             "moveToTop": "Move to Top",
-            "moveToBottom": "Move to Bottom",
-            "selectChannel": "Channel",
-            "selectModel": "Model"
+            "moveToBottom": "Move to Bottom"
         },
         "mode": {
             "roundRobin": "Round Robin",
@@ -630,11 +653,14 @@
             "output": "Output Price",
             "cacheRead": "Cache Read",
             "cacheWrite": "Cache Write",
+            "priceHint": "Unit: USD per 1M tokens ($ / 1M Tokens)",
             "cancel": "Cancel",
             "submit": "Create",
             "submitting": "Creating..."
         },
         "toast": {
+            "created": "Model price created",
+            "createFailed": "Create failed",
             "updated": "Model price updated",
             "updateFailed": "Update failed",
             "deleted": "Model deleted",
@@ -676,14 +702,12 @@
         },
         "card": {
             "error": "Error",
-            "errorInfo": "Error Info",
             "firstToken": "TTFT",
             "totalTime": "Total",
             "input": "Input",
             "output": "Output",
             "cost": "Cost",
             "requestContent": "Request Content",
-            "responseContent": "Response Content",
             "truncated": "Content Truncated",
             "modelMismatch": "Model mismatch",
             "modelMismatchDetails": "Upstream request model: {upstream}; response model: {response}",
@@ -697,7 +721,6 @@
             "cacheTokens": "Cache",
             "cacheRate": "Cache rate",
             "outputSpeed": "Speed",
-            "retryDetails": "Retry Details",
             "attemptHistory": "Attempt history",
             "attemptNumber": "Attempt {number}",
             "attemptKey": "Channel key #{id}",
@@ -713,7 +736,6 @@
             "waitingResponse": "Waiting for upstream response...",
             "responseStreaming": "Response is still streaming...",
             "detailUnavailable": "Details are unavailable",
-            "cacheWriteTokens": "Cache write",
             "lossyPreview": "Partial response",
             "reasonSizeLimit": "Content exceeds the storage limit",
             "reasonInvalidUtf8": "Content is not valid UTF-8",
@@ -892,7 +914,6 @@
             "type": "Channel Type",
             "baseUrls": "Base URLs",
             "baseUrlUrl": "URL",
-            "baseUrlDelay": "Delay(ms)",
             "advanced": "Advanced Settings",
             "apiKey": "API Key",
             "customHeader": "Custom Headers",
@@ -917,6 +938,11 @@
             "modelSelected": "Selected Models",
             "modelNoSelected": "No models selected",
             "modelClearAll": "Clear All",
+            "modelClearConfirm": {
+                "title": "Clear selected models",
+                "description": "This removes all selected models. You will need to select or fetch models again.",
+                "confirm": "Clear All"
+            },
             "typeOpenAIChat": "OpenAI Chat",
             "typeOpenAIResponse": "OpenAI Response",
             "typeOpenAIEmbedding": "OpenAI Embedding",

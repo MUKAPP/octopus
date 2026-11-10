@@ -24,12 +24,12 @@ export function MetadataFilters({ dimensions, disabled }: MetadataFiltersProps) 
     ];
     const fieldClass = 'flex min-w-0 flex-col gap-1.5';
     return (
-        <div className="mt-3 grid grid-cols-2 gap-2 border-t border-border/50 pt-3 sm:grid-cols-3 xl:grid-cols-5">
+        <div className="grid grid-cols-2 gap-2 border-t border-border/50 pt-3 sm:grid-cols-3 xl:grid-cols-5">
             <div className={fieldClass}>
                 <span className="text-xs text-muted-foreground">{t('stream')}</span>
                 <Select value={stream} onValueChange={(value) => setStream(value as typeof stream)}>
-                    <SelectTrigger aria-label={t('stream')} className="w-full min-w-0 rounded-xl"><SelectValue /></SelectTrigger>
-                    <SelectContent className="rounded-xl">
+                    <SelectTrigger aria-label={t('stream')} className="w-full min-w-0"><SelectValue /></SelectTrigger>
+                    <SelectContent>
                         <SelectItem value="all">{tFilter('all')}</SelectItem>
                         <SelectItem value="true">{t('streaming')}</SelectItem>
                         <SelectItem value="false">{t('nonStreaming')}</SelectItem>
@@ -43,8 +43,8 @@ export function MetadataFilters({ dimensions, disabled }: MetadataFiltersProps) 
                         <span className="text-xs text-muted-foreground">{t(filter.key)}</span>
                         <Select value={filter.value === null ? ALL : filter.value === '' ? UNKNOWN : filter.value}
                             onValueChange={(value) => filter.set(value === ALL ? null : value === UNKNOWN ? '' : value)} disabled={disabled}>
-                            <SelectTrigger aria-label={t(filter.key)} className="w-full min-w-0 rounded-xl"><SelectValue /></SelectTrigger>
-                            <SelectContent className="rounded-xl">
+                            <SelectTrigger aria-label={t(filter.key)} className="w-full min-w-0"><SelectValue /></SelectTrigger>
+                            <SelectContent>
                                 <SelectItem value={ALL}>{tFilter('all')}</SelectItem>
                                 {options.map((option) => (
                                     <SelectItem key={option || UNKNOWN} value={option || UNKNOWN}>

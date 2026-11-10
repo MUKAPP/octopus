@@ -15,7 +15,7 @@ import { cn } from '@/lib/utils';
 
 type TooltipProviderProps = TooltipProviderPrimitiveProps;
 
-function TooltipProvider({ openDelay = 0, ...props }: TooltipProviderProps) {
+function TooltipProvider({ openDelay = 300, ...props }: TooltipProviderProps) {
   return <TooltipProviderPrimitive openDelay={openDelay} {...props} />;
 }
 
@@ -33,13 +33,11 @@ function TooltipTrigger({ ...props }: TooltipTriggerProps) {
 
 type TooltipContentProps = Omit<TooltipContentPrimitiveProps, 'asChild'> & {
   children: React.ReactNode;
-  layout?: boolean | 'position' | 'size' | 'preserve-aspect';
 };
 
 function TooltipContent({
   className,
   children,
-  layout = 'preserve-aspect',
   ...props
 }: TooltipContentProps) {
   return (

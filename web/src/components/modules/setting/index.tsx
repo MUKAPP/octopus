@@ -13,17 +13,21 @@ import { SettingCircuitBreaker } from './CircuitBreaker';
 export function Setting() {
     return (
         <div className="scrollbar h-full min-h-0 overflow-y-auto overscroll-contain rounded-t-3xl">
-            <PageWrapper className="columns-1 gap-4 pb-nav-clearance md:columns-2 md:pb-[calc(1rem+var(--safe-area-bottom))] *:mb-4 *:break-inside-avoid">
-                <SettingInfo key="setting-info" />
-                <SettingAppearance key="setting-appearance" />
-                <SettingAccount key="setting-account" />
-                <SettingSystem key="setting-system" />
-                <SettingLog key="setting-log" />
-                <SettingLLMPrice key="setting-llmprice" />
-                <SettingAPIKey key="setting-apikey" />
-                <SettingLLMSync key="setting-llmsync" />
-                <SettingCircuitBreaker key="setting-circuit-breaker" />
-                <SettingBackup key="setting-backup" />
+            <PageWrapper className="grid grid-cols-1 gap-4 pb-nav-clearance md:grid-cols-2 md:items-start md:pb-[calc(1rem+var(--safe-area-bottom))]">
+                <div className="flex min-w-0 flex-col gap-4">
+                    <SettingInfo />
+                    <SettingAppearance />
+                    <SettingAccount />
+                    <SettingSystem />
+                    <SettingCircuitBreaker />
+                </div>
+                <div className="flex min-w-0 flex-col gap-4">
+                    <SettingAPIKey />
+                    <SettingLLMPrice />
+                    <SettingLLMSync />
+                    <SettingLog />
+                    <SettingBackup />
+                </div>
             </PageWrapper>
         </div>
     );

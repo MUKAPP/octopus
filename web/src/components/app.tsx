@@ -6,10 +6,12 @@ import { LoginForm } from '@/components/modules/login';
 import { APIKeyDashboard } from '@/components/modules/apikey-dashboard';
 import { ContentLoader } from '@/route/content-loader';
 import { useNavStore } from '@/components/modules/navbar';
-import Logo, { LOGO_DRAW_END_MS } from '@/components/modules/logo';
+import Logo from '@/components/modules/logo';
 import { Toolbar } from '@/components/modules/toolbar';
 import { AppShell } from '@/components/app-shell';
 import {
+    DURATION,
+    EASING,
     ENTRANCE_VARIANTS,
     REDUCED_MOTION_ENTRANCE_VARIANTS,
     REDUCED_MOTION_TRANSITION,
@@ -40,9 +42,6 @@ export function AppContainer() {
     const shouldReduceMotion = useReducedMotion() ?? false;
     const entranceVariants = shouldReduceMotion ? REDUCED_MOTION_ENTRANCE_VARIANTS : ENTRANCE_VARIANTS;
 
-    // Logo 动画完成状态；减少动态效果时不播放描边动画，直接视为已完成。
-    const [logoAnimationDone, setLogoAnimationDone] = useState(false);
-    const logoAnimationComplete = logoAnimationDone || shouldReduceMotion;
     const [bootstrapComplete, setBootstrapComplete] = useState(false);
     const bootstrapStartedRef = useRef(false);
 
@@ -53,11 +52,6 @@ export function AppContainer() {
 
         el.classList.add('octo-hide');
         const timer = setTimeout(() => el.remove(), 220);
-        return () => clearTimeout(timer);
-    }, []);
-
-    useEffect(() => {
-        const timer = setTimeout(() => setLogoAnimationDone(true), LOGO_DRAW_END_MS);
         return () => clearTimeout(timer);
     }, []);
 
@@ -138,7 +132,6 @@ export function AppContainer() {
     // 加载状态
     const isLoading =
         authLoading ||
-        !logoAnimationComplete ||
         (isAuthenticated && !bootstrapComplete);
 
     // 加载页面
@@ -152,39 +145,32 @@ export function AppContainer() {
 
     // API Key 认证模式 - 显示 API Key Dashboard
     if (isAPIKeyAuth) {
-        return (
-            <AnimatePresence mode="wait">
-                <APIKeyDashboard key="apikey-dashboard" />
-            </AnimatePresence>
-        );
+        return <APIKeyDashboard />;
     }
 
     // 登录页面
     if (!isAuthenticated) {
-        return (
-            <AnimatePresence mode="wait">
-                <LoginForm key="login" />
-            </AnimatePresence>
-        );
+        return <LoginForm />;
     }
 
     // 主界面
     return (
         <AppShell actions={<Toolbar />}>
-            <AnimatePresence mode="wait" initial={false}>
-                <motion.div
-                    key={activeItem}
-                    variants={entranceVariants.content}
-                    initial="initial"
-                    animate="animate"
-                    exit={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.98 }}
-                    /* 时长由 entranceVariants 内部提供，这里只处理 reduced-motion 分支。 */
-                    transition={shouldReduceMotion ? REDUCED_MOTION_TRANSITION : undefined}
-                    className="h-full min-h-0 flex-1"
-                >
-                    <ContentLoader activeRoute={activeItem} />
-                </motion.div>
-            </AnimatePresence>
+            <div className="relative flex min-h-0 w-full min-w-0 flex-1 flex-col">
+                <AnimatePresence mode="popLayout" initial={false}>
+                    <motion.div
+                        key={activeItem}
+                        variants={entranceVariants.content}
+                        initial="initial"
+                        animate="animate"
+                        exit={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.98, filter: 'blur(6px)' }}
+                        transition={shouldReduceMotion ? REDUCED_MOTION_TRANSITION : { duration: DURATION.page, ease: EASING.easeOutCubic }}
+                        className="h-full min-h-0 w-full flex-1"
+                    >
+                        <ContentLoader activeRoute={activeItem} />
+                    </motion.div>
+                </AnimatePresence>
+            </div>
         </AppShell>
     );
 }

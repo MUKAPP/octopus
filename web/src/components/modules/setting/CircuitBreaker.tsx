@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useId, useState, useRef } from 'react';
 import { useTranslations } from 'use-intl';
 import { Zap, Hash, Timer, TimerOff, HelpCircle } from 'lucide-react';
 import { Input } from '@/components/ui/input';
@@ -9,6 +9,9 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 
 export function SettingCircuitBreaker() {
     const t = useTranslations('setting');
+    const thresholdId = useId();
+    const cooldownId = useId();
+    const maxCooldownId = useId();
     const { data: settings } = useSettingList();
     const setSetting = useSetSetting();
 
@@ -93,7 +96,13 @@ export function SettingCircuitBreaker() {
                 <TooltipProvider>
                     <Tooltip>
                         <TooltipTrigger asChild>
-                            <HelpCircle className="size-4 text-muted-foreground cursor-help" />
+                            <button
+                                type="button"
+                                aria-label={t('circuitBreaker.hint')}
+                                className="-m-1 rounded-md p-1 text-muted-foreground outline-none transition-colors motion-reduce:transition-none hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                            >
+                                <HelpCircle className="size-4 cursor-help" />
+                            </button>
                         </TooltipTrigger>
                         <TooltipContent>
                             {t('circuitBreaker.hint')}
@@ -113,12 +122,13 @@ export function SettingCircuitBreaker() {
                 />
             </div>
             {/* 熔断触发阈值 */}
-            <div className="flex items-center justify-between gap-4">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
                 <div className="flex items-center gap-3">
-                    <Hash className="h-5 w-5 text-muted-foreground" />
-                    <span className="text-sm font-medium">{t('circuitBreaker.threshold.label')}</span>
+                    <Hash className="h-5 w-5 shrink-0 text-muted-foreground" />
+                    <label htmlFor={thresholdId} className="text-sm font-medium">{t('circuitBreaker.threshold.label')}</label>
                 </div>
                 <Input
+                    id={thresholdId}
                     type="number"
                     value={threshold}
                     onChange={(e) => setThreshold(e.target.value)}
@@ -128,17 +138,18 @@ export function SettingCircuitBreaker() {
                     step={1}
                     inputMode="numeric"
                     disabled={!enabled || setSetting.isPending}
-                    className="w-48 rounded-xl"
+                    className="w-full sm:w-48 text-base sm:text-sm rounded-xl"
                 />
             </div>
 
             {/* 基础冷却时间 */}
-            <div className="flex items-center justify-between gap-4">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
                 <div className="flex items-center gap-3">
-                    <Timer className="h-5 w-5 text-muted-foreground" />
-                    <span className="text-sm font-medium">{t('circuitBreaker.cooldown.label')}</span>
+                    <Timer className="h-5 w-5 shrink-0 text-muted-foreground" />
+                    <label htmlFor={cooldownId} className="text-sm font-medium">{t('circuitBreaker.cooldown.label')}</label>
                 </div>
                 <Input
+                    id={cooldownId}
                     type="number"
                     value={cooldown}
                     onChange={(e) => setCooldown(e.target.value)}
@@ -148,17 +159,18 @@ export function SettingCircuitBreaker() {
                     step={1}
                     inputMode="numeric"
                     disabled={!enabled || setSetting.isPending}
-                    className="w-48 rounded-xl"
+                    className="w-full sm:w-48 text-base sm:text-sm rounded-xl"
                 />
             </div>
 
             {/* 最大冷却时间 */}
-            <div className="flex items-center justify-between gap-4">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
                 <div className="flex items-center gap-3">
-                    <TimerOff className="h-5 w-5 text-muted-foreground" />
-                    <span className="text-sm font-medium">{t('circuitBreaker.maxCooldown.label')}</span>
+                    <TimerOff className="h-5 w-5 shrink-0 text-muted-foreground" />
+                    <label htmlFor={maxCooldownId} className="text-sm font-medium">{t('circuitBreaker.maxCooldown.label')}</label>
                 </div>
                 <Input
+                    id={maxCooldownId}
                     type="number"
                     value={maxCooldown}
                     onChange={(e) => setMaxCooldown(e.target.value)}
@@ -168,7 +180,7 @@ export function SettingCircuitBreaker() {
                     step={1}
                     inputMode="numeric"
                     disabled={!enabled || setSetting.isPending}
-                    className="w-48 rounded-xl"
+                    className="w-full sm:w-48 text-base sm:text-sm rounded-xl"
                 />
             </div>
         </div>

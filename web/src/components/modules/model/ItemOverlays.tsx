@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef } from 'react';
-import { Check, Loader, Trash2, X } from 'lucide-react';
+import { Check, Loader2, Trash2, X } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useTranslations } from 'use-intl';
 import { Input } from '@/components/ui/input';
@@ -29,13 +29,13 @@ export function ModelDeleteOverlay({
     return (
         <motion.div
             layoutId={layoutId}
-            className="absolute inset-0 flex items-center justify-center gap-3 bg-destructive p-4 rounded-2xl"
+            className="absolute inset-0 flex items-center justify-center gap-3 bg-destructive p-4 rounded-3xl"
             transition={SPRING.morph}
         >
             <button
                 type="button"
                 onClick={onCancel}
-                className="focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring h-9 px-4 flex items-center justify-center gap-1.5 rounded-xl bg-destructive-foreground/20 text-destructive-foreground text-sm font-medium transition-[color,background-color,transform] hover:bg-destructive-foreground/30 active:scale-[0.98]"
+                className="focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring h-9 px-4 flex items-center justify-center gap-1.5 rounded-xl bg-destructive-foreground/20 text-destructive-foreground text-sm font-medium transition-[color,background-color,transform] motion-reduce:transition-none hover:bg-destructive-foreground/30 active:scale-[0.98] motion-reduce:transform-none"
             >
                 <X className="size-4" />
                 {t('cancel')}
@@ -44,10 +44,10 @@ export function ModelDeleteOverlay({
                 type="button"
                 onClick={onConfirm}
                 disabled={isPending}
-                className="focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring h-9 px-4 flex items-center justify-center gap-1.5 rounded-xl bg-destructive-foreground text-destructive text-sm font-medium transition-[color,background-color,transform] hover:bg-destructive-foreground/90 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+                className="focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring h-9 px-4 flex items-center justify-center gap-1.5 rounded-xl bg-destructive-foreground text-destructive text-sm font-medium transition-[color,background-color,transform] motion-reduce:transition-none hover:bg-destructive-foreground/90 active:scale-[0.98] motion-reduce:transform-none disabled:opacity-50 disabled:cursor-not-allowed"
             >
                 {isPending ? (
-                    <Loader className="size-4 animate-spin" />
+                    <Loader2 className="size-4 animate-spin motion-reduce:animate-none" />
                 ) : (
                     <Trash2 className="size-4" />
                 )}
@@ -61,7 +61,6 @@ type ModelEditOverlayProps = {
     layoutId: string;
     onHeightChange?: (height: number) => void;
     modelName: string;
-    brandColor: string;
     editValues: EditValues;
     isPending: boolean;
     onChange: (next: EditValues) => void;
@@ -73,7 +72,6 @@ export function ModelEditOverlay({
     layoutId,
     onHeightChange,
     modelName,
-    brandColor,
     editValues,
     isPending,
     onChange,
@@ -113,9 +111,10 @@ export function ModelEditOverlay({
                     <Input
                         type="number"
                         step="any"
+                        min="0"
                         value={editValues.input}
                         onChange={(e) => onChange({ ...editValues, input: e.target.value })}
-                        className="h-9 text-sm rounded-xl"
+                        className="h-9 text-base sm:text-sm rounded-xl"
                     />
                 </label>
                 <label className="grid gap-1 text-xs text-muted-foreground">
@@ -123,9 +122,10 @@ export function ModelEditOverlay({
                     <Input
                         type="number"
                         step="any"
+                        min="0"
                         value={editValues.output}
                         onChange={(e) => onChange({ ...editValues, output: e.target.value })}
-                        className="h-9 text-sm rounded-xl"
+                        className="h-9 text-base sm:text-sm rounded-xl"
                     />
                 </label>
                 <label className="grid gap-1 text-xs text-muted-foreground">
@@ -133,9 +133,10 @@ export function ModelEditOverlay({
                     <Input
                         type="number"
                         step="any"
+                        min="0"
                         value={editValues.cache_read}
                         onChange={(e) => onChange({ ...editValues, cache_read: e.target.value })}
-                        className="h-9 text-sm rounded-xl"
+                        className="h-9 text-base sm:text-sm rounded-xl"
                     />
                 </label>
                 <label className="grid gap-1 text-xs text-muted-foreground">
@@ -143,9 +144,10 @@ export function ModelEditOverlay({
                     <Input
                         type="number"
                         step="any"
+                        min="0"
                         value={editValues.cache_write}
                         onChange={(e) => onChange({ ...editValues, cache_write: e.target.value })}
-                        className="h-9 text-sm rounded-xl"
+                        className="h-9 text-base sm:text-sm rounded-xl"
                     />
                 </label>
             </div>
@@ -155,7 +157,7 @@ export function ModelEditOverlay({
                     type="button"
                     onClick={onCancel}
                     disabled={isPending}
-                    className="focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring flex-1 h-9 flex items-center justify-center gap-1.5 rounded-xl bg-muted text-muted-foreground text-sm font-medium transition-[color,background-color,transform] hover:bg-muted/80 active:scale-[0.98] disabled:opacity-50"
+                    className="focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring flex-1 h-9 flex items-center justify-center gap-1.5 rounded-xl bg-muted text-muted-foreground text-sm font-medium transition-[color,background-color,transform] motion-reduce:transition-none hover:bg-muted/80 active:scale-[0.98] motion-reduce:transform-none disabled:opacity-50"
                 >
                     <X className="size-4" />
                     {t('cancel')}
@@ -164,10 +166,9 @@ export function ModelEditOverlay({
                     type="button"
                     onClick={onSave}
                     disabled={isPending}
-                    className="focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring flex-1 h-9 flex items-center justify-center gap-1.5 rounded-xl text-sm font-medium transition-all active:scale-[0.98] disabled:opacity-50"
-                    style={{ backgroundColor: brandColor, color: '#fff' }}
+                    className="focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring flex-1 h-9 flex items-center justify-center gap-1.5 rounded-xl bg-primary text-primary-foreground text-sm font-medium transition-[color,background-color,transform] motion-reduce:transition-none hover:bg-primary/90 active:scale-[0.98] motion-reduce:transform-none disabled:opacity-50"
                 >
-                    {isPending ? <Loader className="size-4 animate-spin" /> : <Check className="size-4" />}
+                    {isPending ? <Loader2 className="size-4 animate-spin motion-reduce:animate-none" /> : <Check className="size-4" />}
                     {t('save')}
                 </button>
             </div>

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { ArrowUpAZ, Clock3, LayoutGrid, List, Plus, Search, SlidersHorizontal, X } from 'lucide-react';
-import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
+import { motion, useReducedMotion } from 'motion/react';
 import {
     MorphingDialog,
     MorphingDialogTrigger,
@@ -138,34 +138,31 @@ export function Toolbar() {
     };
 
     return (
-        <AnimatePresence mode="wait">
-            <motion.div
-                key="toolbar"
-                initial={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.9 }}
-                animate={shouldReduceMotion ? { opacity: 1 } : { opacity: 1, scale: 1 }}
-                exit={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.9 }}
-                transition={{ duration: DURATION.panel }}
-                className="flex items-center gap-2"
-            >
+        <motion.div
+            initial={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.94 }}
+            animate={shouldReduceMotion ? { opacity: 1 } : { opacity: 1, scale: 1 }}
+            transition={{ duration: DURATION.panel }}
+            className="flex items-center gap-2"
+        >
                 {/* 搜索按钮/展开框 */}
                 <div className="relative h-9 w-9">
                     {!searchExpanded ? (
                         <motion.button
-                            layoutId="search-box"
+                            layoutId={shouldReduceMotion ? undefined : "search-box"}
                             type="button"
                             aria-label={t('search')}
                             onClick={() => setExpandedSearchItem(toolbarItem)}
                             className={buttonVariants({ variant: "ghost", size: "icon", className: "absolute inset-0 rounded-xl transition-none hover:bg-transparent text-muted-foreground hover:text-foreground" })}
                         >
-                            <motion.span layout="position"><Search className="size-4 transition-colors duration-300" aria-hidden="true" /></motion.span>
+                            <motion.span layout={shouldReduceMotion ? false : "position"}><Search className="size-4 transition-colors duration-300 motion-reduce:transition-none" aria-hidden="true" /></motion.span>
                         </motion.button>
                     ) : (
                         <motion.div
-                            layoutId="search-box"
-                            className="absolute right-0 top-0 flex items-center gap-2 h-9 px-3 rounded-xl border"
-                            transition={SPRING.morph}
+                            layoutId={shouldReduceMotion ? undefined : "search-box"}
+                            className="absolute right-0 top-0 z-10 flex items-center gap-2 h-9 px-3 rounded-xl border border-border bg-card shadow-sm"
+                            transition={shouldReduceMotion ? { duration: 0.12 } : SPRING.morph}
                         >
-                            <motion.span layout="position"><Search className="size-4 text-muted-foreground shrink-0" /></motion.span>
+                            <motion.span layout={shouldReduceMotion ? false : "position"}><Search className="size-4 text-muted-foreground shrink-0" /></motion.span>
                             <input
                                 type="search"
                                 value={searchTerm}
@@ -179,7 +176,7 @@ export function Toolbar() {
                                     setExpandedSearchItem(null);
                                 }}
                                 autoFocus
-                                className="w-32 bg-transparent text-sm outline-none placeholder:text-muted-foreground sm:w-48"
+                                className="w-32 bg-transparent text-base sm:text-sm outline-none placeholder:text-muted-foreground sm:w-48"
                             />
                             <button
                                 type="button"
@@ -188,7 +185,7 @@ export function Toolbar() {
                                     setSearchTerm(toolbarItem, '');
                                     setExpandedSearchItem(null);
                                 }}
-                                className="focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring p-0.5 rounded shrink-0 text-muted-foreground hover:text-foreground transition-colors"
+                                className="focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring p-0.5 rounded shrink-0 text-muted-foreground hover:text-foreground transition-colors motion-reduce:transition-none"
                             >
                                 <X className="size-3.5" />
                             </button>
@@ -207,7 +204,7 @@ export function Toolbar() {
                                 className: 'rounded-xl transition-none hover:bg-transparent text-muted-foreground hover:text-foreground',
                             })}
                         >
-                            <SlidersHorizontal className="size-4 transition-colors duration-300" />
+                            <SlidersHorizontal className="size-4 transition-colors duration-300 motion-reduce:transition-none" />
                         </button>
                     </PopoverTrigger>
                     <PopoverContent
@@ -224,7 +221,7 @@ export function Toolbar() {
                                         <button
                                             type="button"
                                             onClick={() => setLayout(toolbarItem, 'grid')}
-                                            className={cn("focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring", 'h-8 rounded-lg border text-xs font-medium inline-flex items-center justify-center gap-1.5 transition-colors',
+                                            className={cn("focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring", 'h-9 sm:h-8 rounded-lg border text-xs font-medium inline-flex items-center justify-center gap-1.5 transition-colors motion-reduce:transition-none',
                                                 layout === 'grid'
                                                     ? 'border-primary/30 bg-primary text-primary-foreground'
                                                     : 'border-border bg-muted/20 text-foreground hover:bg-muted/30'
@@ -236,7 +233,7 @@ export function Toolbar() {
                                         <button
                                             type="button"
                                             onClick={() => setLayout(toolbarItem, 'list')}
-                                            className={cn("focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring", 'h-8 rounded-lg border text-xs font-medium inline-flex items-center justify-center gap-1.5 transition-colors',
+                                            className={cn("focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring", 'h-9 sm:h-8 rounded-lg border text-xs font-medium inline-flex items-center justify-center gap-1.5 transition-colors motion-reduce:transition-none',
                                                 layout === 'list'
                                                     ? 'border-primary/30 bg-primary text-primary-foreground'
                                                     : 'border-border bg-muted/20 text-foreground hover:bg-muted/30'
@@ -262,7 +259,7 @@ export function Toolbar() {
                                                         setSortConfig(toolbarItem, option.field, option.order);
                                                     }
                                                 }}
-                                                className={cn("focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring", 'h-8 rounded-lg border text-xs font-medium inline-flex items-center justify-center gap-1.5 transition-colors',
+                                                className={cn("focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring", 'h-9 sm:h-8 rounded-lg border text-xs font-medium inline-flex items-center justify-center gap-1.5 transition-colors motion-reduce:transition-none',
                                                     sortField === option.field && sortOrder === option.order
                                                         ? 'border-primary/30 bg-primary text-primary-foreground'
                                                         : 'border-border bg-muted/20 text-foreground hover:bg-muted/30'
@@ -278,7 +275,7 @@ export function Toolbar() {
                                         <button
                                             type="button"
                                             onClick={() => setSortOrder(toolbarItem, 'asc')}
-                                            className={cn("focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring", 'h-8 rounded-lg border text-xs font-medium inline-flex items-center justify-center gap-1.5 transition-colors',
+                                            className={cn("focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring", 'h-9 sm:h-8 rounded-lg border text-xs font-medium inline-flex items-center justify-center gap-1.5 transition-colors motion-reduce:transition-none',
                                                 sortOrder === 'asc'
                                                     ? 'border-primary/30 bg-primary text-primary-foreground'
                                                     : 'border-border bg-muted/20 text-foreground hover:bg-muted/30'
@@ -290,7 +287,7 @@ export function Toolbar() {
                                         <button
                                             type="button"
                                             onClick={() => setSortOrder(toolbarItem, 'desc')}
-                                            className={cn("focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring", 'h-8 rounded-lg border text-xs font-medium inline-flex items-center justify-center gap-1.5 transition-colors',
+                                            className={cn("focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring", 'h-9 sm:h-8 rounded-lg border text-xs font-medium inline-flex items-center justify-center gap-1.5 transition-colors motion-reduce:transition-none',
                                                 sortOrder === 'desc'
                                                     ? 'border-primary/30 bg-primary text-primary-foreground'
                                                     : 'border-border bg-muted/20 text-foreground hover:bg-muted/30'
@@ -311,7 +308,7 @@ export function Toolbar() {
                                             key={option.value}
                                             type="button"
                                             onClick={() => handleFilterChange(option.value)}
-                                            className={cn("focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring", 'h-8 rounded-lg border px-2 text-xs font-medium text-left transition-colors',
+                                            className={cn("focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring", 'h-9 sm:h-8 rounded-lg border px-2 text-xs font-medium text-left transition-colors motion-reduce:transition-none',
                                                 activeFilter === option.value
                                                     ? 'border-primary/30 bg-primary text-primary-foreground'
                                                     : 'border-border bg-muted/20 text-foreground hover:bg-muted/30'
@@ -329,7 +326,7 @@ export function Toolbar() {
                 {/* 创建按钮 */}
                 <MorphingDialog>
                     <MorphingDialogTrigger className={buttonVariants({ variant: "ghost", size: "icon", className: "rounded-xl transition-none hover:bg-transparent text-muted-foreground hover:text-foreground" })}>
-                        <Plus className="size-4 transition-colors duration-300" aria-hidden="true" />
+                        <Plus className="size-4 transition-colors duration-300 motion-reduce:transition-none" aria-hidden="true" />
                         <span className="sr-only">{t('create')}</span>
                     </MorphingDialogTrigger>
 
@@ -346,8 +343,7 @@ export function Toolbar() {
                         </MorphingDialogContent>
                     </MorphingDialogContainer>
                 </MorphingDialog>
-            </motion.div>
-        </AnimatePresence>
+        </motion.div>
     );
 }
 

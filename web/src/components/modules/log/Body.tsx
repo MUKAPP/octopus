@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { AnimatePresence, MotionConfig, motion, type Transition } from 'motion/react';
+import { AnimatePresence, MotionConfig, motion, useReducedMotion, type Transition } from 'motion/react';
 import { AlertTriangle, Braces, Check, ChevronDown, Copy, Download, ExternalLink, FileText, Loader2, X } from 'lucide-react';
 import JsonView from '@uiw/react-json-view';
 import { githubDarkTheme } from '@uiw/react-json-view/githubDark';
@@ -210,7 +210,7 @@ function GeneratedImage({ src, number }: { src: string; number: number }) {
                 aria-busy={saving}
                 className="flex min-h-11 touch-manipulation select-none items-center justify-center gap-1.5 rounded-xl bg-primary px-4 text-sm font-medium text-primary-foreground transition-[background-color,transform] duration-150 hover:bg-primary/90 focus-visible:outline-2 focus-visible:outline-ring active:scale-[0.98] motion-reduce:transform-none disabled:pointer-events-none disabled:opacity-50"
             >
-                {saving ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : <Download className="size-4" aria-hidden="true" />}
+                {saving ? <Loader2 className="size-4 animate-spin motion-reduce:animate-none" aria-hidden="true" /> : <Download className="size-4" aria-hidden="true" />}
                 {t('saveImage')}
             </button>
         </div>
@@ -282,7 +282,7 @@ function GeneratedImage({ src, number }: { src: string; number: number }) {
                                         type="button"
                                         onClick={(event) => closeViewer(event.detail === 0)}
                                         aria-label={t('closeImage')}
-                                        className="flex size-11 shrink-0 touch-manipulation items-center justify-center rounded-lg bg-muted/60 text-muted-foreground transition-[background-color,color,transform] duration-150 hover:bg-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring active:scale-95 motion-reduce:transform-none"
+                                        className="flex size-11 shrink-0 touch-manipulation items-center justify-center rounded-lg bg-muted/60 text-muted-foreground transition-[background-color,color,transform] duration-150 hover:bg-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring active:scale-95 motion-reduce:transition-none motion-reduce:transform-none"
                                     >
                                         <X className="size-4" aria-hidden="true" />
                                     </button>
@@ -335,12 +335,12 @@ function LogImagePreview({ images }: { images: readonly LogResponseImage[] }) {
                 aria-controls={panelId}
                 aria-label={expanded ? t('collapseImages') : t('expandImages')}
                 onClick={() => setExpanded((value) => !value)}
-                className="focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring flex w-full min-w-0 flex-wrap items-center gap-2 px-3 py-2 text-left hover:bg-muted md:px-4"
+                className="focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring flex w-full min-w-0 flex-wrap items-center gap-2 px-3 py-2 text-left transition-colors motion-reduce:transition-none hover:bg-muted md:px-4"
             >
                 <span className="min-w-0 text-xs font-medium text-foreground">
                     {t('generatedImages', { count: images.length })}
                 </span>
-                <ChevronDown className={cn('ml-auto size-4 shrink-0 text-muted-foreground', expanded && 'rotate-180')} />
+                <ChevronDown className={cn('ml-auto size-4 shrink-0 text-muted-foreground transition-transform motion-reduce:transition-none', expanded && 'rotate-180')} />
             </button>
             <div
                 id={panelId}
@@ -384,6 +384,7 @@ export function LogBodyContent({
 }: LogBodyContentProps) {
     const { resolvedTheme } = useTheme();
     const { isOpen } = useMorphingDialog();
+    const prefersReducedMotion = useReducedMotion();
     const t = useTranslations('log.card');
     const copyT = useTranslations('common.copy');
     const [shouldRender, setShouldRender] = useState(false);
@@ -404,8 +405,8 @@ export function LogBodyContent({
 
     useEffect(() => {
         if (!isOpen) return;
-        const timer = setTimeout(() => setShouldRender(true), 300);
-        return () => clearTimeout(timer);
+        const frame = requestAnimationFrame(() => setShouldRender(true));
+        return () => cancelAnimationFrame(frame);
     }, [isOpen]);
 
     useEffect(() => () => {
@@ -470,6 +471,8 @@ export function LogBodyContent({
     const canStore = Boolean(content) && Boolean(storedLabel);
     // 视图切换只取决于已加载的结构化内容；复制/下载才需要已保存内容标识。
     const canSwitchView = Boolean(content) && parsed.structured;
+    const iconSwapTransition: Transition = prefersReducedMotion ? REDUCED_MOTION_TRANSITION : { duration: 0.15 };
+    const bodySwapTransition: Transition = prefersReducedMotion ? REDUCED_MOTION_TRANSITION : { duration: 0.18 };
 
     return (
         <div className="flex min-w-0 flex-col">
@@ -483,7 +486,7 @@ export function LogBodyContent({
                                 aria-pressed={activeView === 'tree'}
                                 aria-label={t('viewTree')}
                                 onClick={() => setView('tree')}
-                                className={cn("focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring", 'flex items-center gap-1 rounded-md px-1.5 py-1 text-[11px] transition-colors',
+                                className={cn("focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring", 'flex items-center gap-1 rounded-md px-1.5 py-1 text-[11px] transition-colors motion-reduce:transition-none',
                                     activeView === 'tree'
                                         ? 'bg-primary/10 text-foreground'
                                         : 'text-muted-foreground hover:bg-muted hover:text-foreground',
@@ -497,7 +500,7 @@ export function LogBodyContent({
                                 aria-pressed={activeView === 'text'}
                                 aria-label={t('viewText')}
                                 onClick={() => setView('text')}
-                                className={cn("focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring", 'flex items-center gap-1 rounded-md px-1.5 py-1 text-[11px] transition-colors',
+                                className={cn("focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring", 'flex items-center gap-1 rounded-md px-1.5 py-1 text-[11px] transition-colors motion-reduce:transition-none',
                                     activeView === 'text'
                                         ? 'bg-primary/10 text-foreground'
                                         : 'text-muted-foreground hover:bg-muted hover:text-foreground',
@@ -516,15 +519,15 @@ export function LogBodyContent({
                                 onClick={() => void handleCopy()}
                                 aria-label={t('copyContent')}
                                 title={t('copyContent')}
-                                className="focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring flex items-center gap-1 rounded-md px-1.5 py-1 text-[11px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                                className="focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring flex items-center gap-1 rounded-md px-1.5 py-1 text-[11px] text-muted-foreground transition-colors motion-reduce:transition-none hover:bg-muted hover:text-foreground"
                             >
                                 <AnimatePresence mode="wait" initial={false}>
                                     {copied ? (
-                                        <motion.span key="check" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                                        <motion.span key="check" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={iconSwapTransition}>
                                             <Check className="size-3.5 shrink-0" aria-hidden="true" />
                                         </motion.span>
                                     ) : (
-                                        <motion.span key="copy" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                                        <motion.span key="copy" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={iconSwapTransition}>
                                             <Copy className="size-3.5 shrink-0" aria-hidden="true" />
                                         </motion.span>
                                     )}
@@ -536,7 +539,7 @@ export function LogBodyContent({
                                 onClick={handleDownload}
                                 aria-label={t('downloadContent')}
                                 title={t('downloadContent')}
-                                className="focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring flex items-center gap-1 rounded-md px-1.5 py-1 text-[11px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                                className="focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring flex items-center gap-1 rounded-md px-1.5 py-1 text-[11px] text-muted-foreground transition-colors motion-reduce:transition-none hover:bg-muted hover:text-foreground"
                             >
                                 <Download className="size-3.5 shrink-0" aria-hidden="true" />
                                 {t('downloadContent')}
@@ -551,17 +554,17 @@ export function LogBodyContent({
                     {fallbackText}
                 </pre>
             ) : (
-                <AnimatePresence mode="wait">
+                <AnimatePresence mode={prefersReducedMotion ? 'sync' : 'wait'}>
                     {!shouldRender ? (
                         <motion.div
                             key="loading"
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
-                            transition={{ duration: 0.15 }}
+                            transition={bodySwapTransition}
                             className="flex h-full items-center justify-center p-4"
                         >
-                            <Loader2 className="size-5 animate-spin text-muted-foreground" aria-hidden="true" />
+                            <Loader2 className="size-5 animate-spin motion-reduce:animate-none text-muted-foreground" aria-hidden="true" />
                         </motion.div>
                     ) : parsed.structured && activeView === 'tree' ? (
                         <motion.div
@@ -569,7 +572,7 @@ export function LogBodyContent({
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
-                            transition={{ duration: 0.2 }}
+                            transition={bodySwapTransition}
                             className="p-4"
                         >
                             <JsonView
@@ -613,7 +616,7 @@ export function LogBodyContent({
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
-                            transition={{ duration: 0.2 }}
+                            transition={bodySwapTransition}
                             className="p-4 font-mono text-xs leading-relaxed whitespace-pre-wrap wrap-break-word text-muted-foreground"
                         >
                             {content}

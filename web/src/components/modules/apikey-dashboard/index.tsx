@@ -38,7 +38,7 @@ export function APIKeyDashboard() {
     const tCopy = useTranslations('common.copy');
     const { data, error, isLoading } = useAPIKeyDashboardStats();
     const { logout } = useAuthStore();
-    const { theme, setTheme } = useTheme();
+    const { resolvedTheme, setTheme } = useTheme();
     const { locale, setLocale } = useSettingStore();
 
     const copyWithToast = useCallback(
@@ -61,7 +61,7 @@ export function APIKeyDashboard() {
     if (isLoading) {
         return (
             <div className="min-h-dvh flex items-center justify-center pt-(--safe-area-top) pr-(--safe-area-right) pb-(--safe-area-bottom) pl-(--safe-area-left)">
-                <Loader2 className="size-8 animate-spin text-muted-foreground" role="status" aria-label={t('loading')} />
+                <Loader2 className="size-8 animate-spin motion-reduce:animate-none text-muted-foreground" role="status" aria-label={t('loading')} />
             </div>
         );
     }
@@ -109,7 +109,7 @@ export function APIKeyDashboard() {
         </Button>
     ));
 
-    const toggleTheme = () => setTheme(theme === 'dark' ? 'light' : 'dark');
+    const toggleTheme = () => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark');
     const toggleLanguage = () => {
         if (locale === 'zh_hans') setLocale('zh_hant');
         else if (locale === 'zh_hant') setLocale('en');
@@ -121,24 +121,24 @@ export function APIKeyDashboard() {
             {/* Header - Consistent with app.tsx */}
             <header className="my-6 flex items-center gap-2 px-2">
                 <Logo size={48} />
-                <h1 className="ml-2 flex-1 truncate text-2xl font-bold tracking-tight">octopus</h1>
+                <h1 className="ml-2 flex-1 truncate text-2xl font-bold tracking-tight">Octopus</h1>
                 <div className="flex items-center gap-2">
                     <Button
                         variant="ghost"
                         size="icon"
                         onClick={toggleTheme}
-                        aria-label={theme === 'dark' ? t('switchToLightTheme') : t('switchToDarkTheme')}
-                        className="rounded-xl hover:bg-accent"
+                        aria-label={resolvedTheme === 'dark' ? t('switchToLightTheme') : t('switchToDarkTheme')}
+                        className="rounded-xl hover:bg-accent hover:text-accent-foreground"
                     >
-                        <Sun className="size-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-                        <Moon className="absolute size-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+                        <Sun className="size-4 rotate-0 scale-100 transition-[transform,opacity] motion-reduce:transition-none dark:-rotate-90 dark:scale-0" />
+                        <Moon className="absolute size-4 rotate-90 scale-0 transition-[transform,opacity] motion-reduce:transition-none dark:rotate-0 dark:scale-100" />
                     </Button>
                     <Button
                         variant="ghost"
                         size="icon"
                         onClick={toggleLanguage}
                         aria-label={t('switchLanguage')}
-                        className="rounded-xl hover:bg-accent"
+                        className="rounded-xl hover:bg-accent hover:text-accent-foreground"
                     >
                         <Languages className="size-4" />
                     </Button>
@@ -170,18 +170,18 @@ export function APIKeyDashboard() {
                                     </code>
                                     <CopyIconButton
                                         text={info.api_key}
-                                        className="flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary transition-[color,background-color,transform] hover:bg-primary hover:text-primary-foreground active:scale-95"
+                                        className="flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary transition-[color,background-color,transform] motion-reduce:transition-none hover:bg-primary hover:text-primary-foreground active:scale-95 motion-reduce:active:scale-100"
                                         copyIconClassName="size-4"
                                         checkIconClassName="size-4"
                                     />
                                 </div>
                                 {/* Expiry & Quota inline */}
                                 <div className="mt-auto pt-6 text-sm">
-                                    <div className="flex items-center justify-between">
-                                        <span className="flex items-center gap-2 text-muted-foreground"><Calendar className="w-4 h-4" />{t('expireAt')}</span>
+                                    <div className="flex items-center justify-between gap-2">
+                                        <span className="flex items-center gap-2 text-muted-foreground"><Calendar className="w-4 h-4 shrink-0" />{t('expireAt')}</span>
                                         {expireAt ? (
-                                            <span className={`font-medium ${isExpired ? 'text-destructive' : ''}`}>
-                                                {expireAt.format('YYYY-MM-DD')}
+                                            <span className={`font-medium text-right ${isExpired ? 'text-destructive' : ''}`}>
+                                                {expireAt.format('YYYY-MM-DD HH:mm')}
                                                 {!isExpired && daysUntilExpire !== null && <span className="ml-2 text-xs bg-secondary px-2 py-0.5 rounded-full">{t('daysLeft', { days: daysUntilExpire })}</span>}
                                                 {isExpired && <span className="ml-2 text-xs bg-destructive/10 text-destructive px-2 py-0.5 rounded-full">{t('expired')}</span>}
                                             </span>
@@ -202,9 +202,9 @@ export function APIKeyDashboard() {
                                 {maxCost > 0 && (
                                     <div className="mt-4">
                                         <Progress value={Math.min(100, (usedCost / maxCost) * 100)} className="h-4 *:data-[slot=progress-indicator]:bg-chart-1" />
-                                        <div className="flex justify-between text-sm text-muted-foreground mt-1">
-                                            <span>0</span>
-                                            <span>{maxCost.toFixed(2)} $</span>
+                                        <div className="flex justify-between text-sm text-muted-foreground mt-1 tabular-nums">
+                                            <span>$0.00</span>
+                                            <span>${maxCost.toFixed(2)}</span>
                                         </div>
                                     </div>
                                 )}

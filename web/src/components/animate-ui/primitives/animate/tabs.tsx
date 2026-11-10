@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { motion, type Transition, type HTMLMotionProps } from 'motion/react';
+import { motion, useReducedMotion, type Transition, type HTMLMotionProps } from 'motion/react';
 
 import {
   Highlight,
@@ -51,12 +51,14 @@ function Tabs({
     defaultValue,
   );
   const triggersRef = React.useRef(new Map<string, HTMLElement>());
-  const activeValueRef = React.useRef(activeValue);
+  const activeValueRef = React.useRef(value ?? activeValue);
   const initialSet = React.useRef(defaultValue !== undefined);
   const tabsId = React.useId();
   const isControlled = value !== undefined;
 
-  activeValueRef.current = value ?? activeValue;
+  React.useEffect(() => {
+    activeValueRef.current = value ?? activeValue;
+  }, [value, activeValue]);
 
   const registerTrigger = React.useCallback(
     (val: string, node: HTMLElement | null) => {
@@ -292,8 +294,9 @@ function TabsContents({
 
   const containerRef = React.useRef<HTMLDivElement | null>(null);
   const itemRefs = React.useRef<Array<HTMLDivElement | null>>([]);
-  const [height, setHeight] = React.useState(0);
+  const [height, setHeight] = React.useState<number | undefined>(undefined);
   const roRef = React.useRef<ResizeObserver | null>(null);
+  const shouldReduceMotion = useReducedMotion() ?? false;
 
   const measure = React.useCallback((index: number) => {
     const pane = itemRefs.current[index];
@@ -330,11 +333,11 @@ function TabsContents({
     const container = containerRef.current;
     if (!pane || !container) return;
 
-    setHeight(measure(activeIndex));
+    let rafId = requestAnimationFrame(() => setHeight(measure(activeIndex)));
 
     const ro = new ResizeObserver(() => {
-      const next = measure(activeIndex);
-      requestAnimationFrame(() => setHeight(next));
+      cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(() => setHeight(measure(activeIndex)));
     });
 
     ro.observe(pane);
@@ -342,31 +345,27 @@ function TabsContents({
 
     roRef.current = ro;
     return () => {
+      cancelAnimationFrame(rafId);
       ro.disconnect();
       roRef.current = null;
     };
   }, [activeIndex, childrenArray.length, measure]);
 
-  React.useLayoutEffect(() => {
-    if (height === 0 && activeIndex >= 0) {
-      const next = measure(activeIndex);
-      if (next !== 0) setHeight(next);
-    }
-  }, [activeIndex, height, measure]);
+  const effectiveTransition = shouldReduceMotion ? { duration: 0 } : transition;
 
   return (
     <motion.div
       ref={containerRef}
       data-slot="tabs-contents"
       style={{ overflow: 'hidden' }}
-      animate={{ height }}
-      transition={transition}
+      animate={height !== undefined ? { height } : undefined}
+      transition={effectiveTransition}
       {...props}
     >
       <motion.div
         className="flex -mx-2"
         animate={{ x: activeIndex * -100 + '%' }}
-        transition={transition}
+        transition={effectiveTransition}
       >
         {childrenArray.map((child, index) => (
           <div
@@ -399,6 +398,7 @@ function TabsContent({
 }: TabsContentProps) {
   const { activeValue, getTriggerId, getContentId } = useTabs();
   const isActive = activeValue === value;
+  const shouldReduceMotion = useReducedMotion() ?? false;
 
   const Component = asChild ? Slot : motion.div;
 
@@ -412,10 +412,8 @@ function TabsContent({
       data-slot="tabs-content"
       inert={!isActive}
       style={{ overflow: 'hidden', ...style }}
-      initial={{ filter: 'blur(0px)' }}
-      animate={{ filter: isActive ? 'blur(0px)' : 'blur(4px)' }}
-      exit={{ filter: 'blur(0px)' }}
-      transition={{ type: 'spring', stiffness: 200, damping: 25 }}
+      animate={shouldReduceMotion ? { opacity: isActive ? 1 : 0 } : { opacity: isActive ? 1 : 0, filter: isActive ? 'blur(0px)' : 'blur(8px)' }}
+      transition={shouldReduceMotion ? { duration: 0 } : { duration: 0.36, ease: [0.25, 0.46, 0.45, 0.94] }}
     />
   );
 }

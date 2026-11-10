@@ -15,6 +15,7 @@ import {
   Variant,
 } from 'motion/react';
 import { createPortal } from 'react-dom';
+import { useTranslations } from 'use-intl';
 import { cn } from '@/lib/utils';
 import { XIcon } from 'lucide-react';
 import useClickOutside from '@/hooks/useClickOutside';
@@ -204,6 +205,12 @@ function hasOwnedOpenPopup(owner: HTMLElement | null): boolean {
   return Boolean(owner.querySelector(OPEN_FLOATING_TRIGGER_SELECTOR));
 }
 
+function hasOpenAlertDialog(): boolean {
+  return Boolean(
+    document.querySelector('[data-slot="alert-dialog-content"][data-state="open"]')
+  );
+}
+
 /**
  * 在首个/末个可聚焦元素间的 Tab 收尾处循环。
  * contain 为真时，焦点落在集合之外也拉回集合内（浮层用，避免焦点跑到宿主对话框）。
@@ -291,8 +298,8 @@ function MorphingDialogContent({
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      // 对话框内部有浮层打开时，Escape 关闭与 Tab 循环由该浮层负责
-      if (event.defaultPrevented || layerContext.isAnyOpen()) return;
+      // 对话框内部有浮层或确认弹窗打开时，Escape 关闭与 Tab 循环由该浮层负责
+      if (event.defaultPrevented || layerContext.isAnyOpen() || hasOpenAlertDialog()) return;
       if (event.key === 'Escape') {
         setIsOpen(false);
         return;
@@ -327,9 +334,11 @@ function MorphingDialogContent({
       }
     },
     () => {
-      // 只让出给“自己内部”打开的浮层；不使用全局任意浮层的判定
+      // 只让出给“自己内部”打开的浮层或确认弹窗；不使用全局任意浮层的判定
       return (
-        layerContext.isAnyOpen() || hasOwnedOpenPopup(containerRef.current)
+        layerContext.isAnyOpen() ||
+        hasOwnedOpenPopup(containerRef.current) ||
+        hasOpenAlertDialog()
       );
     }
   );
@@ -412,8 +421,8 @@ function MorphingDialogOverlayLayer({
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.defaultPrevented || openLayerStack[openLayerStack.length - 1] !== layerId) return;
-      // 自有弹层（如日期选择）打开时，Escape/Tab 交给它自己处理
-      if (hasOwnedOpenPopup(panelRef.current)) return;
+      // 自有弹层（如日期选择）或确认弹窗打开时，Escape/Tab 交给它自己处理
+      if (hasOwnedOpenPopup(panelRef.current) || hasOpenAlertDialog()) return;
       if (event.key === 'Escape') {
         event.preventDefault();
         onClose();
@@ -630,6 +639,7 @@ function MorphingDialogImage({
 export type MorphingDialogCloseProps = {
   children?: React.ReactNode;
   className?: string;
+  ariaLabel?: string;
   variants?: {
     initial: Variant;
     animate: Variant;
@@ -640,9 +650,11 @@ export type MorphingDialogCloseProps = {
 function MorphingDialogClose({
   children,
   className,
+  ariaLabel,
   variants,
 }: MorphingDialogCloseProps) {
   const { setIsOpen, uniqueId } = useMorphingDialog();
+  const t = useTranslations('common');
 
   const handleClose = useCallback(() => {
     setIsOpen(false);
@@ -652,9 +664,12 @@ function MorphingDialogClose({
     <motion.button
       onClick={handleClose}
       type='button'
-      aria-label='Close dialog'
+      aria-label={ariaLabel ?? t('close')}
       key={`dialog-close-${uniqueId}`}
-      className={cn('absolute top-6 right-6', className)}
+      className={cn(
+        'absolute top-4 right-4 inline-flex size-9 items-center justify-center rounded-xl text-muted-foreground hover:text-foreground transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring motion-reduce:transition-none',
+        className
+      )}
       initial='initial'
       animate='animate'
       exit='exit'

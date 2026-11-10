@@ -8,11 +8,14 @@ import dayjs from 'dayjs';
 import { AnimatedNumber } from '@/components/common/AnimatedNumber';
 import { Tabs, TabsList, TabsTrigger } from '@/components/animate-ui/components/animate/tabs';
 import { useHomeViewStore, type ChartMetricType, type ChartPeriod } from '@/components/modules/home/store';
-import { Loader2 } from 'lucide-react';
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
+import { Loader2, RefreshCw } from 'lucide-react';
 import { InlineRetry } from '@/components/common/InlineRetry';
+import { EASING, REDUCED_MOTION_TRANSITION } from '@/lib/animations/fluid-transitions';
 
 export function StatsChart() {
     const PERIODS: readonly ChartPeriod[] = ['1', '7', '30'];
+    const shouldReduceMotion = useReducedMotion() ?? false;
     const dailyQuery = useStatsDaily();
     const hourlyQuery = useStatsHourly();
     const { data: statsDaily } = dailyQuery;
@@ -132,8 +135,8 @@ export function StatsChart() {
     };
     if (activeQuery.isLoading && !hasActiveData) {
         return (
-            <div className="flex h-64 items-center justify-center rounded-3xl border border-card-border bg-card text-muted-foreground">
-                <Loader2 className="size-8 animate-spin" role="status" aria-label={tHome('feedback.loading')} />
+            <div className="flex h-64 items-center justify-center rounded-3xl border border-border bg-card text-muted-foreground">
+                <Loader2 className="size-8 animate-spin motion-reduce:animate-none" role="status" aria-label={tHome('feedback.loading')} />
             </div>
         );
     }
@@ -148,7 +151,7 @@ export function StatsChart() {
     }
 
     return (
-        <div className="rounded-3xl bg-card border-card-border border pt-4 pb-0 text-card-foreground">
+        <div className="rounded-3xl bg-card border-border border pt-4 pb-0 text-card-foreground">
             {activeQuery.isError && hasActiveData && (
                 <div role="alert" className="mx-4 mb-2 flex items-center justify-between gap-3 rounded-2xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-muted-foreground">
                     <span>{tHome('feedback.loadFailed')}</span>
@@ -168,8 +171,8 @@ export function StatsChart() {
                 </div>
 
                 {/* 第二行：汇总统计 + 周期选择 */}
-                <div className="flex justify-between items-start">
-                    <div className="flex gap-2 text-sm">
+                <div className="flex flex-wrap justify-between items-start gap-2">
+                    <div className="flex flex-wrap gap-2 text-sm">
                         <div>
                             <div className="text-xs text-muted-foreground">{t('totalRequests')}</div>
                             <div className="text-xl font-semibold">
@@ -196,14 +199,28 @@ export function StatsChart() {
                     </div>
                     <button
                         type="button"
-                        className="flex gap-2 border-0 bg-transparent text-left text-sm cursor-pointer hover:opacity-80 transition-opacity focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                        className="inline-flex items-center gap-2 rounded-xl border border-border/70 bg-muted/30 px-3 py-1.5 text-left text-sm transition-colors motion-reduce:transition-none hover:bg-muted/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                         onClick={handlePeriodClick}
                         aria-label={t('cyclePeriod', { period: getPeriodLabel(period) })}
                     >
                         <span>
                             <span className="block text-xs text-muted-foreground">{t('timePeriod')}</span>
-                            <span className="block text-base font-semibold">{getPeriodLabel(period)}</span>
+                            <span className="relative block">
+                                <AnimatePresence mode="wait" initial={false}>
+                                    <motion.span
+                                        key={period}
+                                        className="block text-sm font-semibold whitespace-nowrap"
+                                        initial={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: 4, filter: 'blur(6px)' }}
+                                        animate={shouldReduceMotion ? { opacity: 1 } : { opacity: 1, y: 0, filter: 'blur(0px)' }}
+                                        exit={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: -4, filter: 'blur(6px)' }}
+                                        transition={shouldReduceMotion ? REDUCED_MOTION_TRANSITION : { duration: 0.16, ease: EASING.easeOutCubic }}
+                                    >
+                                        {getPeriodLabel(period)}
+                                    </motion.span>
+                                </AnimatePresence>
+                            </span>
                         </span>
+                        <RefreshCw className="size-3.5 text-muted-foreground" aria-hidden="true" />
                     </button>
                 </div>
             </div>

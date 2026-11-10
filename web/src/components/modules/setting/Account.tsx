@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useTranslations } from 'use-intl';
-import { User, KeyRound, Lock, Eye, EyeOff, Pencil, Check, X, Loader } from 'lucide-react';
+import { User, KeyRound, Lock, Eye, EyeOff, Pencil, Check, X, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Input } from '@/components/ui/input';
 import { MorphingDialogOverlayLayer } from '@/components/ui/morphing-dialog';
@@ -20,6 +20,7 @@ function PasswordInput({
     placeholder: string;
     disabled: boolean;
 }) {
+    const tCommon = useTranslations('common');
     const [visible, setVisible] = useState(false);
 
     return (
@@ -29,14 +30,16 @@ function PasswordInput({
                 value={value}
                 onChange={(e) => onChange(e.target.value)}
                 placeholder={placeholder}
-                className="h-9 text-sm rounded-xl pr-10"
+                aria-label={placeholder}
+                className="h-9 text-base sm:text-sm rounded-xl pr-10"
                 disabled={disabled}
             />
             <button
                 type="button"
                 onClick={() => setVisible(!visible)}
-                aria-label={placeholder}
-                className="focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground transition-colors hover:text-foreground"
+                aria-label={visible ? tCommon('hidePassword') : tCommon('showPassword')}
+                aria-pressed={visible}
+                className="focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground transition-colors motion-reduce:transition-none hover:text-foreground"
             >
                 {visible ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
             </button>
@@ -84,7 +87,8 @@ function UsernameForm({ onClose }: { onClose: () => void }) {
                     value={newUsername}
                     onChange={(e) => setNewUsername(e.target.value)}
                     placeholder={t('account.username.placeholder')}
-                    className="h-9 text-sm rounded-xl"
+                    aria-label={t('account.username.placeholder')}
+                    className="h-9 text-base sm:text-sm rounded-xl"
                     disabled={changeUsername.isPending}
                 />
 
@@ -93,7 +97,7 @@ function UsernameForm({ onClose }: { onClose: () => void }) {
                         type="button"
                         onClick={onClose}
                         disabled={changeUsername.isPending}
-                        className="focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring flex-1 h-9 flex items-center justify-center gap-1.5 rounded-xl bg-muted text-muted-foreground text-sm font-medium transition-[color,background-color,transform] hover:bg-muted/80 active:scale-[0.98] disabled:opacity-50"
+                        className="focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring flex-1 h-9 flex items-center justify-center gap-1.5 rounded-xl bg-muted text-muted-foreground text-sm font-medium transition-[color,background-color,transform] motion-reduce:transition-none hover:bg-muted/80 active:scale-[0.98] motion-reduce:transform-none disabled:opacity-50"
                     >
                         <X className="size-4" />
                         {t('account.cancel')}
@@ -101,9 +105,9 @@ function UsernameForm({ onClose }: { onClose: () => void }) {
                     <button
                         type="submit"
                         disabled={changeUsername.isPending || !newUsername.trim()}
-                        className="focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring flex-1 h-9 flex items-center justify-center gap-1.5 rounded-xl bg-primary text-primary-foreground text-sm font-medium transition-[color,background-color,transform] hover:bg-primary/90 active:scale-[0.98] disabled:opacity-50"
+                        className="focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring flex-1 h-9 flex items-center justify-center gap-1.5 rounded-xl bg-primary text-primary-foreground text-sm font-medium transition-[color,background-color,transform] motion-reduce:transition-none hover:bg-primary/90 active:scale-[0.98] motion-reduce:transform-none disabled:opacity-50"
                     >
-                        {changeUsername.isPending ? <Loader className="size-4 animate-spin" /> : <Check className="size-4" />}
+                        {changeUsername.isPending ? <Loader2 className="size-4 animate-spin motion-reduce:animate-none" /> : <Check className="size-4" />}
                         {changeUsername.isPending ? t('account.saving') : t('account.save')}
                     </button>
                 </div>
@@ -185,7 +189,7 @@ function PasswordForm({ onClose }: { onClose: () => void }) {
                         type="button"
                         onClick={onClose}
                         disabled={changePassword.isPending}
-                        className="focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring flex-1 h-9 flex items-center justify-center gap-1.5 rounded-xl bg-muted text-muted-foreground text-sm font-medium transition-[color,background-color,transform] hover:bg-muted/80 active:scale-[0.98] disabled:opacity-50"
+                        className="focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring flex-1 h-9 flex items-center justify-center gap-1.5 rounded-xl bg-muted text-muted-foreground text-sm font-medium transition-[color,background-color,transform] motion-reduce:transition-none hover:bg-muted/80 active:scale-[0.98] motion-reduce:transform-none disabled:opacity-50"
                     >
                         <X className="size-4" />
                         {t('account.cancel')}
@@ -193,9 +197,9 @@ function PasswordForm({ onClose }: { onClose: () => void }) {
                     <button
                         type="submit"
                         disabled={changePassword.isPending || !oldPassword || !newPassword || !confirmPassword}
-                        className="focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring flex-1 h-9 flex items-center justify-center gap-1.5 rounded-xl bg-primary text-primary-foreground text-sm font-medium transition-[color,background-color,transform] hover:bg-primary/90 active:scale-[0.98] disabled:opacity-50"
+                        className="focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring flex-1 h-9 flex items-center justify-center gap-1.5 rounded-xl bg-primary text-primary-foreground text-sm font-medium transition-[color,background-color,transform] motion-reduce:transition-none hover:bg-primary/90 active:scale-[0.98] motion-reduce:transform-none disabled:opacity-50"
                     >
-                        {changePassword.isPending ? <Loader className="size-4 animate-spin" /> : <Check className="size-4" />}
+                        {changePassword.isPending ? <Loader2 className="size-4 animate-spin motion-reduce:animate-none" /> : <Check className="size-4" />}
                         {changePassword.isPending ? t('account.saving') : t('account.password.change')}
                     </button>
                 </div>
@@ -236,7 +240,7 @@ export function SettingAccount() {
                     onClick={() => setEditing('username')}
                     disabled={editing !== null}
                     aria-label={t('account.username.label')}
-                    className="flex size-8 items-center justify-center rounded-lg bg-muted/60 text-muted-foreground transition-[color,background-color,transform] hover:bg-muted hover:text-foreground active:scale-95 disabled:opacity-50"
+                    className="focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring flex size-8 items-center justify-center rounded-lg bg-muted/60 text-muted-foreground transition-[color,background-color,transform] motion-reduce:transition-none hover:bg-muted hover:text-foreground active:scale-95 motion-reduce:transform-none disabled:opacity-50"
                 >
                     <Pencil className="size-4" />
                 </motion.button>
@@ -254,7 +258,7 @@ export function SettingAccount() {
                     onClick={() => setEditing('password')}
                     disabled={editing !== null}
                     aria-label={t('account.password.label')}
-                    className="flex size-8 items-center justify-center rounded-lg bg-muted/60 text-muted-foreground transition-[color,background-color,transform] hover:bg-muted hover:text-foreground active:scale-95 disabled:opacity-50"
+                    className="focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring flex size-8 items-center justify-center rounded-lg bg-muted/60 text-muted-foreground transition-[color,background-color,transform] motion-reduce:transition-none hover:bg-muted hover:text-foreground active:scale-95 motion-reduce:transform-none disabled:opacity-50"
                 >
                     <Pencil className="size-4" />
                 </motion.button>

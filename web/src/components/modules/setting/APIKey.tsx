@@ -1,6 +1,6 @@
 import { useCallback, useId, useMemo, useState } from 'react';
-import { useTranslations } from 'use-intl';
-import { KeyRound, Plus, Loader, Trash2, Check, X, Info, CalendarDays, Pencil, Maximize2 } from 'lucide-react';
+import { useLocale, useTranslations } from 'use-intl';
+import { KeyRound, Plus, Loader2, Trash2, Check, X, Info, CalendarDays, Pencil, Maximize2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Input } from '@/components/ui/input';
 import { Calendar } from '@/components/ui/calendar';
@@ -33,7 +33,7 @@ import { SPRING } from '@/lib/animations/fluid-transitions';
 function toExpireAt(date: Date, time: string): number {
     const t = /^\d{2}:\d{2}$/.test(time) ? time : '00:00';
     const [hh, mm] = t.split(':').map(Number);
-    const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate(), hh, mm, 0));
+    const d = new Date(date.getFullYear(), date.getMonth(), date.getDate(), hh, mm, 0);
     // 返回 Unix 时间戳（秒）
     return Math.floor(d.getTime() / 1000);
 }
@@ -83,6 +83,7 @@ interface APIKeyFormProps {
 
 function APIKeyForm({ apiKey, isPending, submitLabel, onSubmit, onClose }: APIKeyFormProps) {
     const t = useTranslations('setting');
+    const locale = useLocale();
     const { data: groups, isLoading: groupsLoading, error: groupsError } = useGroupList();
     const groupsReady = groups !== undefined && !groupsError;
 
@@ -101,7 +102,10 @@ function APIKeyForm({ apiKey, isPending, submitLabel, onSubmit, onClose }: APIKe
     const [maxConcurrencyInput, setMaxConcurrencyInput] = useState(() =>
         apiKey?.max_concurrency ? String(apiKey.max_concurrency) : ''
     );
+    const [maxConcurrencyError, setMaxConcurrencyError] = useState(false);
     const maxConcurrencyId = useId();
+    const maxConcurrencyHintId = useId();
+    const maxConcurrencyErrorId = useId();
     const modelsLabelId = useId();
     const modelsHintId = useId();
     const modelsStatusId = useId();
@@ -109,7 +113,7 @@ function APIKeyForm({ apiKey, isPending, submitLabel, onSubmit, onClose }: APIKe
         if (apiKey?.expire_at) {
             const d = new Date(apiKey.expire_at * 1000);
             if (!isNaN(d.getTime())) {
-                return `${d.getUTCHours().toString().padStart(2, '0')}:${d.getUTCMinutes().toString().padStart(2, '0')}`;
+                return `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
             }
         }
         return '00:00';
@@ -146,7 +150,7 @@ function APIKeyForm({ apiKey, isPending, submitLabel, onSubmit, onClose }: APIKe
     const expireLabel = neverExpire
         ? t('apiKey.form.neverExpire')
         : expireDate
-            ? expireDate.toLocaleDateString()
+            ? expireDate.toLocaleDateString(locale)
             : t('apiKey.form.selectDate');
 
     const updateForm = useCallback((updater: Partial<APIKeyFormData>) => {
@@ -191,10 +195,12 @@ function APIKeyForm({ apiKey, isPending, submitLabel, onSubmit, onClose }: APIKe
     }, [updateForm]);
 
     const handleMaxConcurrencyChange = useCallback((val: string) => {
+        setMaxConcurrencyError(false);
         setMaxConcurrencyInput(val);
     }, []);
 
     const handleClearMaxConcurrency = useCallback(() => {
+        setMaxConcurrencyError(false);
         setMaxConcurrencyInput('');
         updateForm({ max_concurrency: 0 });
     }, [updateForm]);
@@ -204,7 +210,10 @@ function APIKeyForm({ apiKey, isPending, submitLabel, onSubmit, onClose }: APIKe
         if (!form.name.trim()) return;
         const trimmed = maxConcurrencyInput.trim();
         const maxConcurrency = trimmed === '' ? 0 : Number(trimmed);
-        if (!Number.isSafeInteger(maxConcurrency) || maxConcurrency < 0) return;
+        if (!Number.isSafeInteger(maxConcurrency) || maxConcurrency < 0) {
+            setMaxConcurrencyError(true);
+            return;
+        }
         onSubmit({ ...form, max_concurrency: maxConcurrency });
     }, [form, maxConcurrencyInput, onSubmit]);
 
@@ -216,7 +225,7 @@ function APIKeyForm({ apiKey, isPending, submitLabel, onSubmit, onClose }: APIKe
                     type="text"
                     value={form.name}
                     onChange={(e) => updateForm({ name: e.target.value })}
-                    className="h-9 text-sm rounded-xl"
+                    className="h-9 text-base sm:text-sm rounded-xl"
                     disabled={isPending}
                     required
                 />
@@ -229,7 +238,7 @@ function APIKeyForm({ apiKey, isPending, submitLabel, onSubmit, onClose }: APIKe
                     value={form.api_key}
                     onChange={(e) => updateForm({ api_key: e.target.value })}
                     placeholder={t('apiKey.form.valuePlaceholder')}
-                    className="h-9 text-sm rounded-xl"
+                    className="h-9 text-base sm:text-sm rounded-xl"
                     disabled={isPending}
                 />
             </label>
@@ -245,7 +254,8 @@ function APIKeyForm({ apiKey, isPending, submitLabel, onSubmit, onClose }: APIKe
                             placeholder={t('apiKey.form.maxCostPlaceholder')}
                             value={maxCostInput}
                             onChange={(e) => handleMaxCostChange(e.target.value)}
-                            className="h-9 text-sm rounded-xl pl-7"
+                            aria-label={t('apiKey.form.maxCost')}
+                            className="h-9 text-base sm:text-sm rounded-xl pl-7"
                             disabled={isPending}
                         />
                     </div>
@@ -254,7 +264,7 @@ function APIKeyForm({ apiKey, isPending, submitLabel, onSubmit, onClose }: APIKe
                         onClick={handleClearMaxCost}
                         disabled={isPending}
                         aria-pressed={isUnlimitedCost}
-                        className={cn("focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring", 'h-9 px-3 rounded-xl border text-sm transition-colors shrink-0',
+                        className={cn("focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring", 'h-9 px-3 rounded-xl border text-sm transition-colors motion-reduce:transition-none shrink-0',
                             isUnlimitedCost
                                 ? 'bg-primary text-primary-foreground border-primary/30'
                                 : 'border-border bg-muted/20 text-foreground hover:bg-muted/30',
@@ -278,7 +288,9 @@ function APIKeyForm({ apiKey, isPending, submitLabel, onSubmit, onClose }: APIKe
                         max={Number.MAX_SAFE_INTEGER}
                         value={maxConcurrencyInput}
                         onChange={(e) => handleMaxConcurrencyChange(e.target.value)}
-                        className="h-9 text-sm rounded-xl flex-1"
+                        aria-invalid={maxConcurrencyError}
+                        aria-describedby={maxConcurrencyError ? `${maxConcurrencyErrorId} ${maxConcurrencyHintId}` : maxConcurrencyHintId}
+                        className="h-9 text-base sm:text-sm rounded-xl flex-1"
                         disabled={isPending}
                     />
                     <button
@@ -286,7 +298,7 @@ function APIKeyForm({ apiKey, isPending, submitLabel, onSubmit, onClose }: APIKe
                         onClick={handleClearMaxConcurrency}
                         disabled={isPending}
                         aria-pressed={isUnlimitedConcurrency}
-                        className={cn("focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring", 'h-9 px-3 rounded-xl border text-sm transition-colors shrink-0',
+                        className={cn("focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring", 'h-9 px-3 rounded-xl border text-sm transition-colors motion-reduce:transition-none shrink-0',
                             isUnlimitedConcurrency
                                 ? 'bg-primary text-primary-foreground border-primary/30'
                                 : 'border-border bg-muted/20 text-foreground hover:bg-muted/30',
@@ -296,7 +308,12 @@ function APIKeyForm({ apiKey, isPending, submitLabel, onSubmit, onClose }: APIKe
                         {t('apiKey.form.unlimited')}
                     </button>
                 </div>
-                <div className="text-[11px] text-muted-foreground/80">{t('apiKey.form.maxConcurrencyHint')}</div>
+                {maxConcurrencyError && (
+                    <div id={maxConcurrencyErrorId} role="alert" className="text-[11px] text-destructive">
+                        {t('apiKey.form.maxConcurrencyInvalid')}
+                    </div>
+                )}
+                <div id={maxConcurrencyHintId} className="text-[11px] text-muted-foreground/80">{t('apiKey.form.maxConcurrencyHint')}</div>
             </div>
 
             <div className="grid gap-1 text-xs text-muted-foreground">
@@ -310,7 +327,8 @@ function APIKeyForm({ apiKey, isPending, submitLabel, onSubmit, onClose }: APIKe
                             <button
                                 type="button"
                                 disabled={isPending || neverExpire}
-                                className="focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring h-9 flex-1 flex items-center justify-between gap-2 rounded-xl border border-border bg-muted/20 px-3 text-sm text-foreground transition-colors hover:bg-muted/30 disabled:opacity-50"
+                                aria-label={t('apiKey.form.expireAt')}
+                                className="focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring h-9 flex-1 flex items-center justify-between gap-2 rounded-xl border border-border bg-muted/20 px-3 text-sm text-foreground transition-colors motion-reduce:transition-none hover:bg-muted/30 disabled:opacity-50"
                             >
                                 <span className="truncate">{expireLabel}</span>
                                 <CalendarDays className="size-4 text-muted-foreground" />
@@ -337,7 +355,8 @@ function APIKeyForm({ apiKey, isPending, submitLabel, onSubmit, onClose }: APIKe
                         value={expireTime}
                         onChange={(e) => setExpireTime(e.target.value.replace(/[^\d:]/g, '').slice(0, 5))}
                         onBlur={handleTimeBlur}
-                        className="h-9 w-[92px] text-sm rounded-xl"
+                        aria-label={t('apiKey.form.expireAt')}
+                        className="h-9 w-[92px] text-base sm:text-sm rounded-xl"
                         disabled={isPending || neverExpire || !expireDate}
                         inputMode="numeric"
                         placeholder="HH:mm"
@@ -348,7 +367,7 @@ function APIKeyForm({ apiKey, isPending, submitLabel, onSubmit, onClose }: APIKe
                         onClick={handleToggleNeverExpire}
                         disabled={isPending}
                         aria-pressed={neverExpire}
-                        className={cn("focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring", 'h-9 px-3 rounded-xl border text-sm transition-colors whitespace-nowrap shrink-0',
+                        className={cn("focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring", 'h-9 px-3 rounded-xl border text-sm transition-colors motion-reduce:transition-none whitespace-nowrap shrink-0',
                             neverExpire
                                 ? 'bg-primary text-primary-foreground border-primary/30'
                                 : 'border-border bg-muted/20 text-foreground hover:bg-muted/30',
@@ -370,7 +389,7 @@ function APIKeyForm({ apiKey, isPending, submitLabel, onSubmit, onClose }: APIKe
                 <div className="max-h-40 overflow-auto rounded-xl p-2 scrollbar">
                     {(groupsLoading || groups === undefined) && !groupsError && (
                         <div className="flex justify-center py-2">
-                            <Loader className="size-4 animate-spin" role="status" aria-label={t('apiKey.form.modelsLoading')} />
+                            <Loader2 className="size-4 animate-spin motion-reduce:animate-none" role="status" aria-label={t('apiKey.form.modelsLoading')} />
                         </div>
                     )}
                     {groupsReady && modelOptions.length === 0 ? (
@@ -433,7 +452,7 @@ function APIKeyForm({ apiKey, isPending, submitLabel, onSubmit, onClose }: APIKe
                     type="button"
                     onClick={onClose}
                     disabled={isPending}
-                    className="focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring flex-1 h-9 flex items-center justify-center gap-1.5 rounded-xl bg-muted text-muted-foreground text-sm font-medium transition-[color,background-color,transform] hover:bg-muted/80 active:scale-[0.98] disabled:opacity-50"
+                    className="focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring flex-1 h-9 flex items-center justify-center gap-1.5 rounded-xl bg-muted text-muted-foreground text-sm font-medium transition-[color,background-color,transform] motion-reduce:transition-none hover:bg-muted/80 active:scale-[0.98] motion-reduce:transform-none disabled:opacity-50"
                 >
                     <X className="size-4" />
                     {t('apiKey.form.cancel')}
@@ -441,9 +460,9 @@ function APIKeyForm({ apiKey, isPending, submitLabel, onSubmit, onClose }: APIKe
                 <button
                     type="submit"
                     disabled={isPending || !form.name.trim()}
-                    className="focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring flex-1 h-9 flex items-center justify-center gap-1.5 rounded-xl bg-primary text-primary-foreground text-sm font-medium transition-[color,background-color,transform] hover:bg-primary/90 active:scale-[0.98] disabled:opacity-50"
+                    className="focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring flex-1 h-9 flex items-center justify-center gap-1.5 rounded-xl bg-primary text-primary-foreground text-sm font-medium transition-[color,background-color,transform] motion-reduce:transition-none hover:bg-primary/90 active:scale-[0.98] motion-reduce:transform-none disabled:opacity-50"
                 >
-                    {isPending ? <Loader className="size-4 animate-spin" /> : <Check className="size-4" />}
+                    {isPending ? <Loader2 className="size-4 animate-spin motion-reduce:animate-none" /> : <Check className="size-4" />}
                     {submitLabel}
                 </button>
             </div>
@@ -494,6 +513,7 @@ function APIKeyStatsCard({
     onClose: () => void;
 }) {
     const t = useTranslations('setting');
+    const tCommon = useTranslations('common');
     const { data: statsList = [], isLoading } = useStatsAPIKey();
     const stats = useMemo(() => statsList.find((s) => s.api_key_id === apiKey.id), [statsList, apiKey.id]);
 
@@ -511,7 +531,8 @@ function APIKeyStatsCard({
                 <button
                     type="button"
                     onClick={onClose}
-                    className="focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring size-8 flex items-center justify-center rounded-lg bg-muted text-muted-foreground transition-colors hover:bg-muted/80"
+                    aria-label={tCommon('close')}
+                    className="focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring size-8 flex items-center justify-center rounded-lg bg-muted text-muted-foreground transition-colors motion-reduce:transition-none hover:bg-muted/80"
                 >
                     <X className="size-4" />
                 </button>
@@ -519,7 +540,7 @@ function APIKeyStatsCard({
 
             {isLoading && statsList.length === 0 ? (
                 <div className="flex justify-center py-2">
-                    <Loader className="size-4 animate-spin text-muted-foreground" role="status" aria-label={t('loading')} />
+                    <Loader2 className="size-4 animate-spin motion-reduce:animate-none text-muted-foreground" role="status" aria-label={t('loading')} />
                 </div>
             ) : !stats ? (
                 <div className="text-sm text-muted-foreground">{t('apiKey.stats.noData')}</div>
@@ -612,7 +633,8 @@ function APIKeyKeyItem({
                     type="button"
                     layoutId={statsLayoutId}
                     onClick={onViewStats}
-                    className="flex size-8 items-center justify-center rounded-lg bg-muted/60 text-muted-foreground transition-[color,background-color,transform] hover:bg-muted hover:text-foreground active:scale-95"
+                    className="focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring flex size-8 items-center justify-center rounded-lg bg-muted/60 text-muted-foreground transition-[color,background-color,transform] motion-reduce:transition-none hover:bg-muted hover:text-foreground active:scale-95 motion-reduce:transform-none"
+                    aria-label={tCommon('stats')}
                     title={tCommon('stats')}
                 >
                     <Info className="size-4" />
@@ -621,23 +643,27 @@ function APIKeyKeyItem({
                     type="button"
                     layoutId={editLayoutId}
                     onClick={onEdit}
-                    className="flex size-8 items-center justify-center rounded-lg bg-muted/60 text-muted-foreground transition-[color,background-color,transform] hover:bg-muted hover:text-foreground active:scale-95"
+                    className="focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring flex size-8 items-center justify-center rounded-lg bg-muted/60 text-muted-foreground transition-[color,background-color,transform] motion-reduce:transition-none hover:bg-muted hover:text-foreground active:scale-95 motion-reduce:transform-none"
+                    aria-label={tCommon('edit')}
                     title={tCommon('edit')}
                 >
                     <Pencil className="size-4" />
                 </motion.button>
                 <CopyIconButton
                     text={apiKey.api_key}
-                    className="flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary transition-[color,background-color,transform] hover:bg-primary hover:text-primary-foreground active:scale-95"
+                    className="flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary transition-[color,background-color,transform] motion-reduce:transition-none hover:bg-primary hover:text-primary-foreground active:scale-95 motion-reduce:transform-none"
                     copyIconClassName="size-4"
                     checkIconClassName="size-4"
                 />
 
                 {!confirmDelete && (
                     <motion.button
+                        type="button"
                         layoutId={deleteLayoutId}
                         onClick={() => setConfirmDelete(true)}
-                        className="flex size-8 items-center justify-center rounded-lg bg-destructive/10 text-destructive transition-colors hover:bg-destructive hover:text-destructive-foreground"
+                        className="focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring flex size-8 items-center justify-center rounded-lg bg-destructive/10 text-destructive transition-colors motion-reduce:transition-none hover:bg-destructive hover:text-destructive-foreground"
+                        aria-label={t('apiKey.form.delete')}
+                        title={t('apiKey.form.delete')}
                     >
                         <Trash2 className="size-4" />
                     </motion.button>
@@ -652,15 +678,18 @@ function APIKeyKeyItem({
                         transition={SPRING.morph}
                     >
                         <button
+                            type="button"
                             onClick={() => setConfirmDelete(false)}
-                            className="focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring flex size-8 items-center justify-center rounded-lg bg-destructive-foreground/20 text-destructive-foreground transition-all hover:bg-destructive-foreground/30 active:scale-95"
+                            aria-label={t('apiKey.form.cancel')}
+                            className="focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring flex size-8 items-center justify-center rounded-lg bg-destructive-foreground/20 text-destructive-foreground transition-[color,background-color,transform] motion-reduce:transition-none hover:bg-destructive-foreground/30 active:scale-95 motion-reduce:transform-none"
                         >
                             <X className="size-4" />
                         </button>
                         <button
+                            type="button"
                             onClick={onDelete}
                             disabled={isDeleting}
-                            className="focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring flex-1 h-8 flex items-center justify-center gap-1.5 rounded-lg bg-destructive-foreground text-destructive text-sm font-medium transition-[color,background-color,transform] hover:bg-destructive-foreground/90 active:scale-[0.98] disabled:opacity-50"
+                            className="focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring flex-1 h-8 flex items-center justify-center gap-1.5 rounded-lg bg-destructive-foreground text-destructive text-sm font-medium transition-[color,background-color,transform] motion-reduce:transition-none hover:bg-destructive-foreground/90 active:scale-[0.98] motion-reduce:transform-none disabled:opacity-50"
                         >
                             <Trash2 className="size-3.5" />
                             {isDeleting ? '...' : t('apiKey.form.confirm')}
@@ -769,7 +798,8 @@ function APIKeyPanelBase({
                         type="button"
                         onClick={() => setIsAdding(true)}
                         disabled={disabledHeaderActions}
-                        className="h-9 w-9 flex items-center justify-center rounded-lg bg-muted/60 text-muted-foreground transition-colors hover:bg-muted disabled:opacity-50"
+                        className="focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring h-9 w-9 flex items-center justify-center rounded-lg bg-muted/60 text-muted-foreground transition-colors motion-reduce:transition-none hover:bg-muted disabled:opacity-50"
+                        aria-label={t('apiKey.add')}
                         title={t('apiKey.add')}
                     >
                         <Plus className="size-4" />
@@ -816,7 +846,7 @@ function APIKeyPanelBase({
             <div className={listClassName}>
                 {apiKeysLoading ? (
                     <div className="h-full flex items-center justify-center text-sm text-muted-foreground">
-                        <Loader className="size-4 animate-spin" />
+                        <Loader2 className="size-4 animate-spin motion-reduce:animate-none" />
                     </div>
                 ) : apiKeysError ? (
                     <div className="h-full flex items-center justify-center text-sm text-destructive">
@@ -871,7 +901,8 @@ function APIKeyDialogPanel() {
                 <button
                     type="button"
                     onClick={() => setIsOpen(false)}
-                    className="focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring h-9 w-9 flex items-center justify-center rounded-lg bg-muted/60 text-muted-foreground transition-colors hover:bg-muted"
+                    className="focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring h-9 w-9 flex items-center justify-center rounded-lg bg-muted/60 text-muted-foreground transition-colors motion-reduce:transition-none hover:bg-muted"
+                    aria-label={tCommon('close')}
                     title={tCommon('close')}
                 >
                     <X className="size-4" />
@@ -892,7 +923,7 @@ export function SettingAPIKey() {
             renderHeaderExtra={() => (
                 <MorphingDialog>
                     <MorphingDialogTrigger
-                        className="h-9 w-9 flex items-center justify-center rounded-lg bg-muted/60 text-muted-foreground transition-colors hover:bg-muted"
+                        className="h-9 w-9 flex items-center justify-center rounded-lg bg-muted/60 text-muted-foreground transition-colors motion-reduce:transition-none hover:bg-muted"
                         ariaLabel={t('apiKey.expand')}
                     >
                         <Maximize2 className="size-4" />

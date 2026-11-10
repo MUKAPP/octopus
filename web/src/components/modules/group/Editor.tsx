@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { Check, ChevronDownIcon, Plus, Search, Sparkles, Trash2 } from 'lucide-react';
 import { useTranslations } from 'use-intl';
 import * as AccordionPrimitive from '@radix-ui/react-accordion';
@@ -7,6 +7,17 @@ import { Button } from '@/components/ui/button';
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Accordion, AccordionContent, AccordionItem } from '@/components/ui/accordion';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { cn } from '@/lib/utils';
 import { getModelIcon } from '@/lib/model-icons';
 import { GroupMode } from '@/api/group';
@@ -85,15 +96,15 @@ function ModelPickerSection({
                     <Input
                         value={searchKeyword}
                         onChange={(event) => setSearchKeyword(event.target.value)}
-                        className="h-6 rounded-lg border-border/60 bg-background/70 pl-7 pr-2 text-xs shadow-none focus-visible:border-border/60 focus-visible:ring-0"
-                        aria-label="search"
+                        className="h-6 rounded-lg border-border/60 bg-background/70 pl-7 pr-2 text-base sm:text-xs shadow-none focus-visible:border-border/60 focus-visible:ring-0"
+                        aria-label={t('form.search')}
                     />
                 </div>
 
                 <button
                     type="button"
                     onClick={onAutoAdd}
-                    className={cn("focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring", 'justify-self-end shrink-0 flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium transition-colors',
+                    className={cn("focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring", 'justify-self-end shrink-0 flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium transition-colors motion-reduce:transition-none',
                         autoAddDisabled
                             ? 'text-muted-foreground/50 cursor-not-allowed'
                             : 'hover:bg-muted text-muted-foreground hover:text-foreground'
@@ -119,12 +130,12 @@ function ModelPickerSection({
                         return (
                             <AccordionItem key={channel.id} value={`channel-${channel.id}`}>
                                 <AccordionPrimitive.Header className="rounded-lg bg-muted sticky top-0 z-10 flex px-2 overflow-hidden">
-                                    <AccordionPrimitive.Trigger className="flex flex-1 min-w-0 items-center gap-4 py-4 text-left text-sm transition-all outline-none focus-visible:ring-[3px] disabled:pointer-events-none disabled:opacity-50 [&[data-state=open]>svg]:rotate-180">
+                                    <AccordionPrimitive.Trigger className="flex flex-1 min-w-0 items-center gap-4 py-4 text-left text-sm transition-[color,box-shadow] motion-reduce:transition-none outline-none focus-visible:ring-[3px] disabled:pointer-events-none disabled:opacity-50 [&[data-state=open]>svg]:rotate-180">
                                         <span className="truncate">{channel.name}</span>
                                         <span className="text-xs text-muted-foreground shrink-0">
                                             {available}/{total}
                                         </span>
-                                        <ChevronDownIcon className="text-muted-foreground pointer-events-none size-4 shrink-0 transition-transform duration-200" />
+                                        <ChevronDownIcon className="text-muted-foreground pointer-events-none size-4 shrink-0 transition-transform duration-200 motion-reduce:transition-none" />
                                     </AccordionPrimitive.Trigger>
                                 </AccordionPrimitive.Header>
                                 <AccordionContent className="px-2 pt-2">
@@ -200,20 +211,35 @@ function SortSection({
                         </span>
                     )}
                 </span>
-                <button
-                    type="button"
-                    onClick={onClear}
-                    disabled={members.length === 0}
-                    className={cn("focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring", 'flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium transition-colors',
-                        members.length === 0
-                            ? 'text-muted-foreground/50 cursor-not-allowed'
-                            : 'hover:bg-muted text-muted-foreground hover:text-foreground'
-                    )}
-                    title={t('form.clear')}
-                >
-                    <Trash2 className="size-3.5" />
-                    <span>{t('form.clear')}</span>
-                </button>
+                <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                        <button
+                            type="button"
+                            disabled={members.length === 0}
+                            className={cn("focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring", 'flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium transition-colors motion-reduce:transition-none',
+                                members.length === 0
+                                    ? 'text-muted-foreground/50 cursor-not-allowed'
+                                    : 'hover:bg-muted text-muted-foreground hover:text-foreground'
+                            )}
+                            title={t('form.clear')}
+                        >
+                            <Trash2 className="size-3.5" />
+                            <span>{t('form.clear')}</span>
+                        </button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                            <AlertDialogTitle>{t('form.clearConfirm.title')}</AlertDialogTitle>
+                            <AlertDialogDescription>{t('form.clearConfirm.description')}</AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                            <AlertDialogCancel>{t('detail.actions.cancel')}</AlertDialogCancel>
+                            <AlertDialogAction variant="destructive" onClick={onClear}>
+                                {t('form.clearConfirm.confirm')}
+                            </AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
             </div>
 
             <div className="flex-1 min-h-0 min-w-0">
@@ -255,9 +281,20 @@ export function GroupEditor({
     const [matchRegex, setMatchRegex] = useState(initial?.match_regex ?? '');
     const [mode, setMode] = useState<GroupMode>((initial?.mode ?? 1) as GroupMode);
     const [firstTokenTimeOut, setFirstTokenTimeOut] = useState<number>(initial?.first_token_time_out ?? 0);
+    const [firstTokenTimeOutDraft, setFirstTokenTimeOutDraft] = useState<string | null>(null);
     const [sessionKeepTime, setSessionKeepTime] = useState<number>(initial?.session_keep_time ?? 0);
+    const [sessionKeepTimeDraft, setSessionKeepTimeDraft] = useState<string | null>(null);
     const [selectedMembers, setSelectedMembers] = useState<SelectedMember[]>(initial?.members ?? []);
     const [removingIds, setRemovingIds] = useState<Set<string>>(new Set());
+    const removeTimersRef = useRef<Set<ReturnType<typeof setTimeout>>>(new Set());
+
+    useEffect(() => {
+        const timers = removeTimersRef.current;
+        return () => {
+            timers.forEach((timer) => clearTimeout(timer));
+            timers.clear();
+        };
+    }, []);
 
     const groupKey = normalizeKey(groupName);
     const regexKey = matchRegex.trim();
@@ -317,13 +354,17 @@ export function GroupEditor({
 
     const handleRemoveMember = useCallback((id: string) => {
         setRemovingIds((prev) => new Set(prev).add(id));
-        setTimeout(() => {
+        const timer = setTimeout(() => {
+            removeTimersRef.current.delete(timer);
             setSelectedMembers((prev) => prev.filter((m) => m.id !== id));
             setRemovingIds((prev) => { const n = new Set(prev); n.delete(id); return n; });
         }, 200);
+        removeTimersRef.current.add(timer);
     }, []);
 
     const handleClearMembers = useCallback(() => {
+        removeTimersRef.current.forEach((timer) => clearTimeout(timer));
+        removeTimersRef.current.clear();
         setSelectedMembers([]);
         setRemovingIds(new Set());
     }, []);
@@ -381,7 +422,13 @@ export function GroupEditor({
                                 <TooltipProvider>
                                     <Tooltip>
                                         <TooltipTrigger asChild>
-                                            <HelpCircle className="size-4 text-muted-foreground cursor-help" />
+                                            <button
+                                                type="button"
+                                                aria-label={t('form.firstTokenTimeOutHint')}
+                                                className="inline-flex rounded-full text-muted-foreground hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                                            >
+                                                <HelpCircle className="size-4" />
+                                            </button>
                                         </TooltipTrigger>
                                         <TooltipContent>
                                             {t('form.firstTokenTimeOutHint')}
@@ -391,19 +438,23 @@ export function GroupEditor({
                             </FieldLabel>
                             <Input
                                 id="group-first-token-time-out"
-                                type="number"
+                                type="text"
                                 inputMode="numeric"
-                                min={0}
-                                step={1}
-                                value={String(firstTokenTimeOut)}
+                                autoComplete="off"
+                                value={firstTokenTimeOutDraft ?? String(firstTokenTimeOut)}
+                                onFocus={() => setFirstTokenTimeOutDraft(String(firstTokenTimeOut))}
                                 onChange={(e) => {
                                     const raw = e.target.value;
-                                    if (raw.trim() === '') {
-                                        setFirstTokenTimeOut(0);
-                                        return;
-                                    }
+                                    if (!/^\d*$/.test(raw)) return;
+                                    setFirstTokenTimeOutDraft(raw);
+                                    if (raw === '') return;
                                     const n = Number.parseInt(raw, 10);
-                                    setFirstTokenTimeOut(Number.isFinite(n) && n > 0 ? n : 0);
+                                    if (Number.isFinite(n) && n >= 0) setFirstTokenTimeOut(n);
+                                }}
+                                onBlur={() => {
+                                    const parsed = Number.parseInt(firstTokenTimeOutDraft ?? '', 10);
+                                    setFirstTokenTimeOut(Number.isFinite(parsed) && parsed > 0 ? parsed : 0);
+                                    setFirstTokenTimeOutDraft(null);
                                 }}
                                 className="rounded-xl"
                             />
@@ -415,7 +466,13 @@ export function GroupEditor({
                                 <TooltipProvider>
                                     <Tooltip>
                                         <TooltipTrigger asChild>
-                                            <HelpCircle className="size-4 text-muted-foreground cursor-help" />
+                                            <button
+                                                type="button"
+                                                aria-label={t('form.sessionKeepTimeHint')}
+                                                className="inline-flex rounded-full text-muted-foreground hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                                            >
+                                                <HelpCircle className="size-4" />
+                                            </button>
                                         </TooltipTrigger>
                                         <TooltipContent>
                                             {t('form.sessionKeepTimeHint')}
@@ -425,19 +482,23 @@ export function GroupEditor({
                             </FieldLabel>
                             <Input
                                 id="group-session-keep-time"
-                                type="number"
+                                type="text"
                                 inputMode="numeric"
-                                min={0}
-                                step={1}
-                                value={String(sessionKeepTime)}
+                                autoComplete="off"
+                                value={sessionKeepTimeDraft ?? String(sessionKeepTime)}
+                                onFocus={() => setSessionKeepTimeDraft(String(sessionKeepTime))}
                                 onChange={(e) => {
                                     const raw = e.target.value;
-                                    if (raw.trim() === '') {
-                                        setSessionKeepTime(0);
-                                        return;
-                                    }
+                                    if (!/^\d*$/.test(raw)) return;
+                                    setSessionKeepTimeDraft(raw);
+                                    if (raw === '') return;
                                     const n = Number.parseInt(raw, 10);
-                                    setSessionKeepTime(Number.isFinite(n) && n > 0 ? n : 0);
+                                    if (Number.isFinite(n) && n >= 0) setSessionKeepTime(n);
+                                }}
+                                onBlur={() => {
+                                    const parsed = Number.parseInt(sessionKeepTimeDraft ?? '', 10);
+                                    setSessionKeepTime(Number.isFinite(parsed) && parsed > 0 ? parsed : 0);
+                                    setSessionKeepTimeDraft(null);
                                 }}
                                 className="rounded-xl"
                             />
@@ -451,7 +512,7 @@ export function GroupEditor({
                                 key={m}
                                 type="button"
                                 onClick={() => setMode(m)}
-                                className={cn("focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring", 'min-w-0 flex-1 py-1 text-center text-xs rounded-lg transition-colors',
+                                className={cn("focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring", 'min-w-0 flex-1 py-1 text-center text-xs rounded-lg transition-colors motion-reduce:transition-none',
                                     mode === m ? 'bg-primary text-primary-foreground' : 'bg-muted hover:bg-muted/80'
                                 )}
                             >

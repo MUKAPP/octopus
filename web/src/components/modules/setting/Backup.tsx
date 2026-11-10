@@ -1,6 +1,17 @@
 import { useMemo, useRef, useState } from 'react';
 import { useTranslations } from 'use-intl';
 import { Database, Download, Upload } from 'lucide-react';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
@@ -9,6 +20,7 @@ import { useExportDB, useImportDB } from '@/api/setting';
 
 export function SettingBackup() {
     const t = useTranslations('setting');
+    const tCommon = useTranslations('common');
 
     const exportDB = useExportDB();
     const importDB = useImportDB();
@@ -107,19 +119,37 @@ export function SettingBackup() {
                     type="file"
                     accept="application/json,.json"
                     onChange={(e) => onPickFile(e.target.files?.[0] ?? null)}
-                    className="rounded-xl"
+                    aria-label={t('backup.import.title')}
+                    className="rounded-xl text-base sm:text-sm"
                 />
 
-                <Button
-                    type="button"
-                    variant="destructive"
-                    className="w-full rounded-xl"
-                    onClick={onImport}
-                    disabled={importDB.isPending}
-                >
-                    <Upload className="size-4" />
-                    {importDB.isPending ? t('backup.import.importing') : t('backup.import.button')}
-                </Button>
+                <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                        <Button
+                            type="button"
+                            variant="destructive"
+                            className="w-full rounded-xl"
+                            disabled={!file || importDB.isPending}
+                        >
+                            <Upload className="size-4" />
+                            {importDB.isPending ? t('backup.import.importing') : t('backup.import.button')}
+                        </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                            <AlertDialogTitle>{t('backup.import.confirm.title')}</AlertDialogTitle>
+                            <AlertDialogDescription>
+                                {t('backup.import.confirm.description', { file: file?.name ?? '' })}
+                            </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                            <AlertDialogCancel>{tCommon('cancel')}</AlertDialogCancel>
+                            <AlertDialogAction variant="destructive" onClick={() => void onImport()}>
+                                {t('backup.import.confirm.confirm')}
+                            </AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
 
                 {rowsAffectedList.length > 0 && (
                     <div className="mt-2 space-y-1">
