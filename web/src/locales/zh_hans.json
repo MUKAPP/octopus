@@ -673,6 +673,7 @@
             "delete": "删除"
         },
         "overlay": {
+            "subtitle": "编辑模型价格",
             "cancel": "取消",
             "deleting": "删除中...",
             "confirmDelete": "确认删除",
@@ -680,7 +681,8 @@
             "output": "输出",
             "cacheRead": "缓存读取",
             "cacheWrite": "缓存写入",
-            "save": "保存"
+            "save": "保存",
+            "saving": "保存中..."
         },
         "schedule": {
             "title": "按时段价格",
@@ -694,7 +696,11 @@
             "name": "名称（如高峰）",
             "remove": "删除时段 {number}",
             "start": "开始时间",
-            "end": "结束时间（HH:MM，最大 24:00）",
+            "end": "结束时间",
+            "pickTime": "选择{label}",
+            "hour": "时",
+            "minute": "分",
+            "done": "确定",
             "weekdays": "开始日的星期（全选表示每天）",
             "input": "输入",
             "output": "输出",
@@ -707,6 +713,7 @@
             "day4": "四",
             "day5": "五",
             "day6": "六",
+            "badge": "{count} 时段",
             "summary": "基础价 · {count} 个价格时段"
         }
     },

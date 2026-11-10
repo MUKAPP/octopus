@@ -1,18 +1,21 @@
-import { useCallback, useEffect, useRef } from 'react';
-import { Check, Loader2, Trash2, X } from 'lucide-react';
+import { useId, useState } from 'react';
+import { Loader2, Trash2, X } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useTranslations } from 'use-intl';
+import { useUpdateModel, type LLMInfo } from '@/api/model';
+import { Button } from '@/components/ui/button';
+import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
+import {
+    MorphingDialogClose,
+    MorphingDialogDescription,
+    MorphingDialogTitle,
+    useMorphingDialog,
+} from '@/components/ui/morphing-dialog';
+import { toast } from '@/components/common/Toast';
 import { SPRING } from '@/lib/animations/fluid-transitions';
 import { PriceScheduleEditor } from './PriceScheduleEditor';
-import type { PriceScheduleDraft } from './price-schedule';
-
-type EditValues = {
-    input: string;
-    output: string;
-    cache_read: string;
-    cache_write: string;
-};
+import { fromScheduleDraft, toScheduleDraft, type PriceScheduleDraft } from './price-schedule';
 
 type ModelDeleteOverlayProps = {
     layoutId: string;
@@ -59,132 +62,145 @@ export function ModelDeleteOverlay({
     );
 }
 
-type ModelEditOverlayProps = {
-    layoutId: string;
-    onHeightChange?: (height: number) => void;
-    modelName: string;
-    editValues: EditValues;
-    schedule: PriceScheduleDraft | null;
-    onScheduleChange: (value: PriceScheduleDraft | null) => void;
-    isPending: boolean;
-    onChange: (next: EditValues) => void;
-    onCancel: () => void;
-    onSave: () => void;
-};
-
-export function ModelEditOverlay({
-    layoutId,
-    onHeightChange,
-    modelName,
-    editValues,
-    schedule,
-    onScheduleChange,
-    isPending,
-    onChange,
-    onCancel,
-    onSave,
-}: ModelEditOverlayProps) {
+export function ModelEditDialogContent({ model }: { model: LLMInfo }) {
+    const { setIsOpen } = useMorphingDialog();
     const t = useTranslations('model.overlay');
-    const overlayRef = useRef<HTMLDivElement | null>(null);
-    const setOverlayRef = useCallback((node: HTMLDivElement | null) => {
-        overlayRef.current = node;
-        if (node) onHeightChange?.(node.offsetHeight);
-    }, [onHeightChange]);
+    const tCreate = useTranslations('model.create');
+    const tToast = useTranslations('model.toast');
+    const updateModel = useUpdateModel();
+    const baseId = useId();
 
-    useEffect(() => {
-        const node = overlayRef.current;
-        if (!node || !onHeightChange || typeof ResizeObserver === 'undefined') return;
+    const [editValues, setEditValues] = useState(() => ({
+        input: model.input.toString(),
+        output: model.output.toString(),
+        cache_read: model.cache_read.toString(),
+        cache_write: model.cache_write.toString(),
+    }));
+    const [schedule, setSchedule] = useState<PriceScheduleDraft | null>(() => toScheduleDraft(model.price_schedule));
 
-        const observer = new ResizeObserver(() => onHeightChange(node.offsetHeight));
-        observer.observe(node);
-        return () => observer.disconnect();
-    }, [onHeightChange]);
+    const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+        event.preventDefault();
+        updateModel.mutate({
+            name: model.name,
+            price_schedule: fromScheduleDraft(schedule),
+            input: parseFloat(editValues.input) || 0,
+            output: parseFloat(editValues.output) || 0,
+            cache_read: parseFloat(editValues.cache_read) || 0,
+            cache_write: parseFloat(editValues.cache_write) || 0,
+        }, {
+            onSuccess: () => {
+                setIsOpen(false);
+                toast.success(tToast('updated'));
+            },
+            onError: (error) => {
+                toast.error(tToast('updateFailed'), { description: error.message });
+            }
+        });
+    };
 
     return (
-        <motion.div
-            ref={setOverlayRef}
-            layoutId={layoutId}
-            className="z-20 flex flex-col bg-card p-5 rounded-3xl border border-border scrollbar overflow-y-auto max-h-[calc(100dvh-var(--safe-area-top)-var(--safe-area-bottom))]"
-            transition={SPRING.morph}
-        >
-            <form onSubmit={event => { event.preventDefault(); onSave(); }} className="min-w-0">
-            <h3 className="text-sm font-semibold text-card-foreground line-clamp-1 mb-3">
-                {modelName}
-            </h3>
-
-            <div className="grid grid-cols-2 gap-2">
-                <label className="grid gap-1 text-xs text-muted-foreground">
-                    {t('input')}
-                    <Input
-                        type="number"
-                        step="any"
-                        min="0"
-                        value={editValues.input}
-                        onChange={(e) => onChange({ ...editValues, input: e.target.value })}
-                        className="h-9 text-base sm:text-sm rounded-xl"
+        <>
+            <MorphingDialogTitle className="shrink-0">
+                <header className="mb-4 flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                        <h2 className="truncate text-2xl font-bold text-card-foreground">{model.name}</h2>
+                        <p className="mt-0.5 text-xs text-muted-foreground">{t('subtitle')}</p>
+                    </div>
+                    <MorphingDialogClose
+                        className="relative right-0 top-0 shrink-0"
+                        variants={{
+                            initial: { opacity: 0, scale: 0.8 },
+                            animate: { opacity: 1, scale: 1 },
+                            exit: { opacity: 0, scale: 0.8 },
+                        }}
                     />
-                </label>
-                <label className="grid gap-1 text-xs text-muted-foreground">
-                    {t('output')}
-                    <Input
-                        type="number"
-                        step="any"
-                        min="0"
-                        value={editValues.output}
-                        onChange={(e) => onChange({ ...editValues, output: e.target.value })}
-                        className="h-9 text-base sm:text-sm rounded-xl"
-                    />
-                </label>
-                <label className="grid gap-1 text-xs text-muted-foreground">
-                    {t('cacheRead')}
-                    <Input
-                        type="number"
-                        step="any"
-                        min="0"
-                        value={editValues.cache_read}
-                        onChange={(e) => onChange({ ...editValues, cache_read: e.target.value })}
-                        className="h-9 text-base sm:text-sm rounded-xl"
-                    />
-                </label>
-                <label className="grid gap-1 text-xs text-muted-foreground">
-                    {t('cacheWrite')}
-                    <Input
-                        type="number"
-                        step="any"
-                        min="0"
-                        value={editValues.cache_write}
-                        onChange={(e) => onChange({ ...editValues, cache_write: e.target.value })}
-                        className="h-9 text-base sm:text-sm rounded-xl"
-                    />
-                </label>
-            </div>
-
-            <div className="mt-4">
-                <PriceScheduleEditor value={schedule} onChange={onScheduleChange} basePrice={{
-                    input: Number(editValues.input) || 0, output: Number(editValues.output) || 0,
-                    cache_read: Number(editValues.cache_read) || 0, cache_write: Number(editValues.cache_write) || 0,
-                }} />
-            </div>
-            <div className="flex gap-2 pt-2 mt-3">
-                <button
-                    type="button"
-                    onClick={onCancel}
-                    disabled={isPending}
-                    className="focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring flex-1 h-9 flex items-center justify-center gap-1.5 rounded-xl bg-muted text-muted-foreground text-sm font-medium transition-[color,background-color,transform] motion-reduce:transition-none hover:bg-muted/80 active:scale-[0.98] motion-reduce:transform-none disabled:opacity-50"
-                >
-                    <X className="size-4" />
-                    {t('cancel')}
-                </button>
-                <button
-                    type="submit"
-                    disabled={isPending}
-                    className="focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring flex-1 h-9 flex items-center justify-center gap-1.5 rounded-xl bg-primary text-primary-foreground text-sm font-medium transition-[color,background-color,transform] motion-reduce:transition-none hover:bg-primary/90 active:scale-[0.98] motion-reduce:transform-none disabled:opacity-50"
-                >
-                    {isPending ? <Loader2 className="size-4 animate-spin motion-reduce:animate-none" /> : <Check className="size-4" />}
-                    {t('save')}
-                </button>
-            </div>
+                </header>
+            </MorphingDialogTitle>
+            <form onSubmit={handleSubmit} className="flex min-h-0 min-w-0 flex-1 flex-col">
+                <MorphingDialogDescription className="scrollbar -mx-1 flex-1 min-h-0 min-w-0 overflow-y-auto overscroll-contain px-1 py-1">
+                    <FieldGroup className="gap-4">
+                        <div className="grid grid-cols-1 gap-3 min-[360px]:grid-cols-2 sm:grid-cols-4">
+                            <Field>
+                                <FieldLabel htmlFor={`${baseId}-input`}>{t('input')}</FieldLabel>
+                                <Input
+                                    id={`${baseId}-input`}
+                                    type="number"
+                                    step="any"
+                                    min="0"
+                                    value={editValues.input}
+                                    onChange={(e) => setEditValues({ ...editValues, input: e.target.value })}
+                                    className="rounded-xl tabular-nums text-base sm:text-sm"
+                                />
+                            </Field>
+                            <Field>
+                                <FieldLabel htmlFor={`${baseId}-output`}>{t('output')}</FieldLabel>
+                                <Input
+                                    id={`${baseId}-output`}
+                                    type="number"
+                                    step="any"
+                                    min="0"
+                                    value={editValues.output}
+                                    onChange={(e) => setEditValues({ ...editValues, output: e.target.value })}
+                                    className="rounded-xl tabular-nums text-base sm:text-sm"
+                                />
+                            </Field>
+                            <Field>
+                                <FieldLabel htmlFor={`${baseId}-cache-read`}>{t('cacheRead')}</FieldLabel>
+                                <Input
+                                    id={`${baseId}-cache-read`}
+                                    type="number"
+                                    step="any"
+                                    min="0"
+                                    value={editValues.cache_read}
+                                    onChange={(e) => setEditValues({ ...editValues, cache_read: e.target.value })}
+                                    className="rounded-xl tabular-nums text-base sm:text-sm"
+                                />
+                            </Field>
+                            <Field>
+                                <FieldLabel htmlFor={`${baseId}-cache-write`}>{t('cacheWrite')}</FieldLabel>
+                                <Input
+                                    id={`${baseId}-cache-write`}
+                                    type="number"
+                                    step="any"
+                                    min="0"
+                                    value={editValues.cache_write}
+                                    onChange={(e) => setEditValues({ ...editValues, cache_write: e.target.value })}
+                                    className="rounded-xl tabular-nums text-base sm:text-sm"
+                                />
+                            </Field>
+                        </div>
+                        <p className="text-xs text-muted-foreground">{tCreate('priceHint')}</p>
+                        <PriceScheduleEditor
+                            value={schedule}
+                            onChange={setSchedule}
+                            basePrice={{
+                                input: Number(editValues.input) || 0,
+                                output: Number(editValues.output) || 0,
+                                cache_read: Number(editValues.cache_read) || 0,
+                                cache_write: Number(editValues.cache_write) || 0,
+                            }}
+                        />
+                    </FieldGroup>
+                </MorphingDialogDescription>
+                <div className="mt-3 flex shrink-0 gap-2 border-t border-border/50 pt-4">
+                    <Button
+                        type="button"
+                        variant="secondary"
+                        disabled={updateModel.isPending}
+                        className="h-11 flex-1 rounded-xl"
+                        onClick={() => setIsOpen(false)}
+                    >
+                        {t('cancel')}
+                    </Button>
+                    <Button
+                        type="submit"
+                        disabled={updateModel.isPending}
+                        className="h-11 flex-1 rounded-xl"
+                    >
+                        {updateModel.isPending ? t('saving') : t('save')}
+                    </Button>
+                </div>
             </form>
-        </motion.div>
+        </>
     );
 }

@@ -1,17 +1,19 @@
-import { memo, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
-import { Pencil, Trash2, ArrowDownToLine, ArrowUpFromLine } from 'lucide-react';
+import { memo, useId, useMemo, useState } from 'react';
+import { Pencil, Trash2, ArrowDownToLine, ArrowUpFromLine, Clock } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useLocale, useTranslations } from 'use-intl';
-import { useUpdateModel, useDeleteModel, type LLMInfo } from '@/api/model';
+import { useDeleteModel, type LLMInfo } from '@/api/model';
 import { getModelIcon } from '@/lib/model-icons';
 import { toast } from '@/components/common/Toast';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/animate-ui/components/animate/tooltip';
-import { ModelDeleteOverlay, ModelEditOverlay } from './ItemOverlays';
-import { fromScheduleDraft, toScheduleDraft } from './price-schedule';
+import {
+    MorphingDialog,
+    MorphingDialogContainer,
+    MorphingDialogContent,
+    MorphingDialogTrigger,
+} from '@/components/ui/morphing-dialog';
+import { ModelDeleteOverlay, ModelEditDialogContent } from './ItemOverlays';
 import { cn } from '@/lib/utils';
-import { createPortal } from 'react-dom';
-import { getSafeAreaInsets, useSafeAreaInsets } from '@/hooks/use-safe-area-insets';
-import { getOverlayScrollbarViewport } from '@/lib/overlay-scrollbars';
 
 interface ModelItemProps {
     model: LLMInfo;
@@ -31,102 +33,16 @@ function formatModelPrice(price: number, locale: string): string {
 export const ModelItem = memo(function ModelItem({ model, layout = 'grid' }: ModelItemProps) {
     const t = useTranslations('model');
     const locale = useLocale();
-    const insets = useSafeAreaInsets();
     const isListLayout = layout === 'list';
-    const [isEditOpen, setIsEditOpen] = useState(false);
     const [confirmDelete, setConfirmDelete] = useState(false);
-    const [overlayRect, setOverlayRect] = useState<{ top: number; left: number; width: number } | null>(null);
     const instanceId = useId();
-    const editLayoutId = `edit-btn-${model.name}-${instanceId}`;
     const deleteLayoutId = `delete-btn-${model.name}-${instanceId}`;
-    const cardRef = useRef<HTMLElement | null>(null);
-    const editButtonRef = useRef<HTMLButtonElement | null>(null);
-    const editOverlayRef = useRef<HTMLDivElement | null>(null);
-    const editOverlayHeightRef = useRef(0);
-    const [editValues, setEditValues] = useState(() => ({
-        input: model.input.toString(),
-        output: model.output.toString(),
-        cache_read: model.cache_read.toString(),
-        cache_write: model.cache_write.toString(),
-    }));
-
-    const [schedule, setSchedule] = useState(() => toScheduleDraft(model.price_schedule));
-    const updateModel = useUpdateModel();
     const deleteModel = useDeleteModel();
 
     const { Icon: ModelIcon, className: iconClassName, color: brandColor } = useMemo(() => getModelIcon(model.name), [model.name]);
-
-    const updateOverlayRect = useCallback(() => {
-        const card = cardRef.current;
-        if (!card) return;
-        const rect = card.getBoundingClientRect();
-        const height = editOverlayHeightRef.current;
-        const safeArea = getSafeAreaInsets();
-        const viewportBottom = window.innerHeight - safeArea.bottom;
-        const maxTop = Math.max(safeArea.top, viewportBottom - height);
-        const flipUp = height > 0 && rect.top + height > viewportBottom;
-        const anchorTop = flipUp ? rect.bottom - height : rect.top;
-        const top = Math.min(Math.max(anchorTop, safeArea.top), maxTop);
-        const width = Math.min(rect.width, window.innerWidth - safeArea.left - safeArea.right);
-        const left = Math.min(Math.max(rect.left, safeArea.left), window.innerWidth - safeArea.right - width);
-        setOverlayRect((prev) => {
-            if (prev && prev.top === top && prev.left === left && prev.width === width) {
-                return prev;
-            }
-            return { top, left, width };
-        });
-    }, []);
-
-    const closeEdit = useCallback(() => {
-        setIsEditOpen(false);
-    }, []);
-
-    const handleOverlayHeightChange = useCallback((height: number) => {
-        const nextHeight = Math.max(height, 0);
-        if (nextHeight === editOverlayHeightRef.current) return;
-        editOverlayHeightRef.current = nextHeight;
-        updateOverlayRect();
-    }, [updateOverlayRect]);
-
-    const handleEditClick = () => {
-        setConfirmDelete(false);
-        setEditValues({
-            input: model.input.toString(),
-            output: model.output.toString(),
-            cache_read: model.cache_read.toString(),
-            cache_write: model.cache_write.toString(),
-        });
-        setSchedule(toScheduleDraft(model.price_schedule));
-        // Ensure first open already has anchor geometry so layout animation can run.
-        updateOverlayRect();
-        setIsEditOpen(true);
-    };
-
-    const handleCancelEdit = () => {
-        closeEdit();
-    };
-
-    const handleSaveEdit = () => {
-        updateModel.mutate({
-            name: model.name,
-            price_schedule: fromScheduleDraft(schedule),
-            input: parseFloat(editValues.input) || 0,
-            output: parseFloat(editValues.output) || 0,
-            cache_read: parseFloat(editValues.cache_read) || 0,
-            cache_write: parseFloat(editValues.cache_write) || 0,
-        }, {
-            onSuccess: () => {
-                closeEdit();
-                toast.success(t('toast.updated'));
-            },
-            onError: (error) => {
-                toast.error(t('toast.updateFailed'), { description: error.message });
-            }
-        });
-    };
+    const ruleCount = model.price_schedule?.rules.length ?? 0;
 
     const handleDeleteClick = () => {
-        closeEdit();
         setConfirmDelete(true);
     };
     const handleCancelDelete = () => setConfirmDelete(false);
@@ -143,172 +59,149 @@ export const ModelItem = memo(function ModelItem({ model, layout = 'grid' }: Mod
         });
     };
 
-    useEffect(() => {
-        if (!isEditOpen) return;
-
-        const handlePointerDown = (event: PointerEvent) => {
-            const target = getOverlayScrollbarViewport(event.target) ?? event.target as Node | null;
-            if (!target) return;
-            if (editOverlayRef.current?.contains(target)) return;
-            if (editButtonRef.current?.contains(target)) return;
-            closeEdit();
-        };
-
-        const handleKeyDown = (event: KeyboardEvent) => {
-            if (event.key === 'Escape') closeEdit();
-        };
-
-        updateOverlayRect();
-        window.addEventListener('resize', updateOverlayRect);
-        window.addEventListener('scroll', updateOverlayRect, true);
-        document.addEventListener('pointerdown', handlePointerDown, true);
-        document.addEventListener('keydown', handleKeyDown);
-
-        return () => {
-            window.removeEventListener('resize', updateOverlayRect);
-            window.removeEventListener('scroll', updateOverlayRect, true);
-            document.removeEventListener('pointerdown', handlePointerDown, true);
-            document.removeEventListener('keydown', handleKeyDown);
-        };
-    }, [isEditOpen, updateOverlayRect, closeEdit]);
-
-    useEffect(() => {
-        if (isEditOpen) updateOverlayRect();
-    }, [isEditOpen, insets, updateOverlayRect]);
-
-    const shouldRenderEditPortal = isEditOpen || overlayRect !== null;
-
     return (
-        <article
-            ref={cardRef}
-            className={cn( 'group relative rounded-3xl border border-border bg-card transition-shadow flex items-center gap-3 p-4',
-                (isEditOpen || confirmDelete) && 'z-50'
-            )}
-        >
-            <ModelIcon aria-hidden="true" className={iconClassName} width={52} height={52} />
-
-            <div className="flex-1 min-w-0 flex flex-col justify-center gap-2">
-                <Tooltip side="top" sideOffset={10} align="start">
-                    <TooltipTrigger className='text-base font-semibold text-card-foreground leading-tight truncate'>
-                        {model.name}
-                    </TooltipTrigger>
-                    <TooltipContent key={model.name}>
-                        {model.name}
-                    </TooltipContent>
-                </Tooltip>
-
-                {model.price_schedule && (
-                    <p className="text-xs text-muted-foreground" title={model.price_schedule.timezone}>
-                        {t('schedule.summary', { count: model.price_schedule.rules.length })}
-                    </p>
-                )}
-                {isListLayout ? (
-                    <p className="flex items-center gap-2 overflow-hidden text-sm text-muted-foreground whitespace-nowrap">
-                        <span className="inline-flex items-center gap-1">
-                            <ArrowDownToLine className="size-3.5 shrink-0" style={{ color: brandColor }} />
-                            {t('card.inputCache')}
-                            <span className="tabular-nums">${formatModelPrice(model.input, locale)} / ${formatModelPrice(model.cache_read, locale)}</span>
-                        </span>
-                        <span className="text-muted-foreground/60">|</span>
-                        <span className="inline-flex items-center gap-1 overflow-hidden">
-                            <ArrowUpFromLine className="size-3.5 shrink-0" style={{ color: brandColor }} />
-                            {t('card.outputCache')}
-                            <span className="tabular-nums truncate">${formatModelPrice(model.output, locale)} / ${formatModelPrice(model.cache_write, locale)}</span>
-                        </span>
-                    </p>
-                ) : (
-                    <>
-                        <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                            <ArrowDownToLine className="size-3.5" style={{ color: brandColor }} />
-                            {t('card.inputCache')}
-                            <span className="tabular-nums">${formatModelPrice(model.input, locale)} / ${formatModelPrice(model.cache_read, locale)}</span>
-                        </p>
-
-                        <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                            <ArrowUpFromLine className="size-3.5" style={{ color: brandColor }} />
-                            {t('card.outputCache')}
-                            <span className="tabular-nums">${formatModelPrice(model.output, locale)} / ${formatModelPrice(model.cache_write, locale)}</span>
-                        </p>
-                    </>
-                )}
-            </div>
-
-            <div
+        <MorphingDialog>
+            <article
                 className={cn(
-                    isListLayout
-                        ? 'shrink-0 flex items-center gap-2 self-center'
-                        : 'shrink-0 flex flex-col justify-between self-stretch',
-                    (isEditOpen || confirmDelete) && 'invisible pointer-events-none'
+                    'group relative flex h-full items-center gap-3 rounded-3xl border border-border bg-card p-4 transition-shadow',
+                    confirmDelete && 'z-50'
                 )}
             >
-                <motion.button
-                    ref={editButtonRef}
-                    layoutId={editLayoutId}
-                    type="button"
-                    onClick={handleEditClick}
-                    disabled={isEditOpen || confirmDelete}
-                    className="h-9 w-9 flex items-center justify-center rounded-lg bg-muted/60 text-muted-foreground transition-colors motion-reduce:transition-none hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:opacity-50"
-                    aria-label={t('card.edit')}
-                    title={t('card.edit')}
-                >
-                    <Pencil className="size-4" />
-                </motion.button>
+                <ModelIcon aria-hidden="true" className={cn('shrink-0', iconClassName)} width={52} height={52} />
 
-                <motion.button
-                    layoutId={deleteLayoutId}
-                    type="button"
-                    onClick={handleDeleteClick}
-                    disabled={isEditOpen || confirmDelete}
-                    className="h-9 w-9 flex items-center justify-center rounded-lg bg-destructive/10 text-destructive transition-colors motion-reduce:transition-none hover:bg-destructive hover:text-destructive-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:opacity-50"
-                    aria-label={t('card.delete')}
-                    title={t('card.delete')}
-                >
-                    <Trash2 className="size-4" />
-                </motion.button>
-            </div>
+                <div className="flex-1 min-w-0 flex flex-col justify-center gap-1.5">
+                    <Tooltip side="top" sideOffset={10} align="start">
+                        <TooltipTrigger asChild>
+                            <h3 className="flex min-w-0 items-center gap-2 text-base font-semibold leading-tight text-card-foreground">
+                                <span className="truncate">{model.name}</span>
+                                {isListLayout && ruleCount > 0 && model.price_schedule && (
+                                    <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-primary/20 bg-primary/10 px-2 py-0.5 text-[11px] font-medium leading-none text-primary">
+                                        <Clock className="size-3 shrink-0" aria-hidden="true" />
+                                        {t('schedule.badge', { count: ruleCount })}
+                                    </span>
+                                )}
+                            </h3>
+                        </TooltipTrigger>
+                        <TooltipContent key={model.name}>
+                            {model.name}
+                            {ruleCount > 0 && model.price_schedule
+                                ? ` · ${t('schedule.summary', { count: ruleCount })} (${model.price_schedule.timezone})`
+                                : null}
+                        </TooltipContent>
+                    </Tooltip>
 
-            <AnimatePresence>
-                {confirmDelete && (
-                    <ModelDeleteOverlay
-                        layoutId={deleteLayoutId}
-                        isPending={deleteModel.isPending}
-                        onCancel={handleCancelDelete}
-                        onConfirm={handleConfirmDelete}
-                    />
-                )}
-            </AnimatePresence>
-
-            {shouldRenderEditPortal && typeof document !== 'undefined'
-                ? createPortal(
-                    <AnimatePresence onExitComplete={() => setOverlayRect(null)}>
-                        {isEditOpen && overlayRect && (
-                            <div
-                                ref={editOverlayRef}
-                                className="fixed z-[90]"
-                                style={{
-                                    top: `${overlayRect.top}px`,
-                                    left: `${overlayRect.left}px`,
-                                    width: `${overlayRect.width}px`,
-                                }}
+                    {!isListLayout && ruleCount > 0 && model.price_schedule && (
+                        <div className="flex min-w-0">
+                            <span
+                                title={model.price_schedule.timezone}
+                                className="inline-flex max-w-full items-center gap-1 truncate rounded-full border border-primary/20 bg-primary/10 px-2 py-0.5 text-[11px] font-medium leading-none text-primary"
                             >
-                                <ModelEditOverlay
-                                    layoutId={editLayoutId}
-                                    onHeightChange={handleOverlayHeightChange}
-                                    modelName={model.name}
-                                    editValues={editValues}
-                                    schedule={schedule}
-                                    onScheduleChange={setSchedule}
-                                    isPending={updateModel.isPending}
-                                    onChange={setEditValues}
-                                    onCancel={handleCancelEdit}
-                                    onSave={handleSaveEdit}
-                                />
-                            </div>
-                        )}
-                    </AnimatePresence>,
-                    document.body
-                )
-                : null}
-        </article>
+                                <Clock className="size-3 shrink-0" aria-hidden="true" />
+                                <span className="truncate">{t('schedule.summary', { count: ruleCount })}</span>
+                            </span>
+                        </div>
+                    )}
+
+                    {isListLayout ? (
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[13px] leading-snug text-muted-foreground">
+                            <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
+                                <ArrowDownToLine className="size-3.5 shrink-0" style={{ color: brandColor }} aria-hidden="true" />
+                                <span>{t('card.inputCache')}</span>
+                                <span className="tabular-nums">${formatModelPrice(model.input, locale)} / ${formatModelPrice(model.cache_read, locale)}</span>
+                            </span>
+                            <span className="hidden sm:inline text-muted-foreground/60" aria-hidden="true">|</span>
+                            <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
+                                <ArrowUpFromLine className="size-3.5 shrink-0" style={{ color: brandColor }} aria-hidden="true" />
+                                <span>{t('card.outputCache')}</span>
+                                <span className="tabular-nums">${formatModelPrice(model.output, locale)} / ${formatModelPrice(model.cache_write, locale)}</span>
+                            </span>
+                        </div>
+                    ) : (
+                        <div className="space-y-1 text-[13px] leading-snug text-muted-foreground">
+                            <p className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
+                                <span className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap">
+                                    <ArrowDownToLine className="size-3.5 shrink-0" style={{ color: brandColor }} aria-hidden="true" />
+                                    <span>{t('card.inputCache')}</span>
+                                </span>
+                                <span className="inline-flex flex-wrap items-baseline gap-x-1 tabular-nums">
+                                    <span className="whitespace-nowrap">${formatModelPrice(model.input, locale)}</span>
+                                    <span className="text-muted-foreground/60">/</span>
+                                    <span className="whitespace-nowrap">${formatModelPrice(model.cache_read, locale)}</span>
+                                </span>
+                            </p>
+
+                            <p className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
+                                <span className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap">
+                                    <ArrowUpFromLine className="size-3.5 shrink-0" style={{ color: brandColor }} aria-hidden="true" />
+                                    <span>{t('card.outputCache')}</span>
+                                </span>
+                                <span className="inline-flex flex-wrap items-baseline gap-x-1 tabular-nums">
+                                    <span className="whitespace-nowrap">${formatModelPrice(model.output, locale)}</span>
+                                    <span className="text-muted-foreground/60">/</span>
+                                    <span className="whitespace-nowrap">${formatModelPrice(model.cache_write, locale)}</span>
+                                </span>
+                            </p>
+                        </div>
+                    )}
+                </div>
+
+                <div
+                    className={cn(
+                        isListLayout
+                            ? 'shrink-0 flex items-center gap-2 self-center'
+                            : 'shrink-0 flex flex-col justify-between gap-2 self-stretch',
+                        confirmDelete && 'invisible pointer-events-none'
+                    )}
+                >
+                    <Tooltip side="top" sideOffset={8} align="center">
+                        <TooltipTrigger>
+                            <MorphingDialogTrigger
+                                ariaLabel={t('card.edit')}
+                                className="h-9 w-9 flex items-center justify-center rounded-lg bg-muted/60 text-muted-foreground transition-colors motion-reduce:transition-none hover:bg-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                            >
+                                <Pencil className="size-4" aria-hidden="true" />
+                            </MorphingDialogTrigger>
+                        </TooltipTrigger>
+                        <TooltipContent>{t('card.edit')}</TooltipContent>
+                    </Tooltip>
+
+                    <Tooltip side="top" sideOffset={8} align="center">
+                        <TooltipTrigger asChild>
+                            <motion.button
+                                layoutId={deleteLayoutId}
+                                type="button"
+                                onClick={handleDeleteClick}
+                                disabled={confirmDelete}
+                                className="h-9 w-9 flex items-center justify-center rounded-lg bg-destructive/10 text-destructive transition-colors motion-reduce:transition-none hover:bg-destructive hover:text-destructive-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:opacity-50"
+                                aria-label={t('card.delete')}
+                            >
+                                <Trash2 className="size-4" aria-hidden="true" />
+                            </motion.button>
+                        </TooltipTrigger>
+                        <TooltipContent>{t('card.delete')}</TooltipContent>
+                    </Tooltip>
+                </div>
+
+                <AnimatePresence>
+                    {confirmDelete && (
+                        <ModelDeleteOverlay
+                            layoutId={deleteLayoutId}
+                            isPending={deleteModel.isPending}
+                            onCancel={handleCancelDelete}
+                            onConfirm={handleConfirmDelete}
+                        />
+                    )}
+                </AnimatePresence>
+            </article>
+
+            <MorphingDialogContainer>
+                <MorphingDialogContent
+                    dismissOnClickOutside={false}
+                    className="flex min-h-0 min-w-0 w-(--overlay-width) max-w-full max-h-(--overlay-height) flex-col overflow-hidden rounded-3xl bg-card px-4 py-5 text-card-foreground sm:px-6 md:max-w-[624px]"
+                >
+                    <ModelEditDialogContent model={model} />
+                </MorphingDialogContent>
+            </MorphingDialogContainer>
+        </MorphingDialog>
     );
 });

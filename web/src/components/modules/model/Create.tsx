@@ -53,12 +53,12 @@ export function CreateDialogContent() {
     };
 
     return (
-        <div className="flex max-h-full min-h-0 min-w-0 w-full flex-col md:max-w-xl">
+        <>
             <MorphingDialogTitle className="shrink-0">
-                <header className="mb-4 flex items-center justify-between">
+                <header className="mb-4 flex items-center justify-between gap-3">
                     <h2 className="text-2xl font-bold text-card-foreground">{t('title')}</h2>
                     <MorphingDialogClose
-                        className="relative right-0 top-0"
+                        className="relative right-0 top-0 shrink-0"
                         variants={{
                             initial: { opacity: 0, scale: 0.8 },
                             animate: { opacity: 1, scale: 1 },
@@ -67,8 +67,8 @@ export function CreateDialogContent() {
                     />
                 </header>
             </MorphingDialogTitle>
-            <MorphingDialogDescription className="scrollbar flex-1 min-h-0 min-w-0 overflow-y-auto overscroll-contain">
-                <form onSubmit={handleSubmit} className="min-w-0">
+            <form onSubmit={handleSubmit} className="flex min-h-0 min-w-0 flex-1 flex-col">
+                <MorphingDialogDescription className="scrollbar -mx-1 flex-1 min-h-0 min-w-0 overflow-y-auto overscroll-contain px-1 py-1">
                     <FieldGroup className="gap-4">
                         <Field>
                             <FieldLabel htmlFor="model-name">{t('name')}</FieldLabel>
@@ -80,7 +80,7 @@ export function CreateDialogContent() {
                                 required
                             />
                         </Field>
-                        <div className="grid grid-cols-1 gap-4 min-[360px]:grid-cols-2">
+                        <div className="grid grid-cols-1 gap-3 min-[360px]:grid-cols-2 sm:grid-cols-4">
                             <Field>
                                 <FieldLabel htmlFor="model-input">{t('input')}</FieldLabel>
                                 <Input
@@ -90,7 +90,7 @@ export function CreateDialogContent() {
                                     min="0"
                                     value={formData.input}
                                     onChange={(e) => setFormData({ ...formData, input: e.target.value })}
-                                    className="rounded-xl text-base sm:text-sm"
+                                    className="rounded-xl tabular-nums text-base sm:text-sm"
                                 />
                             </Field>
                             <Field>
@@ -102,7 +102,7 @@ export function CreateDialogContent() {
                                     min="0"
                                     value={formData.output}
                                     onChange={(e) => setFormData({ ...formData, output: e.target.value })}
-                                    className="rounded-xl text-base sm:text-sm"
+                                    className="rounded-xl tabular-nums text-base sm:text-sm"
                                 />
                             </Field>
                             <Field>
@@ -114,7 +114,7 @@ export function CreateDialogContent() {
                                     min="0"
                                     value={formData.cache_read}
                                     onChange={(e) => setFormData({ ...formData, cache_read: e.target.value })}
-                                    className="rounded-xl text-base sm:text-sm"
+                                    className="rounded-xl tabular-nums text-base sm:text-sm"
                                 />
                             </Field>
                             <Field>
@@ -126,7 +126,7 @@ export function CreateDialogContent() {
                                     min="0"
                                     value={formData.cache_write}
                                     onChange={(e) => setFormData({ ...formData, cache_write: e.target.value })}
-                                    className="rounded-xl text-base sm:text-sm"
+                                    className="rounded-xl tabular-nums text-base sm:text-sm"
                                 />
                             </Field>
                         </div>
@@ -135,26 +135,27 @@ export function CreateDialogContent() {
                             input: Number(formData.input) || 0, output: Number(formData.output) || 0,
                             cache_read: Number(formData.cache_read) || 0, cache_write: Number(formData.cache_write) || 0,
                         }} />
-                        <div className="flex gap-2 pt-4">
-                            <Button
-                                type="button"
-                                variant="secondary"
-                                className="flex-1 rounded-xl h-11"
-                                onClick={() => setIsOpen(false)}
-                            >
-                                {t('cancel')}
-                            </Button>
-                            <Button
-                                type="submit"
-                                disabled={createModel.isPending || !formData.name.trim()}
-                                className="flex-1 rounded-xl h-11"
-                            >
-                                {createModel.isPending ? t('submitting') : t('submit')}
-                            </Button>
-                        </div>
                     </FieldGroup>
-                </form>
-            </MorphingDialogDescription>
-        </div>
+                </MorphingDialogDescription>
+                <div className="mt-3 flex shrink-0 gap-2 border-t border-border/50 pt-4">
+                    <Button
+                        type="button"
+                        variant="secondary"
+                        disabled={createModel.isPending}
+                        className="h-11 flex-1 rounded-xl"
+                        onClick={() => setIsOpen(false)}
+                    >
+                        {t('cancel')}
+                    </Button>
+                    <Button
+                        type="submit"
+                        disabled={createModel.isPending || !formData.name.trim()}
+                        className="h-11 flex-1 rounded-xl"
+                    >
+                        {createModel.isPending ? t('submitting') : t('submit')}
+                    </Button>
+                </div>
+            </form>
+        </>
     );
 }

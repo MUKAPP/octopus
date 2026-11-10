@@ -673,6 +673,7 @@
             "delete": "刪除"
         },
         "overlay": {
+            "subtitle": "編輯模型價格",
             "cancel": "取消",
             "deleting": "刪除中...",
             "confirmDelete": "確認刪除",
@@ -680,7 +681,8 @@
             "output": "輸出",
             "cacheRead": "快取讀取",
             "cacheWrite": "快取寫入",
-            "save": "儲存"
+            "save": "儲存",
+            "saving": "儲存中..."
         },
         "schedule": {
             "title": "按時段價格",
@@ -694,7 +696,11 @@
             "name": "名稱（如尖峰）",
             "remove": "刪除時段 {number}",
             "start": "開始時間",
-            "end": "結束時間（HH:MM，最大 24:00）",
+            "end": "結束時間",
+            "pickTime": "選擇{label}",
+            "hour": "時",
+            "minute": "分",
+            "done": "確定",
             "weekdays": "開始日的星期（全選表示每天）",
             "input": "輸入",
             "output": "輸出",
@@ -707,6 +713,7 @@
             "day4": "四",
             "day5": "五",
             "day6": "六",
+            "badge": "{count} 時段",
             "summary": "基礎價 · {count} 個價格時段"
         }
     },

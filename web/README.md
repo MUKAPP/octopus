@@ -44,7 +44,7 @@ MorphingDialog（`src/components/ui/morphing-dialog.tsx`）的视口容器用 `o
 
 移动端通过 `viewport-fit=cover` 让背景铺到边缘；`src/globals.css` 的四向 `--safe-area-*` token 统一约束内容。底部导航用动态 bottom inset 移位，滚动内容用 `pb-nav-clearance` / `h-nav-clearance` 留出导航净空；AppShell 本身不重复添加底部 inset。两类 MorphingDialog portal 使用 `--overlay-*` 四向边界，可用高度只由外层扣除一次，内部面板继续 `max-h-full` 并自行滚动。
 
-Popover、Select 与价格编辑通过 `src/hooks/use-safe-area-insets.ts` 共享 resize / visualViewport.resize 的数值快照。碰撞边界累加调用者原有间距；Select 原有 4px 视觉间距通过 Radix sideOffset 参与碰撞计算，不使用计算后的位移越过安全边界。价格编辑内容过高时在浮层内滚动，保存按钮仍可触达。
+Popover 与 Select 通过 `src/hooks/use-safe-area-insets.ts` 共享 resize / visualViewport.resize 的数值快照。碰撞边界累加调用者原有间距；Select 原有 4px 视觉间距通过 Radix sideOffset 参与碰撞计算，不使用计算后的位移越过安全边界。模型价格编辑复用居中的 MorphingDialog（受 `--overlay-*` 四向边界约束），正文在弹窗内独立滚动，取消与保存按钮固定在底部。
 
 Toast 保留调用者显式 `offset` / `mobileOffset` 的优先级。Sonner 的移动端默认样式只按左侧 offset 计算卡片宽度，因此 `globals.css` 在其 600px 移动断点内将容器宽度改为分别扣除左右 mobile offset，卡片填满该容器；不对称 cutout、left/right/center 位置均使用同一可用宽度，桌面宽度与定位不变。
 

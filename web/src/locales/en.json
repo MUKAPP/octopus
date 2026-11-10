@@ -673,6 +673,7 @@
             "delete": "Delete"
         },
         "overlay": {
+            "subtitle": "Edit Model Pricing",
             "cancel": "Cancel",
             "deleting": "Deleting...",
             "confirmDelete": "Confirm Delete",
@@ -680,7 +681,8 @@
             "output": "Output",
             "cacheRead": "Cache Read",
             "cacheWrite": "Cache Write",
-            "save": "Save"
+            "save": "Save",
+            "saving": "Saving..."
         },
         "schedule": {
             "title": "Time-based pricing",
@@ -694,7 +696,11 @@
             "name": "Name (e.g. peak)",
             "remove": "Remove period {number}",
             "start": "Start",
-            "end": "End (HH:MM, up to 24:00)",
+            "end": "End",
+            "pickTime": "Select {label}",
+            "hour": "Hour",
+            "minute": "Min",
+            "done": "Done",
             "weekdays": "Starting weekdays (all selected = every day)",
             "input": "Input",
             "output": "Output",
@@ -707,6 +713,7 @@
             "day4": "Thu",
             "day5": "Fri",
             "day6": "Sat",
+            "badge": "{count, plural, one {# period} other {# periods}}",
             "summary": "Base rates · {count} pricing periods"
         }
     },

@@ -299,7 +299,14 @@ function MorphingDialogContent({
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       // 对话框内部有浮层或确认弹窗打开时，Escape 关闭与 Tab 循环由该浮层负责
-      if (event.defaultPrevented || layerContext.isAnyOpen() || hasOpenAlertDialog()) return;
+      if (
+        event.defaultPrevented ||
+        layerContext.isAnyOpen() ||
+        hasOwnedOpenPopup(containerRef.current) ||
+        hasOpenAlertDialog()
+      ) {
+        return;
+      }
       if (event.key === 'Escape') {
         setIsOpen(false);
         return;
