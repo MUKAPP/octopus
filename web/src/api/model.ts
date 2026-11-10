@@ -10,6 +10,20 @@ export interface LLMPrice {
     output: number;
     cache_read: number;
     cache_write: number;
+    price_schedule?: LLMPriceSchedule | null;
+}
+
+export interface LLMTimePrice extends Omit<LLMPrice, 'price_schedule'> {
+    name: string;
+    start: string;
+    end: string;
+    weekdays?: number[];
+}
+
+export interface LLMPriceSchedule {
+    timezone: string;
+    excluded_dates?: string[];
+    rules: LLMTimePrice[];
 }
 
 /**

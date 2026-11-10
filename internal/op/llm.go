@@ -33,6 +33,9 @@ func LLMUpdate(llmInfo model.LLMInfo, ctx context.Context) error {
 	if llmInfo.Name == "" {
 		return fmt.Errorf("model name is required")
 	}
+	if err := llmInfo.LLMPrice.Validate(); err != nil {
+		return err
+	}
 	if _, ok := llmModelCache.Get(llmInfo.Name); !ok {
 		return fmt.Errorf("model not found")
 	}
@@ -113,7 +116,7 @@ func LLMCleanupGhosts(ctx context.Context) error {
 		}
 		// Keep manually assigned or otherwise priced entries even when their
 		// model is no longer referenced by a channel.
-		if modelPrice.Input != 0 || modelPrice.Output != 0 || modelPrice.CacheRead != 0 || modelPrice.CacheWrite != 0 {
+		if modelPrice.Input != 0 || modelPrice.Output != 0 || modelPrice.CacheRead != 0 || modelPrice.CacheWrite != 0 || modelPrice.PriceSchedule != nil {
 			continue
 		}
 		ghostModelNames = append(ghostModelNames, modelName)
@@ -132,6 +135,9 @@ func LLMCreate(llmInfo model.LLMInfo, ctx context.Context) error {
 	llmInfo.Name = normalizeLLMName(llmInfo.Name)
 	if llmInfo.Name == "" {
 		return fmt.Errorf("model name is required")
+	}
+	if err := llmInfo.LLMPrice.Validate(); err != nil {
+		return err
 	}
 	if _, ok := llmModelCache.Get(llmInfo.Name); ok {
 		return fmt.Errorf("model already exists")
@@ -159,6 +165,9 @@ func LLMBatchCreate(llmInfos []model.LLMInfo, ctx context.Context) error {
 		}
 		if _, ok := llmModelCache.Get(llmInfo.Name); ok {
 			continue
+		}
+		if err := llmInfo.LLMPrice.Validate(); err != nil {
+			return fmt.Errorf("model %s: %w", llmInfo.Name, err)
 		}
 		seen[llmInfo.Name] = struct{}{}
 		newLLMInfos = append(newLLMInfos, llmInfo)
@@ -196,6 +205,9 @@ func LLMBatchSave(llmInfos []model.LLMInfo, ctx context.Context) error {
 		}
 		if _, ok := seen[llmInfo.Name]; ok {
 			return fmt.Errorf("duplicate model name: %s", llmInfo.Name)
+		}
+		if err := llmInfo.LLMPrice.Validate(); err != nil {
+			return fmt.Errorf("model %s: %w", llmInfo.Name, err)
 		}
 		seen[llmInfo.Name] = struct{}{}
 		normalized = append(normalized, llmInfo)

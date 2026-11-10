@@ -77,10 +77,12 @@ func (m *RelayMetrics) RecordUsage(usage *llm.Usage) {
 	if nonCachedTokens < 0 {
 		nonCachedTokens = usage.PromptTokens
 	}
-	m.Stats.InputCost = (float64(tokenDetails.CachedTokens)*modelPrice.CacheRead +
-		float64(tokenDetails.WriteCachedTokens)*modelPrice.CacheWrite +
-		float64(nonCachedTokens)*modelPrice.Input) * 1e-6
-	m.Stats.OutputCost = float64(usage.CompletionTokens) * modelPrice.Output * 1e-6
+	// 整次请求按开始时间定价，流式请求跨越峰谷边界时也保持同一组单价。
+	activePrice := modelPrice.At(m.StartTime)
+	m.Stats.InputCost = (float64(tokenDetails.CachedTokens)*activePrice.CacheRead +
+		float64(tokenDetails.WriteCachedTokens)*activePrice.CacheWrite +
+		float64(nonCachedTokens)*activePrice.Input) * 1e-6
+	m.Stats.OutputCost = float64(usage.CompletionTokens) * activePrice.Output * 1e-6
 }
 
 func (m *RelayMetrics) Save(ctx context.Context, success bool, err error, attempts []model.ChannelAttempt) {

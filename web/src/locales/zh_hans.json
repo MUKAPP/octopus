@@ -681,6 +681,33 @@
             "cacheRead": "缓存读取",
             "cacheWrite": "缓存写入",
             "save": "保存"
+        },
+        "schedule": {
+            "title": "按时段价格",
+            "add": "添加时段",
+            "hint": "上方为基础价；每个时段替换全部四项单价（美元 / 百万 Token），按请求开始时间计费。时段不可重叠；跨午夜时以开始日决定星期。",
+            "timezone": "时区（IANA）",
+            "excludedDates": "排除日期",
+            "datesPlaceholder": "2026-10-01, 2026-10-02",
+            "datesHint": "填写 YYYY-MM-DD，以逗号或空格分隔；这些日期全天使用基础价，法定节假日需在此维护。",
+            "rule": "时段 {number}",
+            "name": "名称（如高峰）",
+            "remove": "删除时段 {number}",
+            "start": "开始时间",
+            "end": "结束时间（HH:MM，最大 24:00）",
+            "weekdays": "开始日的星期（全选表示每天）",
+            "input": "输入",
+            "output": "输出",
+            "cacheRead": "缓存读取",
+            "cacheWrite": "缓存写入",
+            "day0": "日",
+            "day1": "一",
+            "day2": "二",
+            "day3": "三",
+            "day4": "四",
+            "day5": "五",
+            "day6": "六",
+            "summary": "基础价 · {count} 个价格时段"
         }
     },
     "log": {

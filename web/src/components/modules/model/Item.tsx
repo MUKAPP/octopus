@@ -7,6 +7,7 @@ import { getModelIcon } from '@/lib/model-icons';
 import { toast } from '@/components/common/Toast';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/animate-ui/components/animate/tooltip';
 import { ModelDeleteOverlay, ModelEditOverlay } from './ItemOverlays';
+import { fromScheduleDraft, toScheduleDraft } from './price-schedule';
 import { cn } from '@/lib/utils';
 import { createPortal } from 'react-dom';
 import { getSafeAreaInsets, useSafeAreaInsets } from '@/hooks/use-safe-area-insets';
@@ -49,6 +50,7 @@ export const ModelItem = memo(function ModelItem({ model, layout = 'grid' }: Mod
         cache_write: model.cache_write.toString(),
     }));
 
+    const [schedule, setSchedule] = useState(() => toScheduleDraft(model.price_schedule));
     const updateModel = useUpdateModel();
     const deleteModel = useDeleteModel();
 
@@ -94,6 +96,7 @@ export const ModelItem = memo(function ModelItem({ model, layout = 'grid' }: Mod
             cache_read: model.cache_read.toString(),
             cache_write: model.cache_write.toString(),
         });
+        setSchedule(toScheduleDraft(model.price_schedule));
         // Ensure first open already has anchor geometry so layout animation can run.
         updateOverlayRect();
         setIsEditOpen(true);
@@ -106,6 +109,7 @@ export const ModelItem = memo(function ModelItem({ model, layout = 'grid' }: Mod
     const handleSaveEdit = () => {
         updateModel.mutate({
             name: model.name,
+            price_schedule: fromScheduleDraft(schedule),
             input: parseFloat(editValues.input) || 0,
             output: parseFloat(editValues.output) || 0,
             cache_read: parseFloat(editValues.cache_read) || 0,
@@ -193,6 +197,11 @@ export const ModelItem = memo(function ModelItem({ model, layout = 'grid' }: Mod
                     </TooltipContent>
                 </Tooltip>
 
+                {model.price_schedule && (
+                    <p className="text-xs text-muted-foreground" title={model.price_schedule.timezone}>
+                        {t('schedule.summary', { count: model.price_schedule.rules.length })}
+                    </p>
+                )}
                 {isListLayout ? (
                     <p className="flex items-center gap-2 overflow-hidden text-sm text-muted-foreground whitespace-nowrap">
                         <span className="inline-flex items-center gap-1">
@@ -287,6 +296,8 @@ export const ModelItem = memo(function ModelItem({ model, layout = 'grid' }: Mod
                                     onHeightChange={handleOverlayHeightChange}
                                     modelName={model.name}
                                     editValues={editValues}
+                                    schedule={schedule}
+                                    onScheduleChange={setSchedule}
                                     isPending={updateModel.isPending}
                                     onChange={setEditValues}
                                     onCancel={handleCancelEdit}

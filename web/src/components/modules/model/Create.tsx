@@ -11,12 +11,15 @@ import {
 } from '@/components/ui/morphing-dialog';
 import { useTranslations } from 'use-intl';
 import { toast } from '@/components/common/Toast';
+import { PriceScheduleEditor } from './PriceScheduleEditor';
+import { fromScheduleDraft, type PriceScheduleDraft } from './price-schedule';
 
 export function CreateDialogContent() {
     const { setIsOpen } = useMorphingDialog();
     const t = useTranslations('model.create');
     const tToast = useTranslations('model.toast');
     const createModel = useCreateModel();
+    const [schedule, setSchedule] = useState<PriceScheduleDraft | null>(null);
 
     const [formData, setFormData] = useState({
         name: '',
@@ -32,6 +35,7 @@ export function CreateDialogContent() {
 
         createModel.mutate({
             name: formData.name.trim(),
+            price_schedule: fromScheduleDraft(schedule),
             input: parseFloat(formData.input) || 0,
             output: parseFloat(formData.output) || 0,
             cache_read: parseFloat(formData.cache_read) || 0,
@@ -39,6 +43,7 @@ export function CreateDialogContent() {
         }, {
             onSuccess: () => {
                 setFormData({ name: '', input: '', output: '', cache_read: '', cache_write: '' });
+                setSchedule(null);
                 setIsOpen(false);
             },
             onError: (error) => {
@@ -126,6 +131,10 @@ export function CreateDialogContent() {
                             </Field>
                         </div>
                         <p className="text-xs text-muted-foreground">{t('priceHint')}</p>
+                        <PriceScheduleEditor value={schedule} onChange={setSchedule} basePrice={{
+                            input: Number(formData.input) || 0, output: Number(formData.output) || 0,
+                            cache_read: Number(formData.cache_read) || 0, cache_write: Number(formData.cache_write) || 0,
+                        }} />
                         <div className="flex gap-2 pt-4">
                             <Button
                                 type="button"

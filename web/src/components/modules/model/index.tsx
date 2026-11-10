@@ -28,7 +28,8 @@ export function Model() {
         const term = searchTerm.toLowerCase().trim();
         const byName = !term ? sortedModels : sortedModels.filter((m) => m.name.toLowerCase().includes(term));
         const hasPricing = (model: (typeof byName)[number]) =>
-            model.input + model.output + model.cache_read + model.cache_write > 0;
+            model.input + model.output + model.cache_read + model.cache_write > 0 ||
+            model.price_schedule?.rules.some(rule => rule.input + rule.output + rule.cache_read + rule.cache_write > 0) === true;
 
         if (filter === 'priced') {
             return byName.filter(hasPricing);

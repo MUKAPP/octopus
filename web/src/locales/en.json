@@ -681,6 +681,33 @@
             "cacheRead": "Cache Read",
             "cacheWrite": "Cache Write",
             "save": "Save"
+        },
+        "schedule": {
+            "title": "Time-based pricing",
+            "add": "Add period",
+            "hint": "The prices above are the base rates. Each period replaces all four rates (USD / 1M tokens). Billing uses the request start time. Periods cannot overlap; overnight periods use the starting weekday.",
+            "timezone": "Time zone (IANA)",
+            "excludedDates": "Excluded dates",
+            "datesPlaceholder": "2026-10-01, 2026-10-02",
+            "datesHint": "Use YYYY-MM-DD, separated by commas or spaces. These entire calendar dates use base rates. Maintain public holidays here.",
+            "rule": "Period {number}",
+            "name": "Name (e.g. peak)",
+            "remove": "Remove period {number}",
+            "start": "Start",
+            "end": "End (HH:MM, up to 24:00)",
+            "weekdays": "Starting weekdays (all selected = every day)",
+            "input": "Input",
+            "output": "Output",
+            "cacheRead": "Cache read",
+            "cacheWrite": "Cache write",
+            "day0": "Sun",
+            "day1": "Mon",
+            "day2": "Tue",
+            "day3": "Wed",
+            "day4": "Thu",
+            "day5": "Fri",
+            "day6": "Sat",
+            "summary": "Base rates · {count} pricing periods"
         }
     },
     "log": {

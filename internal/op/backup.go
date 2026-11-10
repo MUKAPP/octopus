@@ -109,6 +109,12 @@ func DBImportIncremental(ctx context.Context, dump *model.DBDump) (*model.DBImpo
 		}
 	}
 
+	for _, info := range dump.LLMInfos {
+		if err := info.LLMPrice.Validate(); err != nil {
+			return nil, fmt.Errorf("validate model %q: %w", info.Name, err)
+		}
+	}
+
 	conn := db.GetDB().WithContext(ctx)
 	res := &model.DBImportResult{RowsAffected: map[string]int64{}}
 

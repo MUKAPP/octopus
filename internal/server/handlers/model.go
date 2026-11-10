@@ -139,6 +139,10 @@ func createLLM(c *gin.Context) {
 		resp.Error(c, http.StatusBadRequest, resp.ErrInvalidParam)
 		return
 	}
+	if err := llmInfo.LLMPrice.Validate(); err != nil {
+		resp.Error(c, http.StatusBadRequest, err.Error())
+		return
+	}
 	if err := op.LLMCreate(llmInfo, c.Request.Context()); err != nil {
 		resp.Error(c, http.StatusInternalServerError, err.Error())
 		return
@@ -155,6 +159,10 @@ func updateLLM(c *gin.Context) {
 	llmInfo.Name = strings.ToLower(strings.TrimSpace(llmInfo.Name))
 	if llmInfo.Name == "" {
 		resp.Error(c, http.StatusBadRequest, resp.ErrInvalidParam)
+		return
+	}
+	if err := llmInfo.LLMPrice.Validate(); err != nil {
+		resp.Error(c, http.StatusBadRequest, err.Error())
 		return
 	}
 	if err := op.LLMUpdate(llmInfo, c.Request.Context()); err != nil {
@@ -207,11 +215,13 @@ func rebuildLLMPrice(c *gin.Context) {
 		return
 	}
 	for i := range llmInfos {
+		schedule := llmInfos[i].PriceSchedule
 		if modelPrice := price.GetLLMPrice(llmInfos[i].Name); modelPrice != nil {
 			llmInfos[i].LLMPrice = *modelPrice
 		} else {
 			llmInfos[i].LLMPrice = model.LLMPrice{}
 		}
+		llmInfos[i].PriceSchedule = schedule
 	}
 	if err := op.LLMBatchSave(llmInfos, ctx); err != nil {
 		resp.Error(c, http.StatusInternalServerError, err.Error())
