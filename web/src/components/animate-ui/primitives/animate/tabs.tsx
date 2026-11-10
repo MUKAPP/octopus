@@ -357,7 +357,7 @@ function TabsContents({
     <motion.div
       ref={containerRef}
       data-slot="tabs-contents"
-      style={{ overflow: 'hidden' }}
+      style={{ overflow: 'clip' }}
       animate={height !== undefined ? { height } : undefined}
       transition={effectiveTransition}
       {...props}
@@ -411,7 +411,7 @@ function TabsContent({
       aria-hidden={!isActive}
       data-slot="tabs-content"
       inert={!isActive}
-      style={{ overflow: 'hidden', ...style }}
+      style={{ overflow: 'clip', ...style }}
       animate={shouldReduceMotion ? { opacity: isActive ? 1 : 0 } : { opacity: isActive ? 1 : 0, filter: isActive ? 'blur(0px)' : 'blur(8px)' }}
       transition={shouldReduceMotion ? { duration: 0 } : { duration: 0.36, ease: [0.25, 0.46, 0.45, 0.94] }}
     />
