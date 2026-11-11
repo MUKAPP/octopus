@@ -876,23 +876,9 @@ func statsAnalyticsUsageGet(ctx context.Context, filter StatsAnalyticsFilter) (S
 	dbConn := db.GetDB().WithContext(ctx)
 	scope := statsUsageFilterScope(filter)
 
-	var dbSummary model.StatsUsage
-	if err := dbConn.Table("stats_usages").Scopes(scope).Select(statsUsageSumSelect).Scan(&dbSummary).Error; err != nil {
-		return result, fmt.Errorf("analytics summary: %w", err)
-	}
-
-	var earliestRow struct {
-		Date string
-	}
-	if err := dbConn.Table("stats_usages").Scopes(scope).
-		Select("COALESCE(MIN(date),'') AS date").Scan(&earliestRow).Error; err != nil {
-		return result, fmt.Errorf("analytics earliest date: %w", err)
-	}
-
-	var dbTrend []model.StatsUsage
-	if err := dbConn.Table("stats_usages").Scopes(scope).
-		Select("date," + statsUsageSumSelect).Group("date").Scan(&dbTrend).Error; err != nil {
-		return result, fmt.Errorf("analytics trend: %w", err)
+	series, err := statsUsageSeriesLocked(ctx, filter)
+	if err != nil {
+		return result, err
 	}
 
 	var dbByModel []model.StatsUsage
@@ -919,11 +905,6 @@ func statsAnalyticsUsageGet(ctx context.Context, filter StatsAnalyticsFilter) (S
 		return result, fmt.Errorf("analytics by channel: %w", err)
 	}
 
-	summary := dbSummary
-	trendMap := make(map[string]model.StatsUsage, len(dbTrend))
-	for _, row := range dbTrend {
-		trendMap[row.Date] = row
-	}
 	byModelMap := make(map[string]model.StatsUsage, len(dbByModel))
 	for _, row := range dbByModel {
 		byModelMap[row.RequestModelName] = row
@@ -941,19 +922,9 @@ func statsAnalyticsUsageGet(ctx context.Context, filter StatsAnalyticsFilter) (S
 		byChannelMap[statsUsageEntityKey{ID: row.ChannelID, Name: row.ChannelName}] = row
 	}
 
-	availableFrom := earliestRow.Date
 	for _, delta := range statsUsageDeltaFiltered(filter) {
-		summary.Add(delta)
 		key := delta.Key()
-
-		row, ok := trendMap[key.Date]
-		if !ok {
-			row = model.StatsUsage{Date: key.Date}
-		}
-		row.Add(delta)
-		trendMap[key.Date] = row
-
-		row, ok = byModelMap[key.RequestModelName]
+		row, ok := byModelMap[key.RequestModelName]
 		if !ok {
 			row = model.StatsUsage{RequestModelName: key.RequestModelName}
 		}
@@ -980,17 +951,13 @@ func statsAnalyticsUsageGet(ctx context.Context, filter StatsAnalyticsFilter) (S
 		}
 		row.Add(delta)
 		byChannelMap[statsUsageEntityKey{ID: key.ChannelID, Name: key.ChannelName}] = row
-
-		if availableFrom == "" || key.Date < availableFrom {
-			availableFrom = key.Date
-		}
 	}
 
-	result.AvailableFrom = availableFrom
-	result.Summary = statsAnalyticsMetricsOf(summary)
+	result.AvailableFrom = series.availableFrom
+	result.Summary = statsAnalyticsMetricsOf(series.summary)
 
-	result.Trend = make([]StatsAnalyticsTrendPoint, 0, len(trendMap))
-	for date, row := range trendMap {
+	result.Trend = make([]StatsAnalyticsTrendPoint, 0, len(series.daily))
+	for date, row := range series.daily {
 		result.Trend = append(result.Trend, StatsAnalyticsTrendPoint{
 			Date:                  date,
 			StatsAnalyticsMetrics: statsAnalyticsMetricsOf(row),

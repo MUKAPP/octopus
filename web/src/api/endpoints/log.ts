@@ -711,6 +711,271 @@ export function useLogDetailStream(id: number, state: RequestState | undefined, 
 
 const logsInfiniteQueryKey = (pageSize: number) => ['logs', 'infinite', pageSize] as const;
 
+function activeRequestToRelayLog(req: ActiveRelayRequest): RelayLog {
+    const elapsedMs = Math.max(0, Date.now() - req.time * 1000);
+    return normalizeRelayLog({
+        id: req.id,
+        time: req.time,
+        request_model: req.request_model_name,
+        actual_model: req.actual_model_name ?? req.request_model_name,
+        channel_name: req.channel_name ?? '—',
+        final_channel_name: req.channel_name ?? '—',
+        request_api_key_name: req.request_api_key_name,
+        state: 'running',
+        duration: elapsedMs * 1_000_000,
+    });
+}
+
+export type LogStreamStatus = 'connecting' | 'connected' | 'reconnecting' | 'fallback';
+
+/**
+ * 主页专用的轻量实时概览 Hook：订阅 /api/v1/log/overview/stream，
+ * 每次连通补齐完整 /active 与第一页 /list；不可用时每 10 秒轮询，不打开重复全量流或无限分页缓存。
+ */
+export function useLogOverview(options: { enabled?: boolean } = {}) {
+    const { enabled = true } = options;
+    const [logs, setLogs] = useState<RelayLog[]>([]);
+    const [status, setStatus] = useState<LogStreamStatus>('connecting');
+    const [error, setError] = useState<Error | null>(null);
+    const refreshRef = useRef<(() => Promise<void>) | null>(null);
+
+    useEffect(() => {
+        if (!enabled) return;
+
+        let cancelled = false;
+        let source: EventSource | null = null;
+        let retryTimer: ReturnType<typeof setTimeout> | null = null;
+        let fallbackTimer: ReturnType<typeof setInterval> | null = null;
+        let retryAttempt = 0;
+        let opened = false;
+        let snapshotInFlight: Promise<void> | null = null;
+        let snapshotEvents = new Map<number, RelayLog>();
+        let hiddenAt = document.visibilityState === 'hidden' ? Date.now() : null;
+
+        const closeSource = () => {
+            if (!source) return;
+            source.onopen = null;
+            source.onerror = null;
+            source.onmessage = null;
+            source.close();
+            source = null;
+        };
+
+        const stopFallbackPolling = () => {
+            if (fallbackTimer !== null) {
+                clearInterval(fallbackTimer);
+                fallbackTimer = null;
+            }
+        };
+
+        const fetchSnapshot = (): Promise<void> => {
+            if (cancelled) return Promise.resolve();
+            if (snapshotInFlight) return snapshotInFlight;
+            snapshotEvents = new Map();
+            snapshotInFlight = (async () => {
+                try {
+                    const params = new URLSearchParams({ page: '1', page_size: '20' });
+                    const [activeRes, listRes] = await Promise.allSettled([
+                        apiRequest<ActiveRelayRequest[] | null>('/api/v1/log/active'),
+                        apiRequest<unknown[] | null>('/api/v1/log/list?' + params.toString()),
+                    ]);
+                    if (cancelled) return;
+
+                    const activeItems = activeRes.status === 'fulfilled'
+                        ? (activeRes.value ?? []).map(activeRequestToRelayLog)
+                        : [];
+                    const listItems = listRes.status === 'fulfilled'
+                        ? (listRes.value ?? []).map(normalizeRelayLog)
+                        : [];
+                    const activeIDs = new Set(activeItems.map((item) => item.id));
+                    const receivedEvents = Array.from(snapshotEvents.values());
+
+                    if (activeRes.status === 'fulfilled' || listRes.status === 'fulfilled') {
+                        setLogs((current) => mergeRelayLogList([
+                            ...activeItems,
+                            ...listItems,
+                            // 完整活动快照淘汰漏收终态的旧活动项；已知终态不能被旧 HTTP 数据复活。
+                            ...current.filter((item) =>
+                                isTerminalLogState(getEffectiveLogState(item))
+                                || activeRes.status !== 'fulfilled'
+                                || activeIDs.has(item.id),
+                            ),
+                            // HTTP 发出后到达的实时事件优先，保留新增活动和最新生命周期状态。
+                            ...receivedEvents,
+                        ]));
+                    }
+                } catch (cause) {
+                    logger.error('获取日志概览快照失败:', cause);
+                } finally {
+                    snapshotInFlight = null;
+                    snapshotEvents = new Map();
+                }
+            })();
+            return snapshotInFlight;
+        };
+
+        const startFallbackPolling = () => {
+            if (cancelled || fallbackTimer !== null) return;
+            void fetchSnapshot();
+            fallbackTimer = setInterval(() => {
+                if (document.visibilityState === 'hidden') return;
+                void fetchSnapshot();
+            }, 10_000);
+        };
+
+        const applyOverview = (event: MessageEvent<string>) => {
+            if (cancelled) return;
+            try {
+                const parsed = JSON.parse(event.data) as unknown;
+                const next = normalizeRelayLog(parsed);
+                if (!next.id) return;
+                if (snapshotInFlight) {
+                    const existing = snapshotEvents.get(next.id);
+                    snapshotEvents.set(next.id, existing ? mergeRelayLog(existing, next) : next);
+                }
+                setLogs((current) => mergeRelayLogList([...current, next]));
+            } catch (cause) {
+                logger.error('解析日志概览失败:', cause);
+            }
+        };
+
+        const scheduleReconnect = () => {
+            if (cancelled || retryTimer !== null) return;
+            if (!opened && retryAttempt >= 3) {
+                setStatus('fallback');
+                startFallbackPolling();
+                return;
+            }
+            setStatus('reconnecting');
+            const delay = Math.min(1000 * 2 ** retryAttempt, 30_000);
+            retryAttempt += 1;
+            retryTimer = setTimeout(() => {
+                retryTimer = null;
+                void connect();
+            }, delay);
+        };
+
+        const connect = () => {
+            if (cancelled) return;
+            try {
+                closeSource();
+                const nextSource = new EventSource(resolveAppURL('/api/v1/log/overview/stream'), { withCredentials: true });
+                source = nextSource;
+                nextSource.onopen = () => {
+                    if (cancelled) return;
+                    opened = true;
+                    retryAttempt = 0;
+                    stopFallbackPolling();
+                    setStatus('connected');
+                    setError(null);
+                    // 重连前的补拉可能漏掉断线期间的终态；等旧补拉完成后再取新快照。
+                    void (async () => {
+                        await snapshotInFlight;
+                        if (!cancelled && source === nextSource) {
+                            await fetchSnapshot();
+                        }
+                    })();
+                };
+                nextSource.onmessage = applyOverview;
+                nextSource.addEventListener('log', applyOverview);
+                nextSource.onerror = () => {
+                    if (cancelled) return;
+                    closeSource();
+                    setError(new Error('日志概览流已断开'));
+                    void fetchSnapshot();
+                    scheduleReconnect();
+                };
+            } catch (cause) {
+                if (cancelled) return;
+                setError(cause instanceof Error ? cause : new Error('创建日志概览流失败'));
+                scheduleReconnect();
+            }
+        };
+
+        const resumeOverview = () => {
+            if (cancelled || document.visibilityState === 'hidden') return;
+            const wasHiddenLongEnough = hiddenAt !== null && Date.now() - hiddenAt >= 5_000;
+            hiddenAt = null;
+            if (!opened && retryAttempt >= 3) {
+                void fetchSnapshot();
+                return;
+            }
+            if (source && source.readyState !== EventSource.CLOSED && !wasHiddenLongEnough) return;
+            if (retryTimer !== null) {
+                clearTimeout(retryTimer);
+                retryTimer = null;
+            }
+            connect();
+        };
+
+        const handleVisibilityChange = () => {
+            if (document.visibilityState === 'hidden') {
+                hiddenAt = Date.now();
+            } else {
+                resumeOverview();
+            }
+        };
+
+        refreshRef.current = async () => {
+            if (cancelled) return;
+            if (retryTimer !== null) {
+                clearTimeout(retryTimer);
+                retryTimer = null;
+            }
+            retryAttempt = 0;
+            opened = false;
+            stopFallbackPolling();
+            setStatus('connecting');
+            connect();
+            await fetchSnapshot();
+        };
+
+        connect();
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+        window.addEventListener('focus', resumeOverview);
+        window.addEventListener('online', resumeOverview);
+        window.addEventListener('pageshow', resumeOverview);
+
+        return () => {
+            cancelled = true;
+            refreshRef.current = null;
+            if (retryTimer !== null) clearTimeout(retryTimer);
+            stopFallbackPolling();
+            closeSource();
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
+            window.removeEventListener('focus', resumeOverview);
+            window.removeEventListener('online', resumeOverview);
+            window.removeEventListener('pageshow', resumeOverview);
+        };
+    }, [enabled]);
+
+    const refresh = useCallback(async () => {
+        if (refreshRef.current) {
+            await refreshRef.current();
+        }
+    }, []);
+
+    const activeLogs = useMemo(
+        () => logs.filter((log) => log.state === 'running' || log.state === 'committed'),
+        [logs],
+    );
+
+    const recentLogs = useMemo(
+        () => logs.filter((log) => log.state !== 'running' && log.state !== 'committed'),
+        [logs],
+    );
+
+    return {
+        logs,
+        activeLogs,
+        recentLogs,
+        isConnected: status === 'connected',
+        status,
+        error,
+        refresh,
+    };
+}
+
 /**
  * 日志管理 Hook
  * 整合初始加载、SSE 实时推送、滚动加载更多

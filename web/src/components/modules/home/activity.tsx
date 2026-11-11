@@ -1,4 +1,4 @@
-import { useStatsDaily, type StatsDailyFormatted } from '@/api/stats';
+import { useStatsDaily, useStatsToday, type StatsDailyFormatted } from '@/api/stats';
 import { useMemo, useRef, useLayoutEffect, useState, useCallback, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslations } from 'use-intl';
@@ -27,7 +27,16 @@ function getActivityLevel(value: number): number {
 }
 
 export function Activity() {
-    const { data: statsDailyFormatted, isLoading, isError, refetch } = useStatsDaily();
+    const dailyQuery = useStatsDaily();
+    const todayQuery = useStatsToday();
+    const statsDailyFormatted = dailyQuery.data;
+    const todayDate = todayQuery.data?.date;
+    const hasData = statsDailyFormatted !== undefined && todayDate !== undefined;
+    const isError = dailyQuery.isError || todayQuery.isError;
+    const isLoading = !isError && !hasData;
+    const refetch = () => Promise.allSettled(
+        [dailyQuery, todayQuery].filter((query) => query.isError).map((query) => query.refetch()),
+    );
     const scrollRef = useRef<HTMLDivElement>(null);
     const containerRef = useRef<HTMLDivElement>(null);
     const t = useTranslations('home.activity');
@@ -46,10 +55,10 @@ export function Activity() {
     }, []);
 
     const days = useMemo(() => {
-        if (!statsDailyFormatted) return [];
+        if (!statsDailyFormatted || !todayDate) return [];
         const formattedMap = new Map(statsDailyFormatted.map(stat => [stat.date, stat]));
 
-        const today = dayjs();
+        const today = dayjs(todayDate);
         const startDate = today.subtract(today.day() + 53 * 7, 'day');
 
         const result: StatsDailyData[] = [];
@@ -66,7 +75,7 @@ export function Activity() {
         }
 
         return result;
-    }, [statsDailyFormatted]);
+    }, [statsDailyFormatted, todayDate]);
 
     const [maskImage, setMaskImage] = useState('none');
 
@@ -113,9 +122,33 @@ export function Activity() {
     }, [pinnedDateStr, hideTooltip]);
 
     return (
-        <div ref={containerRef} className="rounded-3xl bg-card border-border border text-card-foreground">
-            {isError && statsDailyFormatted && (
-                <div role="alert" className="mx-4 mt-4 flex items-center justify-between gap-3 rounded-2xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-muted-foreground">
+        <section ref={containerRef} className="rounded-3xl bg-card border-border border text-card-foreground">
+            <div className="flex flex-wrap items-center justify-between gap-2 px-4 sm:px-5 pt-4 pb-1">
+                <div className="flex items-center gap-2">
+                    <h2 className="text-base font-semibold">{t('title')}</h2>
+                    <span className="text-xs text-muted-foreground">{t('subtitle')}</span>
+                </div>
+                <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground" aria-hidden="true">
+                    <span>{t('less')}</span>
+                    <div className="flex items-center gap-1">
+                        {[0, 1, 2, 3, 4].map((level) => (
+                            <span
+                                key={level}
+                                className="size-2.5 rounded-[3px]"
+                                style={{
+                                    backgroundColor:
+                                        level === 0
+                                            ? 'var(--muted)'
+                                            : `color-mix(in oklch, var(--primary) ${level * 25}%, var(--muted))`,
+                                }}
+                            />
+                        ))}
+                    </div>
+                    <span>{t('more')}</span>
+                </div>
+            </div>
+            {isError && hasData && (
+                <div role="alert" className="mx-4 mt-3 flex items-center justify-between gap-3 rounded-2xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-muted-foreground">
                     <span>{tHome('feedback.loadFailed')}</span>
                     <InlineRetry onRetry={() => void refetch()} label={tHome('feedback.retry')} className="shrink-0" />
                 </div>
@@ -123,14 +156,14 @@ export function Activity() {
             <div
                 ref={scrollRef}
                 onScroll={checkScroll}
-                className="overflow-x-auto scrollbar p-4"
+                className="overflow-x-auto scrollbar px-4 pb-4 pt-3"
                 style={{ maskImage, WebkitMaskImage: maskImage }}
             >
-                {isLoading && !statsDailyFormatted ? (
+                {isLoading && !hasData ? (
                     <div className="flex h-[7.375rem] items-center justify-center">
                         <Loader2 className="size-8 animate-spin motion-reduce:animate-none text-muted-foreground" role="status" aria-label={tHome('feedback.loading')} />
                     </div>
-                ) : isError && !statsDailyFormatted ? (
+                ) : isError && !hasData ? (
                     <div role="alert" className="flex h-[7.375rem] flex-col items-center justify-center gap-3 text-sm text-muted-foreground">
                         <p>{tHome('feedback.loadFailed')}</p>
                         <InlineRetry onRetry={() => void refetch()} label={tHome('feedback.retry')} />
@@ -248,6 +281,6 @@ export function Activity() {
                 })(),
                 document.body
             )}
-        </div>
+        </section>
     );
 }

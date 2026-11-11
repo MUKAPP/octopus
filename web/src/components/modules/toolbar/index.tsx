@@ -14,6 +14,7 @@ import { useNavStore, type NavItem } from '@/components/modules/navbar';
 import { CreateDialogContent as ChannelCreateContent } from '@/components/modules/channel/Create';
 import { CreateDialogContent as GroupCreateContent } from '@/components/modules/group/Create';
 import { CreateDialogContent as ModelCreateContent } from '@/components/modules/model/Create';
+import { HomeHeaderActions } from '@/components/modules/home/HomeHeaderActions';
 import { useTranslations } from 'use-intl';
 import { useSearchStore } from './search-store';
 import {
@@ -83,6 +84,7 @@ export function Toolbar() {
     const shouldReduceMotion = useReducedMotion() ?? false;
     const searchExpanded = expandedSearchItem === toolbarItem;
 
+    if (activeItem === 'home') return <HomeHeaderActions />;
     if (!toolbarItem) return null;
     const showLayoutOptions = toolbarItem !== 'group';
     const showCombinedSortOptions = toolbarItem === 'channel' || toolbarItem === 'group';

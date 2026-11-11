@@ -78,12 +78,9 @@ type StatsStatusCodeCount struct {
 }
 
 type StatsHourlyDetail struct {
-	Hour         string  `json:"hour"`
-	RequestCount int64   `json:"request_count"`
-	InputToken   int64   `json:"input_token"`
-	OutputToken  int64   `json:"output_token"`
-	InputCost    float64 `json:"input_cost"`
-	OutputCost   float64 `json:"output_cost"`
+	Hour         string `json:"hour"`
+	RequestCount int64  `json:"request_count"`
+	model.StatsMetrics
 }
 
 // Peaks use server-local calendar minutes of request start; TPM attributes reported
@@ -214,6 +211,15 @@ const metadataTotalsSelect = "COALESCE(SUM(input_token),0) AS input_token,COALES
 
 const metadataAnalyticsSelect = metadataTotalsSelect + ",COALESCE(SUM(total_duration_ms),0) AS wait_time,COALESCE(SUM(cache_read_token),0) AS cached_token"
 
+// statsAnalyticsHourlyGet 供主页与分析页复用开始时间小时分布。
+func statsAnalyticsHourlyGet(ctx context.Context, filter StatsAnalyticsFilter) ([]StatsHourlyDetail, error) {
+	rows := []StatsHourlyDetail{}
+	err := metadataQuery(ctx, filter, true).
+		Select("hour,COUNT(*) AS request_count," + metadataTotalsSelect + ",COALESCE(SUM(total_duration_ms),0) AS wait_time").
+		Group("hour").Order("hour").Scan(&rows).Error
+	return rows, err
+}
+
 func statsAnalyticsDetailsGet(ctx context.Context, f StatsAnalyticsFilter, legacyCount int64) (StatsAnalyticsDetails, error) {
 	var out StatsAnalyticsDetails
 	out.ByErrorCategory = []StatsCategoryCount{}
@@ -260,7 +266,7 @@ func statsAnalyticsDetailsGet(ctx context.Context, f StatsAnalyticsFilter, legac
 	if err := query().Select("status_code,COUNT(*) AS count").Group("status_code").Order("status_code").Scan(&out.ByStatusCode).Error; err != nil {
 		return out, err
 	}
-	if err := query().Select("hour,COUNT(*) AS request_count," + metadataTotalsSelect).Group("hour").Order("hour").Scan(&out.Hourly).Error; err != nil {
+	if out.Hourly, err = statsAnalyticsHourlyGet(ctx, f); err != nil {
 		return out, err
 	}
 	for _, peak := range []struct {

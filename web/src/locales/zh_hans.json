@@ -252,6 +252,17 @@
         "searchPlaceholder": "搜索名称",
         "closeSearch": "关闭搜索",
         "create": "创建",
+        "home": {
+            "live": "实时连接",
+            "connecting": "连接中",
+            "reconnecting": "重连中",
+            "fallback": "轮询模式",
+            "liveTooltip": "正在通过 SSE 实时接收请求状态",
+            "connectingTooltip": "正在建立实时日志连接",
+            "reconnectingTooltip": "实时连接已断开，正在自动重连",
+            "fallbackTooltip": "实时流不可用，已切换至每 10 秒轮询",
+            "refresh": "刷新主页数据"
+        },
         "popover": {
             "ariaLabel": "视图选项",
             "layout": "布局",
@@ -310,52 +321,84 @@
             "loadFailed": "加载数据失败，请重试",
             "retry": "重试"
         },
+        "pulse": {
+            "todayRequests": "今日请求",
+            "todaySpend": "今日消耗",
+            "liveConcurrency": "实时并发",
+            "gatewayStatus": "网关状态",
+            "success": "成功 {count}",
+            "failed": "失败 {count}",
+            "noRequestsToday": "今日尚无请求",
+            "todayTokens": "Token {value}",
+            "allTimeCost": "累计 {value}",
+            "running": "运行中",
+            "idle": "空闲",
+            "concurrencyUnit": "路",
+            "avgLatencyToday": "今日平均耗时 {value}",
+            "processingLatency": "请求处理中",
+            "noLatencyToday": "暂无耗时数据",
+            "statusHealthy": "正常",
+            "statusAttention": "需关注",
+            "statusInactive": "未启用",
+            "activeKeys": "活跃密钥 {count}",
+            "pricedModels": "定价模型 {count}"
+        },
         "activity": {
+            "title": "全年活跃度",
+            "subtitle": "近 54 周",
+            "less": "少",
+            "more": "多",
             "requestCount": "请求次数",
             "waitTime": "总耗时",
             "totalToken": "消耗 Token",
             "totalCost": "总成本",
             "noData": "无数据"
         },
-        "total": {
-            "requestStats": "请求统计",
-            "totalStats": "全部统计",
-            "inputStats": "输入统计",
-            "outputStats": "输出统计",
-            "requestCount": "请求次数",
-            "timeConsumed": "总耗时",
-            "totalToken": "消耗 Token",
-            "totalCost": "总成本",
-            "inputTokens": "输入 Token",
-            "inputCost": "输入成本",
-            "outputTokens": "输出 Token",
-            "outputCost": "输出成本"
-        },
         "chart": {
-            "title": "趋势",
+            "title": "今日 24 小时流速",
+            "deepAnalytics": "深入分析",
             "totalRequests": "请求次数",
             "totalCost": "总成本",
             "totalTokens": "消耗 Token",
-            "timePeriod": "时间周期",
-            "cyclePeriod": "切换时间周期，当前：{period}",
+            "hourlyCoverage": "小时曲线覆盖 {sampled}/{total} 个请求；上方汇总包含全部请求。",
             "metricType": {
                 "cost": "成本",
                 "count": "次数",
                 "tokens": "Token"
-            },
-            "period": {
-                "today": "今天",
-                "last7Days": "近 7 天",
-                "last30Days": "近 30 天"
             }
         },
-        "rank": {
-            "title": "排行榜",
-            "sortByCost": "成本",
-            "sortByCount": "次数",
-            "sortByTokens": "Token",
-            "noData": "暂无排行数据",
-            "successRate": "成功率"
+        "inspector": {
+            "title": "渠道与密钥巡检",
+            "manage": "渠道管理",
+            "allHealthySummary": "{channels} 个启用渠道、{keys} 个活跃密钥状态正常",
+            "issuesSummary": "发现 {errors} 项异常、{warnings} 项告警",
+            "errorsOnlySummary": "发现 {errors} 项异常需要处理",
+            "warningsOnlySummary": "{warnings} 项状态需要关注",
+            "noEntities": "尚未配置渠道或 API 密钥",
+            "allChannelsDisabled": "全部 {total} 个渠道均已禁用",
+            "allKeysHealthy": "{enabled}/{total} Key 正常",
+            "noEnabledChannelKeys": "无可用密钥",
+            "channelKeyStatus": "Key {label} 返回 {code}",
+            "highLatency": "延迟较高",
+            "apiKeyLabel": "密钥 {name}",
+            "apiKeyExpired": "已过期",
+            "apiKeyExpiringDays": "{days} 天后过期",
+            "apiKeyExpiringSoon": "即将过期",
+            "apiKeyQuotaExhausted": "额度已耗尽 ({percent}%)",
+            "apiKeyQuotaNear": "额度达 {percent}%",
+            "viewChannelAnalytics": "查看 {name} 今日分析"
+        },
+        "liveActivity": {
+            "title": "实时与近期动态",
+            "allLogs": "全部日志",
+            "activeCount": "{count} 进行中",
+            "justNow": "刚刚",
+            "secondsAgo": "{count} 秒前",
+            "minutesAgo": "{count} 分钟前",
+            "hoursAgo": "{count} 小时前",
+            "connecting": "正在连接实时日志流...",
+            "empty": "暂无近期请求动态",
+            "emptyHint": "新发起的 API 请求会实时出现在这里"
         }
     },
     "setting": {

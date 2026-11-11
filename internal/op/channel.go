@@ -22,6 +22,12 @@ var channelKeyCacheNeedUpdateLock sync.Mutex
 func ChannelList(ctx context.Context) ([]model.Channel, error) {
 	channels := make([]model.Channel, 0, channelCache.Len())
 	for _, channel := range channelCache.GetAll() {
+		channel.Keys = slices.Clone(channel.Keys)
+		for i, key := range channel.Keys {
+			if current, ok := channelKeyCache.Get(key.ID); ok {
+				channel.Keys[i] = current
+			}
+		}
 		channels = append(channels, channel)
 	}
 	return channels, nil

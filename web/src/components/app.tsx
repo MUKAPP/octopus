@@ -23,8 +23,10 @@ import {
     groupListQueryOptions,
     modelChannelListQueryOptions,
     modelListQueryOptions,
+    statsAPIKeyQueryOptions,
     statsDailyQueryOptions,
     statsHourlyQueryOptions,
+    statsTodayQueryOptions,
     statsTotalQueryOptions,
 } from '@/api/queries';
 import { useQueryClient } from '@tanstack/react-query';
@@ -81,10 +83,14 @@ export function AppContainer() {
                     switch (activeItem) {
                         case 'home': {
                             prefetches.push(
+                                queryClient.prefetchQuery(statsTodayQueryOptions),
                                 queryClient.prefetchQuery(statsTotalQueryOptions),
                                 queryClient.prefetchQuery(statsDailyQueryOptions),
                                 queryClient.prefetchQuery(statsHourlyQueryOptions),
                                 queryClient.prefetchQuery(channelListQueryOptions),
+                                queryClient.prefetchQuery(apiKeyListQueryOptions),
+                                queryClient.prefetchQuery(statsAPIKeyQueryOptions),
+                                queryClient.prefetchQuery(modelListQueryOptions),
                             );
                             break;
                         }

@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/bestruirui/octopus/internal/model"
 	"github.com/bestruirui/octopus/internal/op"
 	"github.com/bestruirui/octopus/internal/server/middleware"
 	"github.com/bestruirui/octopus/internal/server/resp"
@@ -48,24 +49,40 @@ func init() {
 }
 
 func getStatsToday(c *gin.Context) {
-	resp.Success(c, op.StatsTodayGet())
-}
-
-func getStatsDaily(c *gin.Context) {
-	statsDaily, err := op.StatsGetDaily(c.Request.Context())
+	today := time.Now().Format("20060102")
+	stats, err := op.StatsUsageOverviewGet(c.Request.Context(), op.StatsAnalyticsFilter{StartDate: &today, EndDate: &today})
 	if err != nil {
 		resp.Error(c, http.StatusInternalServerError, err.Error())
 		return
 	}
-	resp.Success(c, statsDaily)
+	resp.Success(c, model.StatsDaily{Date: today, StatsMetrics: stats.Summary})
+}
+
+func getStatsDaily(c *gin.Context) {
+	stats, err := op.StatsUsageOverviewGet(c.Request.Context(), op.StatsAnalyticsFilter{})
+	if err != nil {
+		resp.Error(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+	resp.Success(c, stats.Daily)
 }
 
 func getStatsHourly(c *gin.Context) {
-	resp.Success(c, op.StatsHourlyGet())
+	stats, err := op.StatsUsageHourlyGet(c.Request.Context())
+	if err != nil {
+		resp.Error(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+	resp.Success(c, stats)
 }
 
 func getStatsTotal(c *gin.Context) {
-	resp.Success(c, op.StatsTotalGet())
+	stats, err := op.StatsUsageOverviewGet(c.Request.Context(), op.StatsAnalyticsFilter{})
+	if err != nil {
+		resp.Error(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+	resp.Success(c, model.StatsTotal{ID: 1, StatsMetrics: stats.Summary})
 }
 
 func getStatsAPIKey(c *gin.Context) {

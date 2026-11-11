@@ -252,6 +252,17 @@
         "searchPlaceholder": "搜尋名稱",
         "closeSearch": "關閉搜尋",
         "create": "建立",
+        "home": {
+            "live": "即時連線",
+            "connecting": "連線中",
+            "reconnecting": "重新連線中",
+            "fallback": "輪詢模式",
+            "liveTooltip": "正在透過 SSE 即時接收請求狀態",
+            "connectingTooltip": "正在建立即時日誌連線",
+            "reconnectingTooltip": "即時連線已中斷，正在自動重新連線",
+            "fallbackTooltip": "即時串流無法使用，已切換至每 10 秒輪詢",
+            "refresh": "重新整理主頁資料"
+        },
         "popover": {
             "ariaLabel": "檢視選項",
             "layout": "佈局",
@@ -310,52 +321,84 @@
             "loadFailed": "載入資料失敗，請重試",
             "retry": "重試"
         },
+        "pulse": {
+            "todayRequests": "今日請求",
+            "todaySpend": "今日消耗",
+            "liveConcurrency": "即時並發",
+            "gatewayStatus": "閘道狀態",
+            "success": "成功 {count}",
+            "failed": "失敗 {count}",
+            "noRequestsToday": "今日尚無請求",
+            "todayTokens": "Token {value}",
+            "allTimeCost": "累計 {value}",
+            "running": "執行中",
+            "idle": "閒置",
+            "concurrencyUnit": "路",
+            "avgLatencyToday": "今日平均耗時 {value}",
+            "processingLatency": "請求處理中",
+            "noLatencyToday": "暫無耗時數據",
+            "statusHealthy": "正常",
+            "statusAttention": "需關注",
+            "statusInactive": "未啟用",
+            "activeKeys": "活躍金鑰 {count}",
+            "pricedModels": "定價模型 {count}"
+        },
         "activity": {
+            "title": "全年活躍度",
+            "subtitle": "近 54 週",
+            "less": "少",
+            "more": "多",
             "requestCount": "請求次數",
             "waitTime": "總耗時",
             "totalToken": "消耗 Token",
             "totalCost": "總成本",
             "noData": "無資料"
         },
-        "total": {
-            "requestStats": "請求統計",
-            "totalStats": "全部統計",
-            "inputStats": "輸入統計",
-            "outputStats": "輸出統計",
-            "requestCount": "請求次數",
-            "timeConsumed": "總耗時",
-            "totalToken": "消耗 Token",
-            "totalCost": "總成本",
-            "inputTokens": "輸入 Token",
-            "inputCost": "輸入成本",
-            "outputTokens": "輸出 Token",
-            "outputCost": "輸出成本"
-        },
         "chart": {
-            "title": "趨勢",
+            "title": "今日 24 小時流速",
+            "deepAnalytics": "深入分析",
             "totalRequests": "請求次數",
             "totalCost": "總成本",
             "totalTokens": "消耗 Token",
-            "timePeriod": "時間週期",
-            "cyclePeriod": "切換時間週期，目前：{period}",
+            "hourlyCoverage": "小時曲線涵蓋 {sampled}/{total} 個請求；上方彙總包含全部請求。",
             "metricType": {
                 "cost": "成本",
                 "count": "次數",
                 "tokens": "Token"
-            },
-            "period": {
-                "today": "今天",
-                "last7Days": "近 7 天",
-                "last30Days": "近 30 天"
             }
         },
-        "rank": {
-            "title": "排行榜",
-            "sortByCost": "成本",
-            "sortByCount": "次數",
-            "sortByTokens": "Token",
-            "noData": "暫無排行資料",
-            "successRate": "成功率"
+        "inspector": {
+            "title": "供應源與金鑰巡檢",
+            "manage": "管理供應源",
+            "allHealthySummary": "{channels} 個啟用供應源、{keys} 個活躍金鑰狀態正常",
+            "issuesSummary": "發現 {errors} 項異常、{warnings} 項告警",
+            "errorsOnlySummary": "發現 {errors} 項異常需要處理",
+            "warningsOnlySummary": "{warnings} 項狀態需要關注",
+            "noEntities": "尚未設定供應源或 API 金鑰",
+            "allChannelsDisabled": "全部 {total} 個供應源均已停用",
+            "allKeysHealthy": "{enabled}/{total} 金鑰正常",
+            "noEnabledChannelKeys": "無可用金鑰",
+            "channelKeyStatus": "金鑰 {label} 回應 {code}",
+            "highLatency": "延遲較高",
+            "apiKeyLabel": "金鑰 {name}",
+            "apiKeyExpired": "已過期",
+            "apiKeyExpiringDays": "{days} 天後過期",
+            "apiKeyExpiringSoon": "即將過期",
+            "apiKeyQuotaExhausted": "額度已耗盡 ({percent}%)",
+            "apiKeyQuotaNear": "額度達 {percent}%",
+            "viewChannelAnalytics": "查看 {name} 今日分析"
+        },
+        "liveActivity": {
+            "title": "即時與近期動態",
+            "allLogs": "全部日誌",
+            "activeCount": "{count} 執行中",
+            "justNow": "剛剛",
+            "secondsAgo": "{count} 秒前",
+            "minutesAgo": "{count} 分鐘前",
+            "hoursAgo": "{count} 小時前",
+            "connecting": "正在連線即時日誌串流...",
+            "empty": "暫無近期請求動態",
+            "emptyHint": "新發起的 API 請求會即時顯示在這裡"
         }
     },
     "setting": {

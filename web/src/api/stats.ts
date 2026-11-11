@@ -64,7 +64,7 @@ export interface StatsAPIKeyFormatted extends StatsMetricsFormatted {
     api_key_id: number;
 }
 /**
- * 获取今日统计数据 Hook
+ * 获取按请求开始日聚合的今日统计，与分析页使用同一 stats_usages + delta 来源。
  */
 export function useStatsToday() {
     return useQuery({
@@ -72,13 +72,13 @@ export function useStatsToday() {
         queryFn: async () => {
             return apiRequest<StatsDaily>('/api/v1/stats/today');
         },
-        refetchInterval: 30000,
+        refetchInterval: 10000,
         refetchOnMount: 'always',
     });
 }
 
 /**
- * 获取每日统计数据 Hook
+ * 获取分析页同源的日趋势；保留热力图原有 1 小时刷新间隔。
  */
 export function useStatsDaily() {
     return useQuery({
@@ -104,7 +104,7 @@ export function useStatsDaily() {
     });
 }
 /**
- * 获取总统计数据 Hook
+ * 获取与分析页共用请求开始时间明细的今日小时分布。
  */
 export function useStatsHourly() {
     return useQuery({
