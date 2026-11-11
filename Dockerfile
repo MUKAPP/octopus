@@ -3,7 +3,7 @@
 # This Dockerfile is built from the repository root.
 
 ARG NODE_VERSION=22
-ARG GO_VERSION=1.26
+ARG GO_VERSION=1.27.4
 ARG ALPINE_VERSION=3.21
 
 FROM node:${NODE_VERSION}-bookworm-slim AS frontend

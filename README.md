@@ -68,7 +68,7 @@ docker pull mukmiuikong/octopus:latest
 
 **Requirements:**
 
-- Go 1.26.10
+- Go 1.27.4+
 - Node.js 20.19+ or 22.12+
 - pnpm
 
