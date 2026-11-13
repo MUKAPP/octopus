@@ -109,20 +109,24 @@ export function PulseCards({ activeCount }: PulseCardsProps) {
         ? {
             label: t('statusInactive'),
             className: 'bg-muted text-muted-foreground border-border',
+            dotClassName: 'bg-muted-foreground/40',
         }
         : hasChannelError
             ? {
                 label: t('statusAttention'),
                 className: 'bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30',
+                dotClassName: 'bg-amber-500',
             }
             : opsSummary.pendingCount > 0
                 ? {
                     label: t('statusPending'),
-                    className: 'bg-muted text-muted-foreground border-border',
+                    className: 'bg-slate-500/15 text-slate-700 dark:text-slate-300 border-slate-500/25',
+                    dotClassName: 'bg-slate-400 dark:bg-slate-500',
                 }
             : {
                 label: t('statusHealthy'),
                 className: 'bg-primary/15 text-primary border-primary/25',
+                dotClassName: 'bg-primary',
             };
 
     const rateBadgeClass = successRate === null
@@ -296,8 +300,9 @@ export function PulseCards({ activeCount }: PulseCardsProps) {
                                 <span className="mx-1 text-base sm:text-lg font-normal text-muted-foreground">/</span>
                                 <span className="text-lg sm:text-xl font-semibold text-muted-foreground">{opsSummary.totalChannels}</span>
                             </span>
-                            <Badge variant="outline" className={cn('h-5 px-1.5 text-[11px] font-medium', gatewayBadge.className)}>
-                                {gatewayBadge.label}
+                            <Badge variant="outline" className={cn('h-5 px-1.5 text-[11px] font-medium gap-1', gatewayBadge.className)}>
+                                <span className={cn('size-1.5 rounded-full shrink-0', gatewayBadge.dotClassName)} aria-hidden="true" />
+                                <span>{gatewayBadge.label}</span>
                             </Badge>
                         </div>
                         <div className="truncate text-xs text-muted-foreground tabular-nums">

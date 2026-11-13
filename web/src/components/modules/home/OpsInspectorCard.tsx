@@ -5,8 +5,10 @@ import {
     BarChart3,
     CheckCircle2,
     ChevronRight,
+    Clock,
     KeyRound,
     Loader2,
+    Radio,
     ShieldCheck,
     XCircle,
 } from 'lucide-react';
@@ -20,7 +22,7 @@ import { useAnalyticsViewStore } from '@/components/modules/analytics/store';
 import { useNavStore } from '@/components/modules/navbar';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import { formatHomeMoney, inspectGatewayOps, type OpsInspectorItem } from './home-ops';
+import { formatHomeMoney, inspectGatewayOps, KEY_STATUS_TTL_SEC, type OpsInspectorItem } from './home-ops';
 
 export function OpsInspectorCard() {
     const t = useTranslations('home.inspector');
@@ -101,8 +103,8 @@ export function OpsInspectorCard() {
         }
         if (summary.pendingCount > 0) {
             return {
-                tone: 'muted' as const,
-                icon: ShieldCheck,
+                tone: 'pending' as const,
+                icon: Clock,
                 text: t('pendingSummary', { count: summary.pendingCount }),
             };
         }
@@ -120,16 +122,19 @@ export function OpsInspectorCard() {
         error: 'border-destructive/25 bg-destructive/10 text-destructive',
         warning: 'border-amber-500/25 bg-amber-500/10 text-amber-700 dark:text-amber-300',
         healthy: 'border-primary/25 bg-primary/10 text-primary',
+        pending: 'border-slate-500/25 bg-slate-500/10 text-slate-700 dark:text-slate-300',
         muted: 'border-border bg-muted/40 text-muted-foreground',
     }[banner.tone];
 
     const renderItemRow = (item: OpsInspectorItem) => {
         const dotClass =
             item.severity === 'error'
-                ? 'bg-destructive'
+                ? 'bg-destructive ring-2 ring-destructive/20'
                 : item.severity === 'warning'
-                    ? 'bg-amber-500'
-                    : item.severity === 'pending' ? 'bg-muted-foreground/50' : 'bg-emerald-500';
+                    ? 'bg-amber-500 ring-2 ring-amber-500/20'
+                    : item.severity === 'pending'
+                        ? 'bg-slate-400 dark:bg-slate-500 ring-2 ring-slate-400/20 dark:ring-slate-500/20'
+                        : 'bg-emerald-500 ring-2 ring-emerald-500/20';
 
         if (item.kind === 'all_channels_disabled') {
             return (
@@ -244,88 +249,168 @@ export function OpsInspectorCard() {
                 key={item.id}
                 className="group flex items-center gap-2 rounded-2xl px-3 py-2 transition-colors motion-reduce:transition-none hover:bg-muted/50"
             >
-                <TooltipProvider>
-                    <Tooltip>
-                        <TooltipTrigger asChild>
-                            <button
-                                type="button"
-                                onClick={() => setActiveItem('channel')}
-                                className="flex min-w-0 flex-1 items-center gap-2.5 rounded-lg text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-                            >
-                                <span className={cn('size-2 rounded-full shrink-0', dotClass)} aria-hidden="true" />
-                                <span className="min-w-0 flex-1">
-                                    <span className="block truncate text-sm font-medium text-card-foreground">{item.channel.name}</span>
-                                    <span className="block truncate text-[11px] text-muted-foreground">{lastRequestText(item.lastUsedAt)}</span>
-                                </span>
-
-                                <div className="ml-auto flex shrink-0 items-center gap-2">
-                                    {item.reason === 'no_enabled_keys' && (
-                                        <Badge variant="outline" className="h-5 border-destructive/35 bg-destructive/10 px-1.5 text-[11px] font-medium text-destructive">
-                                            {t('noEnabledChannelKeys')}
-                                        </Badge>
-                                    )}
-                                    {(item.reason === 'key_error' || item.reason === 'key_rate_limit') && (
-                                        <Badge
-                                            variant="outline"
-                                            className={cn(
-                                                'h-5 max-w-36 sm:max-w-44 truncate px-1.5 text-[11px] font-medium tabular-nums',
-                                                item.severity === 'error'
-                                                    ? 'border-destructive/35 bg-destructive/10 text-destructive'
-                                                    : 'border-amber-500/35 bg-amber-500/10 text-amber-700 dark:text-amber-300',
-                                            )}
-                                        >
-                                            {t('channelKeyStatus', {
-                                                label: item.keyLabel ?? '#1',
-                                                code: item.statusCode ?? 0,
-                                            })}
-                                        </Badge>
-                                    )}
-                                    {item.reason === 'high_delay' && (
-                                        <Badge variant="outline" className="h-5 border-amber-500/35 bg-amber-500/10 px-1.5 text-[11px] font-medium text-amber-700 dark:text-amber-300">
-                                            {t('highLatency')}
-                                        </Badge>
-                                    )}
-                                    {item.reason === 'pending' && (
-                                        <Badge variant="outline" className="h-5 border-border bg-muted/50 px-1.5 text-[11px] font-medium text-muted-foreground">
-                                            {t('pendingKeys', { count: item.pendingKeyCount })}
-                                        </Badge>
-                                    )}
-                                    {item.reason === 'healthy' && (
-                                        <span className="text-xs text-muted-foreground tabular-nums">
-                                            {t('allKeysHealthy', {
-                                                enabled: item.enabledKeyCount,
-                                                total: item.totalKeyCount,
-                                            })}
-                                        </span>
-                                    )}
-
-                                    {item.bestDelayMs > 0 && (
-                                        <span className={cn('w-12 text-right text-xs font-medium tabular-nums', delayClass)}>
-                                            {item.bestDelayMs}ms
-                                        </span>
-                                    )}
-                                </div>
-                            </button>
-                        </TooltipTrigger>
-                        {/* Tooltip 原语跳过 children 比较，用版本属性同步数据、时间与语言变化。 */}
-                        <TooltipContent
-                            data-scrollable-tooltip
-                            data-content-version={`${channelQuery.dataUpdatedAt}:${nowSec}:${locale}`}
-                            className="max-w-[min(24rem,calc(100vw-2rem))]"
+                <Tooltip>
+                    <TooltipTrigger asChild>
+                        <button
+                            type="button"
+                            onClick={() => setActiveItem('channel')}
+                            className="flex min-w-0 flex-1 items-start gap-2.5 rounded-lg text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                         >
-                            <div data-scrollable-tooltip className="scrollbar max-h-[min(24rem,calc(100dvh-5rem))] space-y-2 overflow-y-auto overscroll-contain text-left">
-                                <p className="font-medium break-words">{item.channel.name}</p>
-                                <p>{t('statusWindow')}</p>
-                                {item.channel.keys.map((key, index) => key.enabled && (
-                                    <div key={key.id} className="break-words">
-                                        <p>{t('keyLastStatus', { label: key.remark.trim() || `#${index + 1}`, status: key.status_code > 0 ? key.status_code : t('noStatus') })}</p>
-                                        <p className="text-muted-foreground">{lastRequestText(key.last_use_time_stamp)}</p>
-                                    </div>
-                                ))}
+                            <span className={cn('size-2 rounded-full shrink-0 mt-1.5', dotClass)} aria-hidden="true" />
+                            <span className="min-w-0 flex-1">
+                                <span className="block truncate text-sm font-medium text-card-foreground">{item.channel.name}</span>
+                                <span className="flex items-center gap-1 truncate text-[11px] text-muted-foreground mt-0.5">
+                                    <Clock className="size-2.5 shrink-0 opacity-60" aria-hidden="true" />
+                                    <span className="truncate">{lastRequestText(item.lastUsedAt)}</span>
+                                </span>
+                            </span>
+
+                            <div className="ml-auto flex shrink-0 items-center gap-2 self-center">
+                                {item.reason === 'no_enabled_keys' && (
+                                    <Badge variant="outline" className="h-5 border-destructive/35 bg-destructive/10 px-1.5 text-[11px] font-medium text-destructive">
+                                        {t('noEnabledChannelKeys')}
+                                    </Badge>
+                                )}
+                                {(item.reason === 'key_error' || item.reason === 'key_rate_limit') && (
+                                    <Badge
+                                        variant="outline"
+                                        className={cn(
+                                            'h-5 max-w-36 sm:max-w-44 truncate px-1.5 text-[11px] font-medium tabular-nums',
+                                            item.severity === 'error'
+                                                ? 'border-destructive/35 bg-destructive/10 text-destructive'
+                                                : 'border-amber-500/35 bg-amber-500/10 text-amber-700 dark:text-amber-300',
+                                        )}
+                                    >
+                                        {t('channelKeyStatus', {
+                                            label: item.keyLabel ?? '#1',
+                                            code: item.statusCode ?? 0,
+                                        })}
+                                    </Badge>
+                                )}
+                                {item.reason === 'high_delay' && (
+                                    <Badge variant="outline" className="h-5 border-amber-500/35 bg-amber-500/10 px-1.5 text-[11px] font-medium text-amber-700 dark:text-amber-300">
+                                        {t('highLatency')}
+                                    </Badge>
+                                )}
+                                {item.reason === 'pending' && (
+                                    <Badge
+                                        variant="outline"
+                                        className="h-5 gap-1 border-slate-500/25 bg-slate-500/10 px-1.5 text-[11px] font-medium text-slate-700 dark:text-slate-300"
+                                    >
+                                        <Clock className="size-2.5 shrink-0 opacity-70" aria-hidden="true" />
+                                        <span>{t('pendingKeys', { count: item.pendingKeyCount })}</span>
+                                    </Badge>
+                                )}
+                                {item.reason === 'healthy' && (
+                                    <span className="text-xs text-muted-foreground tabular-nums">
+                                        {t('allKeysHealthy', {
+                                            enabled: item.enabledKeyCount,
+                                            total: item.totalKeyCount,
+                                        })}
+                                    </span>
+                                )}
+
+                                {item.bestDelayMs > 0 && (
+                                    <span className={cn('w-12 text-right text-xs font-medium tabular-nums', delayClass)}>
+                                        {item.bestDelayMs}ms
+                                    </span>
+                                )}
                             </div>
-                        </TooltipContent>
-                    </Tooltip>
-                </TooltipProvider>
+                        </button>
+                    </TooltipTrigger>
+                    {/* Tooltip 原语跳过 children 比较，用版本属性同步数据、时间与语言变化。 */}
+                    <TooltipContent
+                        data-scrollable-tooltip
+                        data-content-version={`${channelQuery.dataUpdatedAt}:${nowSec}:${locale}`}
+                        className="max-w-[min(24rem,calc(100vw-2rem))] p-2.5"
+                    >
+                        <div data-scrollable-tooltip className="scrollbar max-h-[min(24rem,calc(100dvh-5rem))] w-[min(22rem,calc(100vw-3.5rem))] space-y-2 overflow-y-auto overscroll-contain text-left">
+                            <div className="flex items-center justify-between gap-2 border-b border-border/40 pb-2">
+                                <div className="flex items-center gap-1.5 min-w-0">
+                                    <Radio className="size-3.5 shrink-0 text-primary" aria-hidden="true" />
+                                    <span className="font-semibold text-xs text-foreground truncate">{item.channel.name}</span>
+                                </div>
+                                <Badge variant="outline" className="h-4.5 px-1.5 text-[10px] font-medium text-muted-foreground shrink-0 border-border/60 bg-muted/40">
+                                    {t('allKeysHealthy', { enabled: item.enabledKeyCount, total: item.totalKeyCount })}
+                                </Badge>
+                            </div>
+
+                            <div className="flex items-start gap-1.5 rounded-lg border border-border/40 bg-muted/40 px-2 py-1.5 text-[11px] leading-relaxed text-muted-foreground">
+                                <Clock className="size-3 shrink-0 mt-0.5 opacity-70" aria-hidden="true" />
+                                <span>{t('statusWindow')}</span>
+                            </div>
+
+                            <div className="space-y-1.5 pt-0.5">
+                                {item.channel.keys.map((key, index) => {
+                                    if (!key.enabled) return null;
+                                    const isRecent = key.last_use_time_stamp > 0
+                                        && nowSec - key.last_use_time_stamp <= KEY_STATUS_TTL_SEC
+                                        && key.status_code !== 0;
+                                    const isNever = key.last_use_time_stamp <= 0;
+                                    const keyLabel = key.remark.trim() || `#${index + 1}`;
+
+                                    let badgeNode: React.ReactNode;
+                                    let statusDesc: string;
+
+                                    if (isRecent) {
+                                        if (key.status_code === 200) {
+                                            badgeNode = (
+                                                <Badge variant="outline" className="h-5 px-1.5 text-[10px] font-medium tabular-nums border-emerald-500/30 bg-emerald-500/12 text-emerald-700 dark:text-emerald-400">
+                                                    {t('keyStatusOk', { code: 200 })}
+                                                </Badge>
+                                            );
+                                        } else if (key.status_code === 429) {
+                                            badgeNode = (
+                                                <Badge variant="outline" className="h-5 px-1.5 text-[10px] font-medium tabular-nums border-amber-500/30 bg-amber-500/12 text-amber-700 dark:text-amber-300">
+                                                    {t('keyStatusRateLimit', { code: 429 })}
+                                                </Badge>
+                                            );
+                                        } else {
+                                            badgeNode = (
+                                                <Badge variant="outline" className="h-5 px-1.5 text-[10px] font-medium tabular-nums border-destructive/30 bg-destructive/12 text-destructive">
+                                                    {t('keyStatusError', { code: key.status_code })}
+                                                </Badge>
+                                            );
+                                        }
+                                        statusDesc = lastRequestText(key.last_use_time_stamp);
+                                    } else {
+                                        badgeNode = (
+                                            <Badge variant="outline" className="h-5 px-1.5 text-[10px] font-medium border-border/80 bg-muted/60 text-muted-foreground">
+                                                {tHome('pulse.statusPending')}
+                                            </Badge>
+                                        );
+                                        if (isNever || key.status_code === 0) {
+                                            statusDesc = t('neverRequested');
+                                        } else {
+                                            statusDesc = `${t('keyStaleStatus', { status: key.status_code })} · ${lastRequestText(key.last_use_time_stamp)}`;
+                                        }
+                                    }
+
+                                    return (
+                                        <div
+                                            key={key.id}
+                                            className="flex flex-col gap-1 rounded-xl border border-border/40 bg-card/60 px-2.5 py-1.5 text-xs transition-colors hover:bg-muted/30"
+                                        >
+                                            <div className="flex items-center justify-between gap-2">
+                                                <div className="flex items-center gap-1.5 min-w-0">
+                                                    <KeyRound className="size-3 shrink-0 text-muted-foreground" aria-hidden="true" />
+                                                    <span className="font-medium text-card-foreground truncate max-w-[150px] sm:max-w-[180px]">
+                                                        {keyLabel}
+                                                    </span>
+                                                </div>
+                                                {badgeNode}
+                                            </div>
+                                            <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                                                <Clock className="size-2.5 shrink-0 opacity-70" aria-hidden="true" />
+                                                <span className="truncate">{statusDesc}</span>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    </TooltipContent>
+                </Tooltip>
 
                 <button
                     type="button"
@@ -383,7 +468,9 @@ export function OpsInspectorCard() {
                                 <p className="text-xs">{t('noEntities')}</p>
                             </div>
                         ) : (
-                            summary.items.map(renderItemRow)
+                            <TooltipProvider openDelay={200} closeDelay={150}>
+                                {summary.items.map(renderItemRow)}
+                            </TooltipProvider>
                         )}
                     </div>
                 </div>

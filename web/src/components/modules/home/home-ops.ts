@@ -4,7 +4,7 @@ import type { LLMInfo } from '@/api/model';
 import type { StatsAPIKeyFormatted, StatsMetricsFormatted } from '@/api/stats';
 import { formatCount, formatMoney } from '@/lib/utils';
 
-const KEY_STATUS_TTL_SEC = 30 * 60;
+export const KEY_STATUS_TTL_SEC = 30 * 60;
 
 export type OpsSeverity = 'error' | 'warning' | 'pending' | 'healthy';
 
