@@ -27,17 +27,18 @@ export function MetadataFilters({ dimensions, disabled }: MetadataFiltersProps) 
         <div className="grid grid-cols-2 gap-2 border-t border-border/50 pt-3 sm:grid-cols-3 xl:grid-cols-5">
             <div className={fieldClass}>
                 <span className="text-xs text-muted-foreground">{t('stream')}</span>
-                <Select value={stream} onValueChange={(value) => setStream(value as typeof stream)}>
+                <Select value={stream} onValueChange={(value) => setStream(value as typeof stream)} disabled={disabled}>
                     <SelectTrigger aria-label={t('stream')} className="w-full min-w-0"><SelectValue /></SelectTrigger>
                     <SelectContent>
                         <SelectItem value="all">{tFilter('all')}</SelectItem>
-                        <SelectItem value="true">{t('streaming')}</SelectItem>
-                        <SelectItem value="false">{t('nonStreaming')}</SelectItem>
+                        {dimensions?.streams.map((value) => (
+                            <SelectItem key={value} value={value}>{t(value === 'true' ? 'streaming' : 'nonStreaming')}</SelectItem>
+                        ))}
                     </SelectContent>
                 </Select>
             </div>
             {filters.map((filter) => {
-                const options = [...new Set([...filter.options, ...(filter.value === null ? [] : [filter.value])])];
+                const options = filter.options;
                 return (
                     <div key={filter.key} className={fieldClass}>
                         <span className="text-xs text-muted-foreground">{t(filter.key)}</span>

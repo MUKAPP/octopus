@@ -365,7 +365,7 @@ func statsAnalyticsMetadataSummary(ctx context.Context, f StatsAnalyticsFilter, 
 	return nil
 }
 
-func statsAnalyticsDetailDimensions(ctx context.Context, dims *StatsAnalyticsDimensions) error {
+func statsAnalyticsDetailDimensions(ctx context.Context, filter StatsAnalyticsFilter, dims *StatsAnalyticsDimensions) error {
 	for _, dimension := range []struct {
 		column string
 		target *[]string
@@ -373,13 +373,13 @@ func statsAnalyticsDetailDimensions(ctx context.Context, dims *StatsAnalyticsDim
 		{"reasoning_effort", &dims.ReasoningEfforts}, {"client_protocol", &dims.ClientProtocols}, {"task_type", &dims.TaskTypes}, {"error_category", &dims.ErrorCategories},
 	} {
 		*dimension.target = []string{}
-		if err := db.GetDB().WithContext(ctx).Model(&model.RequestMetadata{}).Distinct().Order(dimension.column).Pluck(dimension.column, dimension.target).Error; err != nil {
+		if err := metadataQuery(ctx, filter, false).Distinct().Order(dimension.column).Pluck(dimension.column, dimension.target).Error; err != nil {
 			return fmt.Errorf("analytics %s: %w", dimension.column, err)
 		}
 	}
 	dims.Streams = []string{}
 	var values []bool
-	if err := db.GetDB().WithContext(ctx).Model(&model.RequestMetadata{}).Distinct().Order("stream").Pluck("stream", &values).Error; err != nil {
+	if err := metadataQuery(ctx, filter, false).Distinct().Order("stream").Pluck("stream", &values).Error; err != nil {
 		return err
 	}
 	for _, value := range values {

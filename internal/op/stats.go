@@ -1013,19 +1013,25 @@ func statsAnalyticsEntityRowsFrom(m map[statsUsageEntityKey]model.StatsUsage) []
 	return rows
 }
 
-// StatsAnalyticsDimensionsGet queries durable dimensions after releasing the delta lock.
+// StatsAnalyticsDimensionsGet returns dimensions across all recorded dates.
 func StatsAnalyticsDimensionsGet(ctx context.Context) (StatsAnalyticsDimensions, error) {
-	dims, err := statsAnalyticsUsageDimensionsGet(ctx)
+	return StatsAnalyticsDimensionsGetForRange(ctx, nil, nil)
+}
+
+// StatsAnalyticsDimensionsGetForRange returns dimensions within the inclusive server calendar dates.
+func StatsAnalyticsDimensionsGetForRange(ctx context.Context, startDate, endDate *string) (StatsAnalyticsDimensions, error) {
+	filter := StatsAnalyticsFilter{StartDate: startDate, EndDate: endDate}
+	dims, err := statsAnalyticsUsageDimensionsGet(ctx, filter)
 	if err != nil {
 		return dims, err
 	}
-	if err := statsAnalyticsDetailDimensions(ctx, &dims); err != nil {
+	if err := statsAnalyticsDetailDimensions(ctx, filter, &dims); err != nil {
 		return dims, err
 	}
 	return dims, nil
 }
 
-func statsAnalyticsUsageDimensionsGet(ctx context.Context) (StatsAnalyticsDimensions, error) {
+func statsAnalyticsUsageDimensionsGet(ctx context.Context, filter StatsAnalyticsFilter) (StatsAnalyticsDimensions, error) {
 	var dims StatsAnalyticsDimensions
 	statsUsageDeltaCacheLock.RLock()
 	defer statsUsageDeltaCacheLock.RUnlock()
@@ -1033,11 +1039,11 @@ func statsAnalyticsUsageDimensionsGet(ctx context.Context) (StatsAnalyticsDimens
 	dbConn := db.GetDB().WithContext(ctx)
 
 	var dbModels []string
-	if err := dbConn.Table("stats_usages").Distinct().Pluck("request_model_name", &dbModels).Error; err != nil {
+	if err := dbConn.Table("stats_usages").Scopes(statsUsageFilterScope(filter)).Distinct().Pluck("request_model_name", &dbModels).Error; err != nil {
 		return dims, fmt.Errorf("analytics models: %w", err)
 	}
 	var dbActualModels []string
-	if err := dbConn.Table("stats_usages").Distinct().Pluck("actual_model_name", &dbActualModels).Error; err != nil {
+	if err := dbConn.Table("stats_usages").Scopes(statsUsageFilterScope(filter)).Distinct().Pluck("actual_model_name", &dbActualModels).Error; err != nil {
 		return dims, fmt.Errorf("analytics actual models: %w", err)
 	}
 
@@ -1046,7 +1052,7 @@ func statsAnalyticsUsageDimensionsGet(ctx context.Context) (StatsAnalyticsDimens
 		Name string `gorm:"column:api_key_name"`
 	}
 	var dbAPIKeys []entityScan
-	if err := dbConn.Table("stats_usages").Distinct().
+	if err := dbConn.Table("stats_usages").Scopes(statsUsageFilterScope(filter)).Distinct().
 		Select("api_key_id, api_key_name").Scan(&dbAPIKeys).Error; err != nil {
 		return dims, fmt.Errorf("analytics api keys: %w", err)
 	}
@@ -1055,7 +1061,7 @@ func statsAnalyticsUsageDimensionsGet(ctx context.Context) (StatsAnalyticsDimens
 		Name string `gorm:"column:channel_name"`
 	}
 	var dbChannels []channelScan
-	if err := dbConn.Table("stats_usages").Distinct().
+	if err := dbConn.Table("stats_usages").Scopes(statsUsageFilterScope(filter)).Distinct().
 		Select("channel_id, channel_name").Scan(&dbChannels).Error; err != nil {
 		return dims, fmt.Errorf("analytics channels: %w", err)
 	}
@@ -1078,6 +1084,9 @@ func statsAnalyticsUsageDimensionsGet(ctx context.Context) (StatsAnalyticsDimens
 	}
 
 	for key := range statsUsageDeltaCache {
+		if !statsUsageKeyMatches(key, filter) {
+			continue
+		}
 		modelSet[key.RequestModelName] = struct{}{}
 		actualModelSet[key.ActualModelName] = struct{}{}
 		apiKeySet[statsUsageEntityKey{ID: key.APIKeyID, Name: key.APIKeyName}] = struct{}{}

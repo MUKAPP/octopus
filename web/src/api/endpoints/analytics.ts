@@ -184,7 +184,9 @@ export interface AnalyticsResponseFormatted {
  * api_key_id, api_key_name, channel_id, channel_name, status。
  * custom 范围无效（缺日期/无法解析/开始晚于结束）时返回 null，调用方停用查询。
  */
-function buildAnalyticsParams(filters: AnalyticsFilters): Record<string, string> | null {
+type AnalyticsDateFilters = Pick<AnalyticsFilters, 'period' | 'customStartDate' | 'customEndDate'>;
+
+function buildAnalyticsDateParams(filters: AnalyticsDateFilters): Record<string, string> | null {
     const params: Record<string, string> = { period: filters.period };
 
     if (filters.period === 'custom') {
@@ -199,6 +201,13 @@ function buildAnalyticsParams(filters: AnalyticsFilters): Record<string, string>
         params.start_date = start;
         params.end_date = end;
     }
+
+    return params;
+}
+
+function buildAnalyticsParams(filters: AnalyticsFilters): Record<string, string> | null {
+    const params = buildAnalyticsDateParams(filters);
+    if (params === null) return null;
 
     if (filters.model !== null) {
         params.model = filters.model;
@@ -311,12 +320,14 @@ export function useAnalytics(filters: AnalyticsFilters, enabled = true): UseQuer
 /**
  * 获取分析筛选维度选项
  */
-export function useAnalyticsDimensions(): UseQueryResult<AnalyticsDimensions> {
+export function useAnalyticsDimensions(filters: AnalyticsDateFilters): UseQueryResult<AnalyticsDimensions> {
+    const params = buildAnalyticsDateParams(filters);
     return useQuery({
-        queryKey: ['stats', 'analytics', 'dimensions'],
+        queryKey: ['stats', 'analytics', 'dimensions', params ?? filters],
         queryFn: async () => {
-            return apiRequest<AnalyticsDimensions>('/api/v1/stats/analytics/dimensions');
+            return apiRequest<AnalyticsDimensions>('/api/v1/stats/analytics/dimensions', { params: params ?? undefined });
         },
+        enabled: params !== null,
         refetchInterval: 30000,
         refetchOnMount: 'always',
     });

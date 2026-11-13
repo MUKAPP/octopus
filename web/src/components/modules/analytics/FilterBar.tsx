@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { useTranslations } from 'use-intl';
 import { RefreshCw, CalendarDays, ChevronDown, SlidersHorizontal } from 'lucide-react';
@@ -87,7 +87,7 @@ export function FilterBar({ query }: FilterBarProps) {
     const clientProtocol = useAnalyticsViewStore((state) => state.clientProtocol);
     const errorCategory = useAnalyticsViewStore((state) => state.errorCategory);
 
-    const dimensionsQuery = useAnalyticsDimensions();
+    const dimensionsQuery = useAnalyticsDimensions({ period, customStartDate, customEndDate });
     const dimensions = dimensionsQuery.data;
     const dimensionsFailed = dimensionsQuery.isError && !dimensions;
 
@@ -121,42 +121,31 @@ export function FilterBar({ query }: FilterBarProps) {
         }
     };
 
-    // 维度选项（后端已排序；补充当前已选但已不存在的实体，保证持久化选择可回显）
-    const modelOptions = useMemo(() => {
-        if (!dimensions) return [];
-        const list = [...dimensions.models];
-        if (model !== null && model !== '' && !list.includes(model)) {
-            list.push(model);
-        }
-        return list.sort((a, b) => a.localeCompare(b));
-    }, [dimensions, model]);
+    // 仅使用当前日期范围内的选项，不再补入范围外的持久化选择。
+    const modelOptions = dimensions?.models ?? [];
+    const actualModelOptions = dimensions?.actual_models ?? [];
+    const apiKeyOptions = dimensions?.api_keys ?? [];
+    const channelOptions = dimensions?.channels ?? [];
 
-    const actualModelOptions = useMemo(() => {
-        if (!dimensions) return [];
-        const list = [...dimensions.actual_models];
-        if (actualModel !== null && actualModel !== '' && !list.includes(actualModel)) {
-            list.push(actualModel);
+    useEffect(() => {
+        if (!dimensionsQuery.isSuccess || dimensionsQuery.isFetching || !dimensions) return;
+        const state = useAnalyticsViewStore.getState();
+        const changes: Partial<typeof state> = {};
+        if (state.model !== null && !dimensions.models.includes(state.model)) changes.model = null;
+        if (state.actualModel !== null && !dimensions.actual_models.includes(state.actualModel)) changes.actualModel = null;
+        if (state.apiKey !== null && !dimensions.api_keys.some((item) => analyticsEntityKey(item) === analyticsEntityKey(state.apiKey!))) changes.apiKey = null;
+        if (state.channel !== null && !dimensions.channels.some((item) => analyticsEntityKey(item) === analyticsEntityKey(state.channel!))) changes.channel = null;
+        if (state.stream !== 'all' && !dimensions.streams.includes(state.stream)) changes.stream = 'all';
+        for (const [key, options] of [
+            ['reasoningEffort', dimensions.reasoning_efforts],
+            ['taskType', dimensions.task_types],
+            ['clientProtocol', dimensions.client_protocols],
+            ['errorCategory', dimensions.error_categories],
+        ] as const) {
+            if (state[key] !== null && !options.includes(state[key])) changes[key] = null;
         }
-        return list.sort((a, b) => a.localeCompare(b));
-    }, [dimensions, actualModel]);
-
-    const apiKeyOptions = useMemo(() => {
-        if (!dimensions) return [];
-        const list = [...dimensions.api_keys];
-        if (apiKey && !list.some((item) => analyticsEntityKey(item) === analyticsEntityKey(apiKey))) {
-            list.push(apiKey);
-        }
-        return list.sort((a, b) => a.name.localeCompare(b.name) || a.id - b.id);
-    }, [dimensions, apiKey]);
-
-    const channelOptions = useMemo(() => {
-        if (!dimensions) return [];
-        const list = [...dimensions.channels];
-        if (channel && !list.some((item) => analyticsEntityKey(item) === analyticsEntityKey(channel))) {
-            list.push(channel);
-        }
-        return list.sort((a, b) => a.name.localeCompare(b.name) || a.id - b.id);
-    }, [dimensions, channel]);
+        if (Object.keys(changes).length > 0) useAnalyticsViewStore.setState(changes);
+    }, [dimensions, dimensionsQuery.isSuccess, dimensionsQuery.isFetching]);
 
     const customLabel = useMemo(() => {
         if (customStartDate && customEndDate) {

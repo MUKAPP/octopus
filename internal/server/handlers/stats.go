@@ -111,7 +111,12 @@ func getStatsAnalytics(c *gin.Context) {
 }
 
 func getStatsAnalyticsDimensions(c *gin.Context) {
-	dims, err := op.StatsAnalyticsDimensionsGet(c.Request.Context())
+	filter, err := parseStatsAnalyticsFilter(c)
+	if err != nil {
+		resp.Error(c, http.StatusBadRequest, err.Error())
+		return
+	}
+	dims, err := op.StatsAnalyticsDimensionsGetForRange(c.Request.Context(), filter.StartDate, filter.EndDate)
 	if err != nil {
 		resp.Error(c, http.StatusInternalServerError, err.Error())
 		return
