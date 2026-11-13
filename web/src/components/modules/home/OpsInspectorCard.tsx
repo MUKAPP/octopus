@@ -467,7 +467,7 @@ export function OpsInspectorCard() {
                         <span className="min-w-0 truncate">{banner.text}</span>
                     </div>
 
-                    <div className="scrollbar flex-1 max-h-[252px] min-h-[160px] space-y-1 overflow-y-auto overscroll-contain">
+                    <div className="scrollbar flex-1 max-h-[252px] min-h-[160px] space-y-1 overflow-y-auto">
                         {summary.items.length === 0 ? (
                             <div className="flex h-40 flex-col items-center justify-center gap-2 text-center text-muted-foreground">
                                 <ShieldCheck className="size-8 opacity-35" aria-hidden="true" />

@@ -286,8 +286,8 @@ export function inspectGatewayOps(params: {
     const severityOrder: Record<OpsSeverity, number> = {
         error: 0,
         warning: 1,
-        pending: 2,
-        healthy: 3,
+        healthy: 2,
+        pending: 3,
     };
 
     items.sort((a, b) => severityOrder[a.severity] - severityOrder[b.severity]);

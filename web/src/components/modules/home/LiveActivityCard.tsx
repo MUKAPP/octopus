@@ -186,7 +186,7 @@ export function LiveActivityCard({ activeLogs, recentLogs, status }: LiveActivit
                     </div>
                 )
             ) : (
-                <div className="scrollbar flex-1 max-h-[304px] min-h-[160px] space-y-1.5 overflow-y-auto overscroll-contain">
+                <div className="scrollbar flex-1 max-h-[304px] min-h-[160px] space-y-1.5 overflow-y-auto">
                     {activeLogs.map((log) => (
                         <ActiveActivityRow
                             key={`active-${log.id}`}
