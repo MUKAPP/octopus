@@ -1,4 +1,6 @@
 import { useMemo, useState } from 'react';
+import { usePrefersReducedMotion } from '@/hooks/use-prefers-reduced-motion';
+import { DURATION } from '@/lib/animations/fluid-transitions';
 import { useLocale, useTranslations } from 'use-intl';
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from 'recharts';
 import { ChartNoAxesColumn, Gauge, RotateCcw, Timer, Waves } from 'lucide-react';
@@ -62,6 +64,7 @@ export function AnalysisDetails({ query }: Props) {
     const t = useTranslations('analytics.detail');
     const tFilter = useTranslations('analytics.filter');
     const locale = useLocale();
+    const shouldReduceMotion = usePrefersReducedMotion();
     const [view, setView] = useState<View>('efficiency');
     const [feature, setFeature] = useState<Feature>('stream');
     const [trafficMetric, setTrafficMetric] = useState<'requests' | 'cost'>('requests');
@@ -69,8 +72,9 @@ export function AnalysisDetails({ query }: Props) {
     const details = data?.details;
     const timeLabel = (value: string | number | null) => value === null || value === '' ? '—' : new Date(value).toLocaleString(locale, { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
     const hourly = useMemo(() => details?.hourly.map((point) => ({
-        hour: point.hour, requests: point.request_count, cost: point.input_cost + point.output_cost,
-    })) ?? [], [details]);
+        hour: point.hour,
+        value: trafficMetric === 'cost' ? point.input_cost + point.output_cost : point.request_count,
+    })) ?? [], [details, trafficMetric]);
     const hourLabels = useMemo(() => {
         const buckets = Array.from({ length: 24 }, (_, hour) => ({ hour, requests: 0 }));
         for (const point of details?.hourly ?? []) {
@@ -188,8 +192,8 @@ export function AnalysisDetails({ query }: Props) {
                     <TabsContent value="traffic">
                         <dl className="grid grid-cols-2 gap-2.5"><Metric label={t('peakRpm')} value={count(details.peaks.rpm)} hint={timeLabel(details.peaks.rpm_at)} /><Metric label={t('peakTpm')} value={count(details.peaks.tpm)} hint={timeLabel(details.peaks.tpm_at)} /></dl>
                         <div className="mt-4 flex flex-wrap items-center justify-between gap-3"><h4 className="text-sm font-medium">{t('hourly')}</h4><Select value={trafficMetric} onValueChange={(value) => setTrafficMetric(value as typeof trafficMetric)}><SelectTrigger aria-label={t('trafficMetric')} size="sm" className="w-32"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="requests">{t('requests')}</SelectItem><SelectItem value="cost">{t('cost')}</SelectItem></SelectContent></Select></div>
-                        {hourly.length === 0 ? <p className="py-8 text-center text-sm text-muted-foreground">{t('noSamples')}</p> : <div className="mt-3 rounded-2xl border border-border/70 bg-background/80 p-3"><ChartContainer config={{ requests: { label: t('requests') }, cost: { label: t('cost') } }} className="h-56 w-full">
-                            <BarChart accessibilityLayer data={hourly} margin={{ right: 12 }}><CartesianGrid vertical={false} strokeDasharray="3 3" /><XAxis dataKey="hour" tickLine={false} axisLine={false} minTickGap={36} tickFormatter={(value: string) => value.slice(5, 16).replace('T', ' ')} /><YAxis width={64} tickLine={false} axisLine={false} tickFormatter={(value: number) => trafficMetric === 'cost' ? money(value) : count(value)} /><ChartTooltip content={<ChartTooltipContent labelFormatter={(value) => timeLabel(String(value))} />} /><Bar dataKey={trafficMetric} fill="var(--chart-1)" radius={[4, 4, 0, 0]} maxBarSize={56} isAnimationActive={false} /></BarChart>
+                        {hourly.length === 0 ? <p className="py-8 text-center text-sm text-muted-foreground">{t('noSamples')}</p> : <div className="mt-3 rounded-2xl border border-border/70 bg-background/80 p-3"><ChartContainer config={{ value: { label: t(trafficMetric) } }} className="h-56 w-full">
+                            <BarChart accessibilityLayer data={hourly} margin={{ right: 12 }}><CartesianGrid vertical={false} strokeDasharray="3 3" /><XAxis dataKey="hour" tickLine={false} axisLine={false} minTickGap={36} tickFormatter={(value: string) => value.slice(5, 16).replace('T', ' ')} /><YAxis width={64} tickLine={false} axisLine={false} tickFormatter={(value: number) => trafficMetric === 'cost' ? money(value) : count(value)} /><ChartTooltip content={<ChartTooltipContent labelFormatter={(value) => timeLabel(String(value))} />} /><Bar dataKey="value" fill="var(--chart-1)" radius={[4, 4, 0, 0]} maxBarSize={56} isAnimationActive={!shouldReduceMotion} animationDuration={DURATION.panel * 1000} animationEasing="ease-in-out" /></BarChart>
                         </ChartContainer></div>}
                         <h4 className="mt-4 text-sm font-medium">{t('hourHeatmap')}</h4>
                         <div className="mt-2 grid grid-cols-6 gap-1.5 sm:grid-cols-8 lg:grid-cols-12">{hourLabels.map((point) => (

@@ -1,4 +1,6 @@
 import { useMemo } from 'react';
+import { usePrefersReducedMotion } from '@/hooks/use-prefers-reduced-motion';
+import { DURATION } from '@/lib/animations/fluid-transitions';
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from 'recharts';
 import { useTranslations } from 'use-intl';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
@@ -23,6 +25,7 @@ const METRIC_KEYS = {
 export function TrendChart({ query }: TrendChartProps) {
     const t = useTranslations('analytics.chart');
     const tFeedback = useTranslations('analytics.feedback');
+    const shouldReduceMotion = usePrefersReducedMotion();
     const data = query.data;
     const chartMetric = useAnalyticsViewStore((state) => state.chartMetric);
     const setChartMetric = useAnalyticsViewStore((state) => state.setChartMetric);
@@ -72,7 +75,7 @@ export function TrendChart({ query }: TrendChartProps) {
                         <XAxis dataKey="date" tickLine={false} axisLine={false} minTickGap={24} />
                         <YAxis tickLine={false} axisLine={false} tickFormatter={formatValue} width={72} />
                         <ChartTooltip cursor={false} content={<ChartTooltipContent indicator="line" formatter={(value) => <span className="tabular-nums">{formatValue(Number(value))}</span>} />} />
-                        <Area type="monotone" dataKey="value" stroke="var(--chart-1)" fill="url(#analyticsTrendFill)" strokeWidth={2} isAnimationActive={false} />
+                        <Area type="monotone" dataKey="value" stroke="var(--chart-1)" fill="url(#analyticsTrendFill)" strokeWidth={2} isAnimationActive={!shouldReduceMotion} animationDuration={DURATION.panel * 1000} animationEasing="ease-in-out" />
                     </AreaChart>
                 </ChartContainer>
             )}

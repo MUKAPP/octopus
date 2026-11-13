@@ -1,4 +1,6 @@
 import { useMemo } from 'react';
+import { usePrefersReducedMotion } from '@/hooks/use-prefers-reduced-motion';
+import { DURATION } from '@/lib/animations/fluid-transitions';
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from 'recharts';
 import { ArrowRight, Loader2 } from 'lucide-react';
 import { useTranslations } from 'use-intl';
@@ -20,6 +22,7 @@ interface HourlyPoint {
 export function HourlyPulseChart() {
     const t = useTranslations('home.chart');
     const tHome = useTranslations('home');
+    const shouldReduceMotion = usePrefersReducedMotion();
     const { setActiveItem } = useNavStore();
 
     const hourlyQuery = useStatsHourly();
@@ -255,7 +258,9 @@ export function HourlyPulseChart() {
                         fill={`url(#${gradientId})`}
                         connectNulls={false}
                         dot={nonNullCount <= 1 ? { r: 3, fill: strokeColor, strokeWidth: 0 } : false}
-                        isAnimationActive={false}
+                        isAnimationActive={!shouldReduceMotion}
+                        animationDuration={DURATION.panel * 1000}
+                        animationEasing="ease-in-out"
                     />
                 </AreaChart>
             </ChartContainer>
