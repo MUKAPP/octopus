@@ -323,10 +323,10 @@ export function OpsInspectorCard() {
                         data-scrollable-tooltip
                         data-content-version={`${channelQuery.dataUpdatedAt}:${nowSec}:${locale}`}
                         innerClassName="p-0"
-                        className="max-w-[min(25rem,calc(100vw-2rem))] rounded-2xl border border-border/70 bg-popover/95 p-3.5 sm:p-4 text-popover-foreground shadow-2xl backdrop-blur-md"
+                        className="w-[min(24rem,calc(100vw-2rem))] rounded-2xl border border-border/70 bg-popover/95 p-3.5 sm:p-4 text-popover-foreground shadow-2xl backdrop-blur-md"
                         arrowClassName="fill-popover"
                     >
-                        <div data-scrollable-tooltip className="scrollbar max-h-[min(24rem,calc(100dvh-6rem))] w-[min(23rem,calc(100vw-3.5rem))] space-y-3 overflow-y-auto overscroll-contain text-left">
+                        <div data-scrollable-tooltip className="scrollbar max-h-[min(24rem,calc(100dvh-6rem))] w-full space-y-3 overflow-y-auto overscroll-contain text-left pr-0.5">
                             <div className="flex items-center justify-between gap-3 border-b border-border/40 pb-2.5">
                                 <div className="flex items-center gap-2 min-w-0">
                                     <div className="flex size-6 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">

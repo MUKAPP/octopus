@@ -51,7 +51,7 @@ function TooltipContent({
       )}
       {...props}
     >
-      <div className={cn(innerClassName ? cn('overflow-hidden text-xs', innerClassName) : 'overflow-hidden px-3 py-1.5 text-xs text-balance')}>
+      <div className={cn('text-xs', innerClassName ?? 'overflow-hidden px-3 py-1.5 text-balance')}>
         <div>{children}</div>
       </div>
       <TooltipArrowPrimitive
