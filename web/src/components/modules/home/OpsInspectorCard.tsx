@@ -295,7 +295,7 @@ export function OpsInspectorCard() {
                                 {item.reason === 'pending' && (
                                     <Badge
                                         variant="outline"
-                                        className="h-5 gap-1 border-slate-500/25 bg-slate-500/10 px-1.5 text-[11px] font-medium text-slate-700 dark:text-slate-300"
+                                        className="h-5 gap-1 rounded-full border-slate-500/25 bg-slate-500/10 px-2 text-[11px] font-medium text-slate-700 dark:text-slate-300"
                                     >
                                         <Clock className="size-2.5 shrink-0 opacity-70" aria-hidden="true" />
                                         <span>{t('pendingKeys', { count: item.pendingKeyCount })}</span>
@@ -322,25 +322,29 @@ export function OpsInspectorCard() {
                     <TooltipContent
                         data-scrollable-tooltip
                         data-content-version={`${channelQuery.dataUpdatedAt}:${nowSec}:${locale}`}
-                        className="max-w-[min(24rem,calc(100vw-2rem))] p-2.5"
+                        innerClassName="p-0"
+                        className="max-w-[min(25rem,calc(100vw-2rem))] rounded-2xl border border-border/70 bg-popover/95 p-3.5 sm:p-4 text-popover-foreground shadow-2xl backdrop-blur-md"
+                        arrowClassName="fill-popover"
                     >
-                        <div data-scrollable-tooltip className="scrollbar max-h-[min(24rem,calc(100dvh-5rem))] w-[min(22rem,calc(100vw-3.5rem))] space-y-2 overflow-y-auto overscroll-contain text-left">
-                            <div className="flex items-center justify-between gap-2 border-b border-border/40 pb-2">
-                                <div className="flex items-center gap-1.5 min-w-0">
-                                    <Radio className="size-3.5 shrink-0 text-primary" aria-hidden="true" />
-                                    <span className="font-semibold text-xs text-foreground truncate">{item.channel.name}</span>
+                        <div data-scrollable-tooltip className="scrollbar max-h-[min(24rem,calc(100dvh-6rem))] w-[min(23rem,calc(100vw-3.5rem))] space-y-3 overflow-y-auto overscroll-contain text-left">
+                            <div className="flex items-center justify-between gap-3 border-b border-border/40 pb-2.5">
+                                <div className="flex items-center gap-2 min-w-0">
+                                    <div className="flex size-6 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                                        <Radio className="size-3.5" aria-hidden="true" />
+                                    </div>
+                                    <span className="font-semibold text-sm text-foreground truncate">{item.channel.name}</span>
                                 </div>
-                                <Badge variant="outline" className="h-4.5 px-1.5 text-[10px] font-medium text-muted-foreground shrink-0 border-border/60 bg-muted/40">
+                                <Badge variant="outline" className="h-5 rounded-full px-2 text-[10px] font-medium text-muted-foreground shrink-0 border-border/60 bg-muted/40">
                                     {t('allKeysHealthy', { enabled: item.enabledKeyCount, total: item.totalKeyCount })}
                                 </Badge>
                             </div>
 
-                            <div className="flex items-start gap-1.5 rounded-lg border border-border/40 bg-muted/40 px-2 py-1.5 text-[11px] leading-relaxed text-muted-foreground">
-                                <Clock className="size-3 shrink-0 mt-0.5 opacity-70" aria-hidden="true" />
+                            <div className="flex items-start gap-2 rounded-xl border border-border/40 bg-muted/40 px-3 py-2 text-[11px] leading-relaxed text-muted-foreground">
+                                <Clock className="size-3.5 shrink-0 mt-0.5 opacity-70" aria-hidden="true" />
                                 <span>{t('statusWindow')}</span>
                             </div>
 
-                            <div className="space-y-1.5 pt-0.5">
+                            <div className="space-y-2 pt-0.5">
                                 {item.channel.keys.map((key, index) => {
                                     if (!key.enabled) return null;
                                     const isRecent = key.last_use_time_stamp > 0
@@ -355,19 +359,19 @@ export function OpsInspectorCard() {
                                     if (isRecent) {
                                         if (key.status_code === 200) {
                                             badgeNode = (
-                                                <Badge variant="outline" className="h-5 px-1.5 text-[10px] font-medium tabular-nums border-emerald-500/30 bg-emerald-500/12 text-emerald-700 dark:text-emerald-400">
+                                                <Badge variant="outline" className="h-5 rounded-full px-2 text-[10px] font-medium tabular-nums border-emerald-500/30 bg-emerald-500/12 text-emerald-700 dark:text-emerald-400">
                                                     {t('keyStatusOk', { code: 200 })}
                                                 </Badge>
                                             );
                                         } else if (key.status_code === 429) {
                                             badgeNode = (
-                                                <Badge variant="outline" className="h-5 px-1.5 text-[10px] font-medium tabular-nums border-amber-500/30 bg-amber-500/12 text-amber-700 dark:text-amber-300">
+                                                <Badge variant="outline" className="h-5 rounded-full px-2 text-[10px] font-medium tabular-nums border-amber-500/30 bg-amber-500/12 text-amber-700 dark:text-amber-300">
                                                     {t('keyStatusRateLimit', { code: 429 })}
                                                 </Badge>
                                             );
                                         } else {
                                             badgeNode = (
-                                                <Badge variant="outline" className="h-5 px-1.5 text-[10px] font-medium tabular-nums border-destructive/30 bg-destructive/12 text-destructive">
+                                                <Badge variant="outline" className="h-5 rounded-full px-2 text-[10px] font-medium tabular-nums border-destructive/30 bg-destructive/12 text-destructive">
                                                     {t('keyStatusError', { code: key.status_code })}
                                                 </Badge>
                                             );
@@ -375,7 +379,7 @@ export function OpsInspectorCard() {
                                         statusDesc = lastRequestText(key.last_use_time_stamp);
                                     } else {
                                         badgeNode = (
-                                            <Badge variant="outline" className="h-5 px-1.5 text-[10px] font-medium border-border/80 bg-muted/60 text-muted-foreground">
+                                            <Badge variant="outline" className="h-5 rounded-full px-2 text-[10px] font-medium border-border/80 bg-muted/60 text-muted-foreground">
                                                 {tHome('pulse.statusPending')}
                                             </Badge>
                                         );
@@ -389,19 +393,19 @@ export function OpsInspectorCard() {
                                     return (
                                         <div
                                             key={key.id}
-                                            className="flex flex-col gap-1 rounded-xl border border-border/40 bg-card/60 px-2.5 py-1.5 text-xs transition-colors hover:bg-muted/30"
+                                            className="flex flex-col gap-1.5 rounded-xl border border-border/40 bg-card/60 p-2.5 sm:p-3 text-xs transition-colors hover:bg-muted/30"
                                         >
                                             <div className="flex items-center justify-between gap-2">
                                                 <div className="flex items-center gap-1.5 min-w-0">
-                                                    <KeyRound className="size-3 shrink-0 text-muted-foreground" aria-hidden="true" />
+                                                    <KeyRound className="size-3.5 shrink-0 text-muted-foreground/80" aria-hidden="true" />
                                                     <span className="font-medium text-card-foreground truncate max-w-[150px] sm:max-w-[180px]">
                                                         {keyLabel}
                                                     </span>
                                                 </div>
                                                 {badgeNode}
                                             </div>
-                                            <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
-                                                <Clock className="size-2.5 shrink-0 opacity-70" aria-hidden="true" />
+                                            <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                                                <Clock className="size-3 shrink-0 opacity-60" aria-hidden="true" />
                                                 <span className="truncate">{statusDesc}</span>
                                             </div>
                                         </div>

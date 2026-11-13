@@ -33,26 +33,33 @@ function TooltipTrigger({ ...props }: TooltipTriggerProps) {
 
 type TooltipContentProps = Omit<TooltipContentPrimitiveProps, 'asChild'> & {
   children: React.ReactNode;
+  innerClassName?: string;
+  arrowClassName?: string;
 };
 
 function TooltipContent({
   className,
+  innerClassName,
+  arrowClassName,
   children,
   ...props
 }: TooltipContentProps) {
   return (
     <TooltipContentPrimitive
-      className={cn( 'z-50 w-fit bg-muted text-muted-foreground  rounded-md',
+      className={cn( 'z-50 w-fit bg-muted text-muted-foreground rounded-md shadow-md',
         className,
       )}
       {...props}
     >
-      <div className="overflow-hidden px-3 py-1.5 text-xs text-balance">
+      <div className={cn(innerClassName ? cn('overflow-hidden text-xs', innerClassName) : 'overflow-hidden px-3 py-1.5 text-xs text-balance')}>
         <div>{children}</div>
       </div>
       <TooltipArrowPrimitive
         withTransition={false}
-        className="fill-muted size-3 data-[side='bottom']:translate-y-[1px] data-[side='right']:translate-x-[1px] data-[side='left']:translate-x-[-1px] data-[side='top']:translate-y-[-1px]"
+        className={cn(
+          "fill-muted size-3 data-[side='bottom']:translate-y-[1px] data-[side='right']:translate-x-[1px] data-[side='left']:translate-x-[-1px] data-[side='top']:translate-y-[-1px]",
+          arrowClassName,
+        )}
         tipRadius={2}
       />
     </TooltipContentPrimitive>
