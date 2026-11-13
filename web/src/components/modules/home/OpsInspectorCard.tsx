@@ -10,7 +10,8 @@ import {
     ShieldCheck,
     XCircle,
 } from 'lucide-react';
-import { useTranslations } from 'use-intl';
+import { useFormatter, useLocale, useTranslations } from 'use-intl';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/animate-ui/components/animate/tooltip';
 import { useAPIKeyList } from '@/api/apikey';
 import { useChannelList } from '@/api/channel';
 import { useStatsAPIKey } from '@/api/stats';
@@ -24,6 +25,8 @@ import { formatHomeMoney, inspectGatewayOps, type OpsInspectorItem } from './hom
 export function OpsInspectorCard() {
     const t = useTranslations('home.inspector');
     const tHome = useTranslations('home');
+    const format = useFormatter();
+    const locale = useLocale();
     const { setActiveItem } = useNavStore();
 
     const channelQuery = useChannelList();
@@ -31,6 +34,9 @@ export function OpsInspectorCard() {
     const apiKeyStatsQuery = useStatsAPIKey();
 
     const [nowSec, setNowSec] = useState(() => Math.floor(Date.now() / 1000));
+    const lastRequestText = (timestamp: number) => timestamp > 0
+        ? t('lastRequest', { time: format.relativeTime(Math.min(timestamp, nowSec) * 1000, nowSec * 1000) })
+        : t('neverRequested');
     useEffect(() => {
         const timer = window.setInterval(() => {
             setNowSec(Math.floor(Date.now() / 1000));
@@ -93,6 +99,13 @@ export function OpsInspectorCard() {
                 text: t('warningsOnlySummary', { warnings: summary.warningCount }),
             };
         }
+        if (summary.pendingCount > 0) {
+            return {
+                tone: 'muted' as const,
+                icon: ShieldCheck,
+                text: t('pendingSummary', { count: summary.pendingCount }),
+            };
+        }
         return {
             tone: 'healthy' as const,
             icon: CheckCircle2,
@@ -116,7 +129,7 @@ export function OpsInspectorCard() {
                 ? 'bg-destructive'
                 : item.severity === 'warning'
                     ? 'bg-amber-500'
-                    : 'bg-emerald-500';
+                    : item.severity === 'pending' ? 'bg-muted-foreground/50' : 'bg-emerald-500';
 
         if (item.kind === 'all_channels_disabled') {
             return (
@@ -231,59 +244,88 @@ export function OpsInspectorCard() {
                 key={item.id}
                 className="group flex items-center gap-2 rounded-2xl px-3 py-2 transition-colors motion-reduce:transition-none hover:bg-muted/50"
             >
-                <button
-                    type="button"
-                    onClick={() => setActiveItem('channel')}
-                    className="flex min-w-0 flex-1 items-center gap-2.5 rounded-lg text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-                >
-                    <span className={cn('size-2 rounded-full shrink-0', dotClass)} aria-hidden="true" />
-                    <span className="min-w-0 truncate text-sm font-medium text-card-foreground" title={item.channel.name}>
-                        {item.channel.name}
-                    </span>
-
-                    <div className="ml-auto flex shrink-0 items-center gap-2">
-                        {item.reason === 'no_enabled_keys' && (
-                            <Badge variant="outline" className="h-5 border-destructive/35 bg-destructive/10 px-1.5 text-[11px] font-medium text-destructive">
-                                {t('noEnabledChannelKeys')}
-                            </Badge>
-                        )}
-                        {(item.reason === 'key_error' || item.reason === 'key_rate_limit') && (
-                            <Badge
-                                variant="outline"
-                                className={cn(
-                                    'h-5 max-w-36 sm:max-w-44 truncate px-1.5 text-[11px] font-medium tabular-nums',
-                                    item.severity === 'error'
-                                        ? 'border-destructive/35 bg-destructive/10 text-destructive'
-                                        : 'border-amber-500/35 bg-amber-500/10 text-amber-700 dark:text-amber-300',
-                                )}
+                <TooltipProvider>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <button
+                                type="button"
+                                onClick={() => setActiveItem('channel')}
+                                className="flex min-w-0 flex-1 items-center gap-2.5 rounded-lg text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                             >
-                                {t('channelKeyStatus', {
-                                    label: item.keyLabel ?? '#1',
-                                    code: item.statusCode ?? 0,
-                                })}
-                            </Badge>
-                        )}
-                        {item.reason === 'high_delay' && (
-                            <Badge variant="outline" className="h-5 border-amber-500/35 bg-amber-500/10 px-1.5 text-[11px] font-medium text-amber-700 dark:text-amber-300">
-                                {t('highLatency')}
-                            </Badge>
-                        )}
-                        {item.reason === 'healthy' && (
-                            <span className="text-xs text-muted-foreground tabular-nums">
-                                {t('allKeysHealthy', {
-                                    enabled: item.enabledKeyCount,
-                                    total: item.totalKeyCount,
-                                })}
-                            </span>
-                        )}
+                                <span className={cn('size-2 rounded-full shrink-0', dotClass)} aria-hidden="true" />
+                                <span className="min-w-0 flex-1">
+                                    <span className="block truncate text-sm font-medium text-card-foreground">{item.channel.name}</span>
+                                    <span className="block truncate text-[11px] text-muted-foreground">{lastRequestText(item.lastUsedAt)}</span>
+                                </span>
 
-                        {item.bestDelayMs > 0 && (
-                            <span className={cn('w-12 text-right text-xs font-medium tabular-nums', delayClass)}>
-                                {item.bestDelayMs}ms
-                            </span>
-                        )}
-                    </div>
-                </button>
+                                <div className="ml-auto flex shrink-0 items-center gap-2">
+                                    {item.reason === 'no_enabled_keys' && (
+                                        <Badge variant="outline" className="h-5 border-destructive/35 bg-destructive/10 px-1.5 text-[11px] font-medium text-destructive">
+                                            {t('noEnabledChannelKeys')}
+                                        </Badge>
+                                    )}
+                                    {(item.reason === 'key_error' || item.reason === 'key_rate_limit') && (
+                                        <Badge
+                                            variant="outline"
+                                            className={cn(
+                                                'h-5 max-w-36 sm:max-w-44 truncate px-1.5 text-[11px] font-medium tabular-nums',
+                                                item.severity === 'error'
+                                                    ? 'border-destructive/35 bg-destructive/10 text-destructive'
+                                                    : 'border-amber-500/35 bg-amber-500/10 text-amber-700 dark:text-amber-300',
+                                            )}
+                                        >
+                                            {t('channelKeyStatus', {
+                                                label: item.keyLabel ?? '#1',
+                                                code: item.statusCode ?? 0,
+                                            })}
+                                        </Badge>
+                                    )}
+                                    {item.reason === 'high_delay' && (
+                                        <Badge variant="outline" className="h-5 border-amber-500/35 bg-amber-500/10 px-1.5 text-[11px] font-medium text-amber-700 dark:text-amber-300">
+                                            {t('highLatency')}
+                                        </Badge>
+                                    )}
+                                    {item.reason === 'pending' && (
+                                        <Badge variant="outline" className="h-5 border-border bg-muted/50 px-1.5 text-[11px] font-medium text-muted-foreground">
+                                            {t('pendingKeys', { count: item.pendingKeyCount })}
+                                        </Badge>
+                                    )}
+                                    {item.reason === 'healthy' && (
+                                        <span className="text-xs text-muted-foreground tabular-nums">
+                                            {t('allKeysHealthy', {
+                                                enabled: item.enabledKeyCount,
+                                                total: item.totalKeyCount,
+                                            })}
+                                        </span>
+                                    )}
+
+                                    {item.bestDelayMs > 0 && (
+                                        <span className={cn('w-12 text-right text-xs font-medium tabular-nums', delayClass)}>
+                                            {item.bestDelayMs}ms
+                                        </span>
+                                    )}
+                                </div>
+                            </button>
+                        </TooltipTrigger>
+                        {/* Tooltip 原语跳过 children 比较，用版本属性同步数据、时间与语言变化。 */}
+                        <TooltipContent
+                            data-scrollable-tooltip
+                            data-content-version={`${channelQuery.dataUpdatedAt}:${nowSec}:${locale}`}
+                            className="max-w-[min(24rem,calc(100vw-2rem))]"
+                        >
+                            <div data-scrollable-tooltip className="scrollbar max-h-[min(24rem,calc(100dvh-5rem))] space-y-2 overflow-y-auto overscroll-contain text-left">
+                                <p className="font-medium break-words">{item.channel.name}</p>
+                                <p>{t('statusWindow')}</p>
+                                {item.channel.keys.map((key, index) => key.enabled && (
+                                    <div key={key.id} className="break-words">
+                                        <p>{t('keyLastStatus', { label: key.remark.trim() || `#${index + 1}`, status: key.status_code > 0 ? key.status_code : t('noStatus') })}</p>
+                                        <p className="text-muted-foreground">{lastRequestText(key.last_use_time_stamp)}</p>
+                                    </div>
+                                ))}
+                            </div>
+                        </TooltipContent>
+                    </Tooltip>
+                </TooltipProvider>
 
                 <button
                     type="button"

@@ -115,6 +115,11 @@ export function PulseCards({ activeCount }: PulseCardsProps) {
                 label: t('statusAttention'),
                 className: 'bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30',
             }
+            : opsSummary.pendingCount > 0
+                ? {
+                    label: t('statusPending'),
+                    className: 'bg-muted text-muted-foreground border-border',
+                }
             : {
                 label: t('statusHealthy'),
                 className: 'bg-primary/15 text-primary border-primary/25',

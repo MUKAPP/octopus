@@ -4,7 +4,9 @@ import type { LLMInfo } from '@/api/model';
 import type { StatsAPIKeyFormatted, StatsMetricsFormatted } from '@/api/stats';
 import { formatCount, formatMoney } from '@/lib/utils';
 
-export type OpsSeverity = 'error' | 'warning' | 'healthy';
+const KEY_STATUS_TTL_SEC = 30 * 60;
+
+export type OpsSeverity = 'error' | 'warning' | 'pending' | 'healthy';
 
 export type OpsInspectorItem =
     | {
@@ -12,7 +14,9 @@ export type OpsInspectorItem =
         kind: 'channel';
         severity: OpsSeverity;
         channel: Channel;
-        reason: 'no_enabled_keys' | 'key_error' | 'key_rate_limit' | 'high_delay' | 'healthy';
+        reason: 'no_enabled_keys' | 'key_error' | 'key_rate_limit' | 'high_delay' | 'pending' | 'healthy';
+        lastUsedAt: number;
+        pendingKeyCount: number;
         statusCode?: number;
         keyLabel?: string;
         bestDelayMs: number;
@@ -28,7 +32,7 @@ export type OpsInspectorItem =
     | {
         id: string;
         kind: 'apikey';
-        severity: Exclude<OpsSeverity, 'healthy'>;
+        severity: 'error' | 'warning';
         apiKey: APIKey;
         reason: 'expired' | 'quota_exhausted' | 'expiring_soon' | 'quota_near';
         daysLeft?: number;
@@ -46,6 +50,7 @@ export interface GatewayOpsSummary {
     errorCount: number;
     warningCount: number;
     issueCount: number;
+    pendingCount: number;
 }
 
 export function isPricedModel(model: LLMInfo): boolean {
@@ -77,6 +82,10 @@ export function inspectGatewayOps(params: {
 
         const totalKeyCount = channel.keys.length;
         const enabledKeys = channel.keys.filter((k) => k.enabled);
+        const recentKeys = enabledKeys.filter((key) => key.last_use_time_stamp > 0
+            && params.nowSec - key.last_use_time_stamp <= KEY_STATUS_TTL_SEC && key.status_code !== 0);
+        const lastUsedAt = enabledKeys.reduce((latest, key) => Math.max(latest, key.last_use_time_stamp), 0);
+        const pendingKeyCount = enabledKeys.length - recentKeys.length;
         const measuredDelays = channel.base_urls.map((u) => u.delay).filter((d) => d > 0);
         const bestDelayMs = measuredDelays.length > 0 ? Math.min(...measuredDelays) : 0;
 
@@ -87,6 +96,8 @@ export function inspectGatewayOps(params: {
                 severity: 'error',
                 channel,
                 reason: 'no_enabled_keys',
+                lastUsedAt,
+                pendingKeyCount,
                 bestDelayMs,
                 enabledKeyCount: 0,
                 totalKeyCount,
@@ -99,11 +110,11 @@ export function inspectGatewayOps(params: {
             keySlotMap.set(k.id, idx + 1);
         });
 
-        const criticalKeyIndex = enabledKeys.findIndex(
+        const criticalKeyIndex = recentKeys.findIndex(
             (k) => k.status_code === 401 || k.status_code === 403 || k.status_code >= 500,
         );
         if (criticalKeyIndex !== -1) {
-            const k = enabledKeys[criticalKeyIndex];
+            const k = recentKeys[criticalKeyIndex];
             items.push({
                 id: `channel-${channel.id}`,
                 kind: 'channel',
@@ -112,6 +123,8 @@ export function inspectGatewayOps(params: {
                 reason: 'key_error',
                 statusCode: k.status_code,
                 keyLabel: k.remark?.trim() || `#${keySlotMap.get(k.id) ?? criticalKeyIndex + 1}`,
+                lastUsedAt,
+                pendingKeyCount,
                 bestDelayMs,
                 enabledKeyCount: enabledKeys.length,
                 totalKeyCount,
@@ -119,11 +132,11 @@ export function inspectGatewayOps(params: {
             continue;
         }
 
-        const warningKeyIndex = enabledKeys.findIndex(
+        const warningKeyIndex = recentKeys.findIndex(
             (k) => k.status_code !== 0 && k.status_code !== 200,
         );
         if (warningKeyIndex !== -1) {
-            const k = enabledKeys[warningKeyIndex];
+            const k = recentKeys[warningKeyIndex];
             items.push({
                 id: `channel-${channel.id}`,
                 kind: 'channel',
@@ -132,6 +145,24 @@ export function inspectGatewayOps(params: {
                 reason: 'key_rate_limit',
                 statusCode: k.status_code,
                 keyLabel: k.remark?.trim() || `#${keySlotMap.get(k.id) ?? warningKeyIndex + 1}`,
+                lastUsedAt,
+                pendingKeyCount,
+                bestDelayMs,
+                enabledKeyCount: enabledKeys.length,
+                totalKeyCount,
+            });
+            continue;
+        }
+
+        if (pendingKeyCount > 0) {
+            items.push({
+                id: `channel-${channel.id}`,
+                kind: 'channel',
+                severity: 'pending',
+                channel,
+                reason: 'pending',
+                lastUsedAt,
+                pendingKeyCount,
                 bestDelayMs,
                 enabledKeyCount: enabledKeys.length,
                 totalKeyCount,
@@ -146,6 +177,8 @@ export function inspectGatewayOps(params: {
                 severity: 'warning',
                 channel,
                 reason: 'high_delay',
+                lastUsedAt,
+                pendingKeyCount,
                 bestDelayMs,
                 enabledKeyCount: enabledKeys.length,
                 totalKeyCount,
@@ -159,6 +192,8 @@ export function inspectGatewayOps(params: {
             severity: 'healthy',
             channel,
             reason: 'healthy',
+            lastUsedAt,
+            pendingKeyCount,
             bestDelayMs,
             enabledKeyCount: enabledKeys.length,
             totalKeyCount,
@@ -251,7 +286,8 @@ export function inspectGatewayOps(params: {
     const severityOrder: Record<OpsSeverity, number> = {
         error: 0,
         warning: 1,
-        healthy: 2,
+        pending: 2,
+        healthy: 3,
     };
 
     items.sort((a, b) => severityOrder[a.severity] - severityOrder[b.severity]);
@@ -268,6 +304,7 @@ export function inspectGatewayOps(params: {
         errorCount,
         warningCount,
         issueCount: errorCount + warningCount,
+        pendingCount: items.filter((item) => item.severity === 'pending').length,
     };
 }
 
