@@ -378,6 +378,7 @@
             "noEntities": "No channels or API keys configured",
             "allChannelsDisabled": "All {total} channels are disabled",
             "allKeysHealthy": "{enabled}/{total} keys OK",
+            "enabledKeys": "{enabled}/{total} keys enabled",
             "pendingSummary": "No recent issues; {count} channels unverified",
             "pendingKeys": "{count} keys unverified",
             "lastRequest": "Last request {time}",

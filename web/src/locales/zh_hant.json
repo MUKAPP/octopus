@@ -378,6 +378,7 @@
             "noEntities": "尚未設定供應源或 API 金鑰",
             "allChannelsDisabled": "全部 {total} 個供應源均已停用",
             "allKeysHealthy": "{enabled}/{total} 金鑰正常",
+            "enabledKeys": "{enabled}/{total} 金鑰已啟用",
             "pendingSummary": "暫無近期異常，{count} 個供應源待驗證",
             "pendingKeys": "{count} 金鑰待驗證",
             "lastRequest": "上次請求 {time}",

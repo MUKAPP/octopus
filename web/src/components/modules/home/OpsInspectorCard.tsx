@@ -335,7 +335,7 @@ export function OpsInspectorCard() {
                                     <span className="font-semibold text-sm text-foreground truncate">{item.channel.name}</span>
                                 </div>
                                 <Badge variant="outline" className="h-5 rounded-full px-2 text-[10px] font-medium text-muted-foreground shrink-0 border-border/60 bg-muted/40">
-                                    {t('allKeysHealthy', { enabled: item.enabledKeyCount, total: item.totalKeyCount })}
+                                    {t('enabledKeys', { enabled: item.enabledKeyCount, total: item.totalKeyCount })}
                                 </Badge>
                             </div>
 
@@ -383,8 +383,10 @@ export function OpsInspectorCard() {
                                                 {tHome('pulse.statusPending')}
                                             </Badge>
                                         );
-                                        if (isNever || key.status_code === 0) {
+                                        if (isNever) {
                                             statusDesc = t('neverRequested');
+                                        } else if (key.status_code === 0) {
+                                            statusDesc = `${t('noStatus')} · ${lastRequestText(key.last_use_time_stamp)}`;
                                         } else {
                                             statusDesc = `${t('keyStaleStatus', { status: key.status_code })} · ${lastRequestText(key.last_use_time_stamp)}`;
                                         }

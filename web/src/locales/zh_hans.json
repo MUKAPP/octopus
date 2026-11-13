@@ -378,6 +378,7 @@
             "noEntities": "尚未配置渠道或 API 密钥",
             "allChannelsDisabled": "全部 {total} 个渠道均已禁用",
             "allKeysHealthy": "{enabled}/{total} Key 正常",
+            "enabledKeys": "{enabled}/{total} Key 已启用",
             "pendingSummary": "暂无近期异常，{count} 个渠道待验证",
             "pendingKeys": "{count} Key 待验证",
             "lastRequest": "上次请求 {time}",
