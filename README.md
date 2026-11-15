@@ -280,6 +280,8 @@ Channels are the basic configuration units for connecting to LLM providers.
 
 **Key selection and recovery:** Channels retain the group's scheduling order. Within each channel, enabled, non-empty keys outside the five-minute 429 cooldown are tried in ascending accumulated cost order; retryable failures continue to the next key or channel. Once normal candidates are exhausted, a second pass may retry previously deferred keys and circuits even before their cooldown expires. This also lets a single-key channel recover on the next request. Each channel/key/upstream-model combination is forwarded at most once per request; disabled keys and circuits with an active half-open probe remain excluded. Failed probes retain the circuit's backoff history; successful probes reset it. A finalized response stops further retries.
 
+**Responses streaming compatibility:** Completed function calls always include a JSON arguments string; calls without arguments finish with `"{}"`. Reasoning items are marked completed in both item completion events and the final response snapshot.
+
 **Base URL Guide:**
 
 The program automatically appends API paths based on channel type. You only need to provide the base URL:

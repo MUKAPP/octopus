@@ -19,7 +19,7 @@ func newInbound(format llm.APIFormat) transformer.Inbound {
 	case llm.APIFormatOpenAIChatCompletion:
 		return openai.NewInboundTransformer()
 	case llm.APIFormatOpenAIResponse:
-		return responses.NewInboundTransformer()
+		return &responsesInbound{Inbound: responses.NewInboundTransformer()}
 	case llm.APIFormatOpenAIEmbedding:
 		return openai.NewEmbeddingInboundTransformer()
 	case llm.APIFormatOpenAIImageGeneration:
